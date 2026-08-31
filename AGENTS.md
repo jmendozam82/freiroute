@@ -1,4 +1,4 @@
-# AGENTS.md — La Constitución del Proyecto SaaS
+# AGENTS.md — La Constitución del Proyecto SaaS freiroute TMS
 
 > **ARCHIVO DE REGLAS A NIVEL DE PROYECTO**
 > Todo agente de IA (Claude, Cursor, Copilot, OpenCode) debe leer este archivo ANTES de escribir una sola línea de código.
@@ -34,16 +34,16 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 
 ### Multi-Tenant
 
-5. **Toda tabla de negocio DEBERÁ** contener el campo `clinica_id UUID NOT NULL` como discriminador de tenant.
-6. **Toda consulta SQL DEBERÁ** filtrar por `clinica_id`.
+5. **Toda tabla de negocio DEBERÁ** contener el campo `empresa_id UUID NOT NULL` como discriminador de tenant.
+6. **Toda consulta SQL DEBERÁ** filtrar por `empresa_id`.
 7. **Row Level Security DEBERÁ** estar habilitado en cada tabla de negocio.
-8. **El JWT DEBERÁ** contener: `user_id`, `clinica_id`, `perfil_id`, `permisos[]`.
+8. **El JWT DEBERÁ** contener: `user_id`, `empresa_id`, `perfil_id`, `permisos[]`.
 
 ### Base de Datos
 
 9. **Toda migración PASARÁ** por Supabase CLI (`supabase migration new`). Prohibido ejecutar SQL ad-hoc en producción.
 10. **Todos los IDs SERÁN** de tipo `UUID` generados con `gen_random_uuid()`.
-11. **Toda tabla de negocio INCLUIRÁ** los campos: `id`, `clinica_id`, `activo`, `fecha_creacion`, `fecha_modificacion`.
+11. **Toda tabla de negocio INCLUIRÁ** los campos: `id`, `empresa_id`, `activo`, `fecha_creacion`, `fecha_modificacion`.
 12. **Los registros NUNCA SE ELIMINARÁN**. Solo se desactivarán (`activo = false`).
 13. **Los comentarios de la BD SERÁN** en español (idioma del negocio).
 
@@ -53,13 +53,13 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 15. **Los métodos asíncronos TERMINARÁN** en `Async`. Ejemplo: `GetAllAsync`, `CreateAsync`.
 16. **Todas las respuestas de la API USARÁN** el wrapper `ApiResponse<T>`.
 17. **Los DTOs SERÁN SIEMPRE** diferentes de las Entities. Nunca retornar una Entity directamente.
-18. **Las interfaces PRECEDRÁN** de la letra `I`. Ejemplo: `IPacienteService`.
+18. **Las interfaces PRECEDRÁN** de la letra `I`. Ejemplo: `IEmpresaService`.
 
 ### Permisos
 
 19. **El sistema MANEJARÁ** exactamente 3 tipos de permiso: `READ`, `CREATE`, `UPDATE`. No existe `DELETE`.
 20. **Todo endpoint de API DEBERÁ** verificar permisos con `[RequirePermission(modulo, tipo)]`.
-21. **El perfil ADMIN TENDRÁ** acceso completo a todos los módulos de su tenant (no del sistema global).
+21. **El perfil ADMIN TENDRÁ** acceso completo a todos los módulos de su empresa (no del sistema global).
 
 ### Testing
 
@@ -94,14 +94,14 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 
 ---
 
-## Glosario Mínimo del Dominio
+## Glosario Mínimo del Dominio TMS
 
 > Cada proyecto deberá extender este glosario con sus propios términos de negocio.
 
 | Término técnico | Descripción |
 |---|---|
-| `tenant` | Organización/empresa que usa el sistema en modo SaaS |
-| `clinica_id` / `tenant_id` | Discriminador universal de tenant en todas las tablas |
+| `tenant` | Organización/empresa de transporte que usa el sistema en modo SaaS |
+| `empresa_id` / `tenant_id` | Discriminador universal de tenant en todas las tablas |
 | `activo` | Flag booleano que reemplaza el DELETE físico |
 | `RLS` | Row Level Security — aislamiento de datos a nivel BD |
 | `BLL` | Business Logic Layer — capa de reglas de negocio |
@@ -110,9 +110,22 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 | `IOC` | Inversión de Control — contenedor de inyección de dependencias |
 | `JWT` | JSON Web Token — mecanismo de autenticación sin estado |
 | `EARS` | Easy Approach to Requirements Syntax — formato de reglas de negocio |
+| `TMS` | Transport Management System — sistema de gestión de transporte |
+| `empresa` | Compañía/transportista que contrata el servicio SaaS freiroute |
+| `conductor` | Operador de vehículo en el sistema TMS |
+| `embarque` | Operación de transporte individual (shipment) |
+| `carrier` | Transportista o empresa de carga |
+| `cliente` | Usuario que contrata los servicios de transporte |
+| `orden` | Solicitud de servicio de transporte (pozo a pozo) |
+| `shipment` | Embarque o carga agrupada |
+| `rutas` | Planificación de rutas optimizadas |
+| `track & trace` | Rastreo y seguimiento de embarques en tiempo real |
+| `freight` | Carga o mercancía transportada |
+| `auditoría` | Registro de actividades y cambios en el sistema |
 
 ---
 
-*AGENTS.md — Plantilla base para proyectos SaaS con Supabase*
+*AGENTS.md — Constitución del proyecto freiroute TMS*
 *Versión: 1.0.0 | Basada en las mejores prácticas del proyecto Vittal (2026)*
 *Este archivo se versiona en Git y es la fuente de verdad para todos los agentes de IA.*
+*Dominio: TMS (Transport Management System) - SaaS Multi-Tenant*
