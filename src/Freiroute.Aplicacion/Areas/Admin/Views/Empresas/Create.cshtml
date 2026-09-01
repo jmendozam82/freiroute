@@ -1,0 +1,92 @@
+@model Freiroute.DTO.Empresa.EmpresaRequestDto
+
+@{
+    ViewData["Title"] = "Crear Nuevo Tenant";
+}
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb" style="font-size:12px;">
+        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Empresas" asp-action="Index">Gestión de Tenants</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Crear Nuevo Tenant</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h1>Crear Nuevo Tenant</h1>
+        <p class="page-subtitle">Registra una nueva empresa (tenant) en el sistema</p>
+    </div>
+</div>
+
+<!-- Error Flash Message -->
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert-fr-danger alert alert-dismissible fade show mb-4" role="alert">
+        <i class="ti ti-circle-x"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+<!-- Form Card -->
+<div class="fr-card" style="max-width:640px;">
+    <div class="fr-card-header">
+        <h5>Información del Tenant</h5>
+    </div>
+    <div class="fr-card-body padded">
+        <form asp-action="Create" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            <!-- Nombre -->
+            <div class="mb-4">
+                <label asp-for="Nombre" class="fr-form-label"></label>
+                @{ var nombreInvalid = Html.ViewData.ModelState["Nombre"]?.Errors.Count > 0; }
+                <input asp-for="Nombre" class="form-control fr-input @(nombreInvalid ? "is-invalid" : "")" 
+                       placeholder="Ej: Transportes del Norte S.A." autofocus />
+                <span asp-validation-for="Nombre" class="invalid-feedback"></span>
+            </div>
+
+            <!-- Slug -->
+            <div class="mb-4">
+                <label asp-for="Slug" class="fr-form-label">
+                    Slug <small class="text-secondary">(opcional — se genera automáticamente si se deja vacío)</small>
+                </label>
+                @{ var slugInvalid = Html.ViewData.ModelState["Slug"]?.Errors.Count > 0; }
+                <input asp-for="Slug" class="form-control fr-input @(slugInvalid ? "is-invalid" : "")" 
+                       placeholder="Ej: transportes-norte" />
+                <span asp-validation-for="Slug" class="invalid-feedback"></span>
+            </div>
+
+            <!-- Plan -->
+            <div class="mb-4">
+                <label asp-for="Plan" class="fr-form-label"></label>
+                @{ var planInvalid = Html.ViewData.ModelState["Plan"]?.Errors.Count > 0; }
+                <select asp-for="Plan" asp-items="ViewBag.PlanOptions as SelectList" 
+                        class="form-select fr-input @(planInvalid ? "is-invalid" : "")">
+                </select>
+                <span asp-validation-for="Plan" class="invalid-feedback"></span>
+                <div class="form-text mt-1" style="font-size:11px;color:var(--fr-text-secondary);">
+                    El plan define los módulos y límites disponibles para este tenant.
+                </div>
+            </div>
+
+            <!-- Divider -->
+            <hr style="border-color:var(--fr-border);" />
+
+            <!-- Buttons -->
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-fr-primary">
+                    <i class="ti ti-check"></i> Guardar
+                </button>
+                <a asp-action="Index" class="btn btn-fr-outline">
+                    <i class="ti ti-arrow-left"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

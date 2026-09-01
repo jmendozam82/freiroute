@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "projectName": "freiroute",
+  "version": "1.0.0",
+  "stack": "ASP.NET Core 8 + Supabase + PostgreSQL",
+  "architecture": "N-Tier with 8 projects",
+  "domain": "TMS - Transport Management System",
+  "database": "Supabase (PostgreSQL 15) with RLS multi-tenant",
+  "auth": "Supabase Auth + JWT with claims: user_id, empresa_id, perfil_id, permisos[]",
+  "orm": "Dapper",
+  "validation": "FluentValidation (server) + jQuery Validate (client)",
+  "ui": "Bootstrap 5.3",
+  "ci_cd": "GitHub Actions",
+  "testing": "xUnit + Moq + FluentAssertions",
+  "scrum": "Sprints de 2 semanas con asignación de HUs a agentes IA",
+  "agentOrchestrator": "@PM",
+  "defaultBranch": "main",
+  "developmentBranch": "develop",
+  "agents": {
+    "orchestrator": "@PM",
+    "architect": "@Arquitecto",
+    "dataEngineer": "@IngenieroDatos",
+    "backend": "@BackendDev",
+    "frontend": "@FrontendDev",
+    "qa": "@QA"
+  },
+  "skillsPath": ".opencode/skills",
+  "agentsPath": ".opencode/agents",
+  "conventions": {
+    "cSharp": "PascalCase para clases, camelCase para variables",
+    "sql": "snake_case para tablas y columnas, español en comentarios",
+    "naming": "Interfaces con prefijo I, métodos Async terminados en Async",
+    "dtoEntity": "DTOs siempre diferentes de Entities, nunca retornar Entity directamente"
+  }
+}

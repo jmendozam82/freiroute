@@ -1,0 +1,156 @@
+@model IEnumerable<Freiroute.DTO.Empresa.EmpresaResponseDto>
+
+@{
+    ViewData["Title"] = "Gestión de Tenants";
+}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h1>Gestión de Tenants</h1>
+        <p class="page-subtitle">Administra las empresas registradas en el sistema</p>
+    </div>
+    <a asp-action="Create" class="btn btn-fr-primary">
+        <i class="ti ti-plus"></i> Nuevo Tenant
+    </a>
+</div>
+
+<!-- Flash Messages -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert-fr-success alert alert-dismissible fade show" role="alert">
+        <i class="ti ti-circle-check"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert-fr-danger alert alert-dismissible fade show" role="alert">
+        <i class="ti ti-circle-x"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+<!-- KPI Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Tenants Activos</div>
+            <div class="kpi-value">@Model.Count(e => e.Activo)</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Tenants</div>
+            <div class="kpi-value text-fr-blue">@Model.Count()</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Empresas por Plan</div>
+            <div class="kpi-delta text-secondary mt-2">
+                Starter: @Model.Count(e => e.Plan == "starter") &nbsp;|&nbsp; 
+                Pro: @Model.Count(e => e.Plan == "professional") &nbsp;|&nbsp; 
+                Ent: @Model.Count(e => e.Plan == "enterprise")
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Table Card -->
+<div class="fr-card">
+    <div class="fr-card-header">
+        <h5>Lista de Tenants</h5>
+    </div>
+    <div class="fr-card-body">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5">
+                <i class="ti ti-building-company" style="font-size:48px;color:var(--fr-text-secondary);opacity:.3;"></i>
+                <p class="mt-3 mb-0 text-secondary">No hay tenants registrados</p>
+                <a asp-action="Create" class="btn btn-fr-primary mt-2">
+                    <i class="ti ti-plus"></i> Crear primer Tenant
+                </a>
+            </div>
+        }
+        else
+        {
+            <table class="table-fr">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Slug</th>
+                        <th>Nombre</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Fecha Creación</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int i = 0; }
+                    @foreach (var empresa in Model)
+                    {
+                        i++;
+                        <tr>
+                            <td>@i</td>
+                            <td class="slug-cell">@empresa.Slug</td>
+                            <td><strong>@empresa.Nombre</strong></td>
+                            <td>
+                                <span class="badge-fr badge-fr-info">@empresa.Plan.First().ToString().ToUpper()@empresa.Plan.Substring(1)</span>
+                            </td>
+                            <td>
+                                @if (empresa.Activo)
+                                {
+                                    <span class="badge-fr badge-fr-success">Activo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-fr badge-fr-neutral">Inactivo</span>
+                                }
+                            </td>
+                            <td style="white-space:nowrap;">@empresa.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">
+                                <div class="action-links justify-content-end">
+                                    <a asp-action="Details" asp-route-id="@empresa.Id" class="btn btn-fr-outline" title="Ver detalles">
+                                        <i class="ti ti-eye"></i> Detalles
+                                    </a>
+                                    <a asp-action="Edit" asp-route-id="@empresa.Id" class="btn btn-fr-outline" title="Editar">
+                                        <i class="ti ti-pencil"></i> Editar
+                                    </a>
+                                    @if (empresa.Activo)
+                                    {
+                                        <a asp-action="Deactivate" asp-route-id="@empresa.Id" class="btn btn-fr-danger-outline" title="Desactivar" 
+                                           onclick="return confirm('¿Está seguro que desea desactivar este tenant?');">
+                                            <i class="ti ti-ban"></i> Desactivar
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Pagination footer -->
+            <div class="fr-pagination">
+                <div class="fr-pagination-info">
+                    Mostrando @Model.Count() tenant(s)
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-hide alerts after 5 seconds
+        document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+            setTimeout(function() {
+                var bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                if (bsAlert) bsAlert.close();
+            }, 5000);
+        });
+    </script>
+}

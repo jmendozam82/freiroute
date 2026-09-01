@@ -218,7 +218,7 @@ Día 10:   Sprint Review + Retrospectiva
 Una Historia de Usuario se considera **DONE** cuando:
 
 - [ ] Spec aprobado por Product Owner
-- [ ] Migración SQL con `clinica_id` y RLS habilitado
+- [ ] Migración SQL con `empresa_id` y RLS habilitado
 - [ ] Entity, DTOs, Repository e Interface creados
 - [ ] BLL Service con reglas de negocio implementadas
 - [ ] Tests unitarios de BLL (cobertura ≥ 80%)
@@ -227,7 +227,7 @@ Una Historia de Usuario se considera **DONE** cuando:
 - [ ] Vistas Razor funcionales y responsivas
 - [ ] Validación FluentValidation (server) + jQuery Validate (client)
 - [ ] Permisos `READ`/`CREATE`/`UPDATE` verificados
-- [ ] Filtro por `clinica_id` en todas las consultas
+- [ ] Filtro por `empresa_id` en todas las consultas
 - [ ] Soft delete implementado (`activo = false`)
 - [ ] PR aprobado por al menos 1 developer humano
 - [ ] Deploy exitoso en staging

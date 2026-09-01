@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Freiroute TMS</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tabler-icons@3.0.0/font/tabler-icons.min.css" />
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="fr-sidebar">
+        <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="fr-sidebar-brand">
+            <div class="fr-sidebar-brand-logo">FR</div>
+            <span class="fr-sidebar-brand-name">Freiroute TMS</span>
+        </a>
+        <ul class="fr-sidebar-nav">
+            <li class="fr-sidebar-label">Principal</li>
+            <li>
+                @{ var homeActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Home"; }
+                <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="sb-item @(homeActive ? "active" : "")">
+                    <i class="ti ti-layout-dashboard"></i> Dashboard
+                </a>
+            </li>
+            <li>
+                @{ var empresasActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Empresas"; }
+                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="sb-item @(empresasActive ? "active" : "")">
+                    <i class="ti ti-building-company"></i> Gestión de Tenants
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="fr-main">
+        <!-- Topbar -->
+        <header class="fr-topbar">
+            <h1 class="fr-topbar-title">@ViewData["Title"]</h1>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-secondary" style="font-size:12px;">Super Admin</span>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="fr-content">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="fr-footer">
+        &copy; @(DateTime.Now.Year) Freiroute TMS — Todos los derechos reservados.
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

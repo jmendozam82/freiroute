@@ -67,7 +67,7 @@ Browser → [GET /area/modulo] → Controller MVC
        → [GET /api/modulo]   → API Controller
        → IModuloService      → BLL Service
        → IModuloRepository   → DAL Repository
-       → [SELECT * FROM modulo WHERE clinica_id = @id]
+       → [SELECT * FROM modulo WHERE empresa_id = @id]
        → PostgreSQL (Supabase)
        ← List<Entity>
        ← List<ResponseDto>
@@ -85,7 +85,7 @@ Browser → [POST /area/modulo] → Controller MVC
         → IModuloService      → BLL Service
         → [Reglas de negocio]
         → IModuloRepository   → DAL Repository
-        → [INSERT/UPDATE ... WHERE clinica_id = @id]
+        → [INSERT/UPDATE ... WHERE empresa_id = @id]
         → PostgreSQL (Supabase + RLS)
         ← new Guid (id generado)
         ← ResponseDto

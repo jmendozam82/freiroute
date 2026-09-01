@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Freiroute.BLL\Freiroute.BLL.csproj" />
+    <ProjectReference Include="..\..\src\Freiroute.DAL\Freiroute.DAL.csproj" />
     <ProjectReference Include="..\..\src\Freiroute.Entity\Freiroute.Entity.csproj" />
     <ProjectReference Include="..\..\src\Freiroute.DTO\Freiroute.DTO.csproj" />
   </ItemGroup>

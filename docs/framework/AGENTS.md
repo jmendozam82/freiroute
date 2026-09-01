@@ -34,16 +34,16 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 
 ### Multi-Tenant
 
-5. **Toda tabla de negocio DEBERÁ** contener el campo `clinica_id UUID NOT NULL` como discriminador de tenant.
-6. **Toda consulta SQL DEBERÁ** filtrar por `clinica_id`.
+5. **Toda tabla de negocio DEBERÁ** contener el campo `empresa_id UUID NOT NULL` como discriminador de tenant.
+6. **Toda consulta SQL DEBERÁ** filtrar por `empresa_id`.
 7. **Row Level Security DEBERÁ** estar habilitado en cada tabla de negocio.
-8. **El JWT DEBERÁ** contener: `user_id`, `clinica_id`, `perfil_id`, `permisos[]`.
+8. **El JWT DEBERÁ** contener: `user_id`, `empresa_id`, `perfil_id`, `permisos[]`.
 
 ### Base de Datos
 
 9. **Toda migración PASARÁ** por Supabase CLI (`supabase migration new`). Prohibido ejecutar SQL ad-hoc en producción.
 10. **Todos los IDs SERÁN** de tipo `UUID` generados con `gen_random_uuid()`.
-11. **Toda tabla de negocio INCLUIRÁ** los campos: `id`, `clinica_id`, `activo`, `fecha_creacion`, `fecha_modificacion`.
+11. **Toda tabla de negocio INCLUIRÁ** los campos: `id`, `empresa_id`, `activo`, `fecha_creacion`, `fecha_modificacion`.
 12. **Los registros NUNCA SE ELIMINARÁN**. Solo se desactivarán (`activo = false`).
 13. **Los comentarios de la BD SERÁN** en español (idioma del negocio).
 
@@ -101,7 +101,7 @@ El sistema USARÁ **GitHub Actions** como pipeline de CI/CD.
 | Término técnico | Descripción |
 |---|---|
 | `tenant` | Organización/empresa que usa el sistema en modo SaaS |
-| `clinica_id` / `tenant_id` | Discriminador universal de tenant en todas las tablas |
+| `empresa_id` / `tenant_id` | Discriminador universal de tenant en todas las tablas |
 | `activo` | Flag booleano que reemplaza el DELETE físico |
 | `RLS` | Row Level Security — aislamiento de datos a nivel BD |
 | `BLL` | Business Logic Layer — capa de reglas de negocio |
