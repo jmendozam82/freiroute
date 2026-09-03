@@ -1,92 +1,190 @@
-@model Freiroute.DTO.Empresa.EmpresaRequestDto
-
+@model EmpresaRequestDto
 @{
-    ViewData["Title"] = "Crear Nuevo Tenant";
+    ViewData["Title"]      = "Nueva Empresa";
+    ViewData["ActiveMenu"] = "empresas";
 }
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb" style="font-size:12px;">
-        <li class="breadcrumb-item"><a asp-area="Admin" asp-controller="Empresas" asp-action="Index">Gestión de Tenants</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Crear Nuevo Tenant</li>
-    </ol>
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <a asp-area="Admin" asp-controller="Empresas" asp-action="Index">Empresas</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Nueva</span>
 </nav>
 
-<!-- Page Header -->
-<div class="page-header">
+<div class="fr-page-header">
     <div>
-        <h1>Crear Nuevo Tenant</h1>
-        <p class="page-subtitle">Registra una nueva empresa (tenant) en el sistema</p>
+        <h1 class="fr-page-title">Nueva Empresa</h1>
+        <p class="fr-page-subtitle">Registra un nuevo tenant en la plataforma Freiroute</p>
     </div>
 </div>
 
-<!-- Error Flash Message -->
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert-fr-danger alert alert-dismissible fade show mb-4" role="alert">
-        <i class="ti ti-circle-x"></i> @TempData["ErrorMessage"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-    </div>
-}
-
-<!-- Form Card -->
-<div class="fr-card" style="max-width:640px;">
+<div class="fr-card" style="max-width:760px">
     <div class="fr-card-header">
-        <h5>Información del Tenant</h5>
+        <span class="fr-card-title">Datos de la Empresa</span>
     </div>
-    <div class="fr-card-body padded">
-        <form asp-action="Create" method="post" novalidate>
+    <div class="fr-card-body">
+        <form id="frForm" method="post" novalidate>
             @Html.AntiForgeryToken()
 
-            <!-- Nombre -->
-            <div class="mb-4">
-                <label asp-for="Nombre" class="fr-form-label"></label>
-                @{ var nombreInvalid = Html.ViewData.ModelState["Nombre"]?.Errors.Count > 0; }
-                <input asp-for="Nombre" class="form-control fr-input @(nombreInvalid ? "is-invalid" : "")" 
-                       placeholder="Ej: Transportes del Norte S.A." autofocus />
-                <span asp-validation-for="Nombre" class="invalid-feedback"></span>
-            </div>
-
-            <!-- Slug -->
-            <div class="mb-4">
-                <label asp-for="Slug" class="fr-form-label">
-                    Slug <small class="text-secondary">(opcional — se genera automáticamente si se deja vacío)</small>
-                </label>
-                @{ var slugInvalid = Html.ViewData.ModelState["Slug"]?.Errors.Count > 0; }
-                <input asp-for="Slug" class="form-control fr-input @(slugInvalid ? "is-invalid" : "")" 
-                       placeholder="Ej: transportes-norte" />
-                <span asp-validation-for="Slug" class="invalid-feedback"></span>
-            </div>
-
-            <!-- Plan -->
-            <div class="mb-4">
-                <label asp-for="Plan" class="fr-form-label"></label>
-                @{ var planInvalid = Html.ViewData.ModelState["Plan"]?.Errors.Count > 0; }
-                <select asp-for="Plan" asp-items="ViewBag.PlanOptions as SelectList" 
-                        class="form-select fr-input @(planInvalid ? "is-invalid" : "")">
-                </select>
-                <span asp-validation-for="Plan" class="invalid-feedback"></span>
-                <div class="form-text mt-1" style="font-size:11px;color:var(--fr-text-secondary);">
-                    El plan define los módulos y límites disponibles para este tenant.
+            <!-- Sección: Datos de la Empresa -->
+            <div class="form-section-title">Datos de la Empresa</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-8">
+                    <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Nombre" class="fr-form-control"
+                           placeholder="Nombre de la empresa"
+                           data-val="true"
+                           data-val-required="El nombre es obligatorio"
+                           data-val-maxlength-max="200"
+                           data-val-maxlength="No puede exceder 200 caracteres" />
+                    <span asp-validation-for="Nombre" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="RucNit" class="fr-form-label"></label>
+                    <input asp-for="RucNit" class="fr-form-control" placeholder="RUC NIT" />
+                    <span asp-validation-for="RucNit" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="EmailAdmin" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="EmailAdmin" type="email" class="fr-form-control"
+                           placeholder="admin@empresa.com"
+                           data-val="true"
+                           data-val-required="El email del administrador es obligatorio"
+                           data-val-email="Ingrese un email válido" />
+                    <span asp-validation-for="EmailAdmin" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Telefono" class="fr-form-label"></label>
+                    <input asp-for="Telefono" class="fr-form-control" placeholder="+505 0000 0000" />
+                    <span asp-validation-for="Telefono" class="fr-form-error"></span>
                 </div>
             </div>
 
-            <!-- Divider -->
-            <hr style="border-color:var(--fr-border);" />
+            <!-- Sección: Ubicación -->
+            <div class="form-section-title">Ubicación</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label asp-for="Pais" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="Pais" class="fr-form-control"
+                            data-val="true" data-val-required="El país es obligatorio">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="Nicaragua">Nicaragua</option>
+                        <option value="Costa Rica">Costa Rica</option>
+                        <option value="Honduras">Honduras</option>
+                        <option value="El Salvador">El Salvador</option>
+                        <option value="Guatemala">Guatemala</option>
+                        <option value="México">México</option>
+                        <option value="Panamá">Panamá</option>
+                        <option value="Estados Unidos">Estados Unidos</option>
+                    </select>
+                    <span asp-validation-for="Pais" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Ciudad" class="fr-form-label"></label>
+                    <input asp-for="Ciudad" class="fr-form-control" placeholder="Ciudad" />
+                    <span asp-validation-for="Ciudad" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Direccion" class="fr-form-label"></label>
+                    <input asp-for="Direccion" class="fr-form-control" placeholder="Dirección" />
+                    <span asp-validation-for="Direccion" class="fr-form-error"></span>
+                </div>
+            </div>
 
-            <!-- Buttons -->
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-fr-primary">
-                    <i class="ti ti-check"></i> Guardar
+            <!-- Sección: Configuración -->
+            <div class="form-section-title">Configuración</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label asp-for="PlanSuscripcion" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="PlanSuscripcion" class="fr-form-control"
+                            data-val="true" data-val-required="Seleccione un plan">
+                        <option value="STARTER">STARTER</option>
+                        <option value="PROFESSIONAL">PROFESSIONAL</option>
+                        <option value="ENTERPRISE">ENTERPRISE</option>
+                    </select>
+                    <span asp-validation-for="PlanSuscripcion" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="MonedaPrincipal" class="fr-form-label"></label>
+                    <select asp-for="MonedaPrincipal" class="fr-form-control">
+                        <option value="USD">USD — Dólar</option>
+                        <option value="NIO">NIO — Córdoba</option>
+                        <option value="EUR">EUR — Euro</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ZonaHoraria" class="fr-form-label"></label>
+                    <select asp-for="ZonaHoraria" class="fr-form-control">
+                        <option value="America/Managua">America/Managua</option>
+                        <option value="America/Costa_Rica">America/Costa_Rica</option>
+                        <option value="America/Guatemala">America/Guatemala</option>
+                        <option value="America/El_Salvador">America/El_Salvador</option>
+                        <option value="America/Mexico_City">America/Mexico_City</option>
+                        <option value="America/Panama">America/Panama</option>
+                        <option value="America/New_York">America/New_York</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sección: Personalización -->
+            <div class="form-section-title">Personalización</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <label asp-for="ColorPrimario" class="fr-form-label"></label>
+                    <input asp-for="ColorPrimario" type="color" class="form-control form-control-color"
+                           value="#1A73E8" style="height:38px" />
+                    <span asp-validation-for="ColorPrimario" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ColorSecundario" class="fr-form-label"></label>
+                    <input asp-for="ColorSecundario" type="color" class="form-control form-control-color"
+                           value="#0B2545" style="height:38px" />
+                    <span asp-validation-for="ColorSecundario" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="LogoUrl" class="fr-form-label"></label>
+                    <input asp-for="LogoUrl" class="fr-form-control" placeholder="https://..." />
+                    <span asp-validation-for="LogoUrl" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i>
+                    Crear Empresa
                 </button>
-                <a asp-action="Index" class="btn btn-fr-outline">
-                    <i class="ti ti-arrow-left"></i> Cancelar
-                </a>
+                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+<script>
+    $.validator.unobtrusive.parse('#frForm');
+
+    $('#frForm').on('submit', async function (e) {
+        e.preventDefault();
+        if (!$(this).valid()) {
+            FrToast.warning('Por favor corrija los errores del formulario');
+            return;
+        }
+
+        const btn = document.getElementById('btnGuardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        const data = Object.fromEntries(new FormData(this));
+
+        const resp = await FrApi.post('/api/empresas', data);
+
+        FrApi.handleResponse(resp, () => {
+            setTimeout(() => window.location.href = '@Url.Action("Index", "Empresas", new { area = "Admin" })', 800);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i> Crear Empresa';
+    });
+</script>
 }

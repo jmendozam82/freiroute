@@ -1,0 +1,156 @@
+@model PagedResult<PerfilResponseDto>
+@{
+    ViewData["Title"]      = "Perfiles";
+    ViewData["ActiveMenu"] = "perfiles";
+}
+
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Perfiles</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Gestión de Perfiles</h1>
+        <p class="fr-page-subtitle">@Model.TotalItems perfiles — roles y permisos del tenant</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-area="Admin" asp-controller="Perfiles" asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nuevo Perfil
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="fr-card mb-4">
+    <div class="fr-card-body" style="padding:16px">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="fr-form-label">Buscar por nombre</label>
+                <input name="q" value="@ViewData["Q"]" class="fr-form-control" placeholder="Nombre del perfil..." />
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label">Tipo</label>
+                <select name="tipo" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="SUPER_ADMIN" selected="@(ViewData["Tipo"]?.ToString() == "SUPER_ADMIN")">SUPER_ADMIN</option>
+                    <option value="ADMIN" selected="@(ViewData["Tipo"]?.ToString() == "ADMIN")">ADMIN</option>
+                    <option value="DISPATCHER" selected="@(ViewData["Tipo"]?.ToString() == "DISPATCHER")">DISPATCHER</option>
+                    <option value="OPERADOR" selected="@(ViewData["Tipo"]?.ToString() == "OPERADOR")">OPERADOR</option>
+                    <option value="CONDUCTOR" selected="@(ViewData["Tipo"]?.ToString() == "CONDUCTOR")">CONDUCTOR</option>
+                    <option value="CLIENTE" selected="@(ViewData["Tipo"]?.ToString() == "CLIENTE")">CLIENTE</option>
+                    <option value="CUSTOM" selected="@(ViewData["Tipo"]?.ToString() == "CUSTOM")">CUSTOM</option>
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="fr-btn fr-btn-primary">
+                    <i class="ti ti-search"></i> Filtrar
+                </button>
+                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="fr-table-wrapper">
+    @if (!Model.Items.Any())
+    {
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+            <div class="fr-empty-title">No hay perfiles registrados</div>
+            <div class="fr-empty-text">Crea el primero usando el botón "Nuevo Perfil"</div>
+        </div>
+    }
+    else
+    {
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Es Sistema</th>
+                    <th>Usuarios</th>
+                    <th>Estado</th>
+                    <th style="width:150px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td><span class="fr-id-code">@item.Nombre</span></td>
+                    <td>
+                        <span class="fr-badge fr-badge-info">@item.TipoPerfil</span>
+                    </td>
+                    <td style="color:var(--fr-text-muted)">@item.Descripcion</td>
+                    <td>
+                        @if (item.EsSistema)
+                        {
+                            <span class="fr-badge fr-badge-info">Sistema</span>
+                        }
+                        else
+                        {
+                            <span class="fr-badge fr-badge-neutral">Personalizado</span>
+                        }
+                    </td>
+                    <td><span class="fr-id-code">@item.UsuariosAsignados</span></td>
+                    <td>
+                        @if (item.Activo)
+                        {
+                            <span class="fr-badge fr-badge-success">Activo</span>
+                        }
+                        else
+                        {
+                            <span class="fr-badge fr-badge-neutral">Inactivo</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a asp-area="Admin" asp-controller="Perfiles" asp-action="Permisos" asp-route-id="@item.Id"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Permisos" aria-label="Permisos">
+                                <i class="ti ti-user-shield"></i>
+                            </a>
+                            <a asp-area="Admin" asp-controller="Perfiles" asp-action="Edit" asp-route-id="@item.Id"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
+                                <i class="ti ti-pencil"></i>
+                            </a>
+                            @if (!item.EsSistema)
+                            {
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        data-fr-deactivate="/api/perfiles/@item.Id/deactivate"
+                                        data-fr-nombre="@item.Nombre"
+                                        title="Desactivar" aria-label="Desactivar">
+                                    <i class="ti ti-trash" style="color:var(--fr-danger)"></i>
+                                </button>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+
+        <!-- Paginación -->
+        <div class="fr-pagination">
+            <span class="fr-pagination-info">
+                Mostrando @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalItems))
+                de @Model.TotalItems registros
+            </span>
+            <div class="d-flex gap-2">
+                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
+                   asp-route-page="@(Model.PageNumber - 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
+                   class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
+                    ← Anterior
+                </a>
+                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
+                   asp-route-page="@(Model.PageNumber + 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
+                   class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
+                    Siguiente →
+                </a>
+            </div>
+        </div>
+    }
+</div>

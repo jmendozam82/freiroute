@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Supabase temporal files
+supabase/.temp/
+
 # User-specific files
 *.rsuser
 *.suo

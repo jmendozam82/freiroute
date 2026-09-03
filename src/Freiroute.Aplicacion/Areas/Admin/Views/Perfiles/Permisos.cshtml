@@ -1,0 +1,130 @@
+@model PerfilResponseDto
+@using Freiroute.Utility.Constants
+@{
+    ViewData["Title"]      = "Permisos — " + Model.Nombre;
+    ViewData["ActiveMenu"] = "perfiles";
+
+    var permisos = (ViewData["Permisos"] as IEnumerable<PermisoResponseDto>) ?? Enumerable.Empty<PermisoResponseDto>();
+
+    var modulos = new[] {
+        (ModuloPermiso.Ordenes,       "Órdenes"),
+        (ModuloPermiso.Embarques,     "Embarques"),
+        (ModuloPermiso.Carriers,      "Carriers"),
+        (ModuloPermiso.Rutas,         "Rutas"),
+        (ModuloPermiso.TrackTrace,    "Track & Trace"),
+        (ModuloPermiso.Documentos,    "Documentos"),
+        (ModuloPermiso.Flota,         "Flota"),
+        (ModuloPermiso.Analytics,     "Analytics"),
+        (ModuloPermiso.Facturacion,   "Facturación"),
+        (ModuloPermiso.Clientes,      "Clientes"),
+        (ModuloPermiso.Usuarios,      "Usuarios"),
+        (ModuloPermiso.Configuracion, "Configuración")
+    };
+}
+
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index">Perfiles</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Permisos — @Model.Nombre</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Permisos — @Model.Nombre</h1>
+        <p class="fr-page-subtitle">Configura los permisos granulares por módulo de este perfil</p>
+    </div>
+</div>
+
+@if (Model.EsSistema && Model.TipoPerfil == "SUPER_ADMIN")
+{
+    <div class="alert-fr-info mb-4">
+        <i class="ti ti-info-circle me-1"></i> El perfil SUPER_ADMIN tiene acceso total implícito y no requiere configuración de permisos.
+    </div>
+}
+else
+{
+    <div class="fr-table-wrapper" style="max-width:820px">
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Módulo</th>
+                    <th style="width:90px;text-align:center">Leer</th>
+                    <th style="width:90px;text-align:center">Crear</th>
+                    <th style="width:100px;text-align:center">Actualizar</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var (modulo, label) in modulos)
+            {
+                var permiso = permisos.FirstOrDefault(p => p.Modulo == modulo);
+                <tr>
+                    <td style="font-weight:600">@label</td>
+                    <td style="text-align:center">
+                        <input type="checkbox" class="form-check-input permiso-check"
+                               data-modulo="@modulo" data-accion="leer"
+                               @(permiso?.PuedeLeer == true ? "checked" : "") style="cursor:pointer" />
+                    </td>
+                    <td style="text-align:center">
+                        <input type="checkbox" class="form-check-input permiso-check"
+                               data-modulo="@modulo" data-accion="crear"
+                               @(permiso?.PuedeCrear == true ? "checked" : "") style="cursor:pointer" />
+                    </td>
+                    <td style="text-align:center">
+                        <input type="checkbox" class="form-check-input permiso-check"
+                               data-modulo="@modulo" data-accion="actualizar"
+                               @(permiso?.PuedeActualizar == true ? "checked" : "") style="cursor:pointer" />
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="button" class="fr-btn fr-btn-primary" id="btnGuardarPermisos">
+            <i class="ti ti-device-floppy"></i>
+            Guardar Permisos
+        </button>
+        <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+    </div>
+}
+
+@section Scripts {
+<script>
+    $('#btnGuardarPermisos')?.on('click', async function () {
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        // Agrupar por módulo
+        const modulos = {};
+        document.querySelectorAll('.permiso-check').forEach(chk => {
+            const modulo = chk.dataset.modulo;
+            const accion = chk.dataset.accion;
+            if (!modulos[modulo]) modulos[modulo] = { leer: false, crear: false, actualizar: false };
+            modulos[modulo][accion] = chk.checked;
+        });
+
+        const payload = {
+            perfilId: '@Model.Id',
+            modulos: Object.keys(modulos).map(m => ({
+                modulo: m,
+                puedeLeer: modulos[m].leer,
+                puedeCrear: modulos[m].crear,
+                puedeActualizar: modulos[m].actualizar
+            }))
+        };
+
+        const resp = await FrApi.put('/api/perfiles/@Model.Id/permisos', payload);
+
+        FrApi.handleResponse(resp, () => {
+            setTimeout(() => window.location.href = '@Url.Action("Index", "Perfiles", new { area = "Admin" })', 800);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i> Guardar Permisos';
+    });
+</script>
+}

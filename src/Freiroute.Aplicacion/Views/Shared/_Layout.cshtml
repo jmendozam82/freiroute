@@ -1,50 +1,214 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@* Freiroute.Aplicacion/Views/Shared/_Layout.cshtml *@
+@using Freiroute.Aplicacion.Helpers
+@{
+    var hideSidebar = ViewData["HideSidebar"] is true;
+}
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Freiroute.Aplicacion</title>
-    <script type="importmap"></script>
+    <title>@ViewData["Title"] — Freiroute TMS</title>
+    <link rel="icon" type="image/x-icon" href="~/favicon.ico" />
+    <!-- Bootstrap 5.3 -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Freiroute.Aplicacion.styles.css" asp-append-version="true" />
+    <!-- Tabler Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+    <!-- Google Fonts (preconnect) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Freiroute Design System -->
+    <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Freiroute.Aplicacion</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Freiroute.Aplicacion - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+@if (hideSidebar)
+{
+    <div class="fr-wrapper">
+        @RenderBody()
+    </div>
+}
+else
+{
+    <div class="fr-wrapper">
+
+        <!-- ── Sidebar ──────────────────────────────────────────── -->
+        <aside class="fr-sidebar" id="frSidebar">
+            <a class="fr-sidebar-logo" href="/">
+                <div class="fr-logo-mark">FR</div>
+                <div>
+                    <div class="fr-logo-text">Freiroute</div>
+                    <div class="fr-logo-tag">TMS · @ViewData["TenantNombre"]</div>
+                </div>
+            </a>
+
+            <nav class="mt-2">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="fr-sidebar-group">Principal</div>
+                    <a asp-area="Admin" asp-controller="Shared" asp-action="Dashboard"
+                       class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "dashboard" ? "active" : "")">
+                        <i class="ti ti-layout-dashboard fr-icon"></i>
+                        <span>Dashboard</span>
+                    </a>
+
+                    @if (User.HasAnyPermission("ordenes", "embarques", "carriers", "rutas", "track_trace"))
+                    {
+                        <div class="fr-sidebar-group">Operación</div>
+                    }
+
+                    @if (User.HasPermission("ordenes", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "ordenes" ? "active" : "")">
+                            <i class="ti ti-clipboard-list fr-icon"></i>
+                            <span>Órdenes</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("embarques", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Embarques" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "embarques" ? "active" : "")">
+                            <i class="ti ti-truck fr-icon"></i>
+                            <span>Embarques</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("carriers", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Carriers" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "carriers" ? "active" : "")">
+                            <i class="ti ti-building-warehouse fr-icon"></i>
+                            <span>Carriers</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("rutas", "READ"))
+                    {
+                        <div class="fr-sidebar-group">Planificación</div>
+                        <a asp-area="Tenant" asp-controller="Rutas" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "rutas" ? "active" : "")">
+                            <i class="ti ti-map-route fr-icon"></i>
+                            <span>Rutas</span>
+                        </a>
+                        <a asp-area="Tenant" asp-controller="TrackTrace" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "track" ? "active" : "")">
+                            <i class="ti ti-map-pin fr-icon"></i>
+                            <span>Track &amp; Trace</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("analytics", "READ"))
+                    {
+                        <div class="fr-sidebar-group">Inteligencia</div>
+                        <a asp-area="Tenant" asp-controller="Analytics" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "analytics" ? "active" : "")">
+                            <i class="ti ti-chart-bar fr-icon"></i>
+                            <span>Analytics</span>
+                        </a>
+                    }
+
+                    @if (User.EsSuperAdmin() || User.EsAdminTenant())
+                    {
+                        <div class="fr-sidebar-group">Administración</div>
+                        <a asp-area="Admin" asp-controller="Usuarios" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "usuarios" ? "active" : "")">
+                            <i class="ti ti-users fr-icon"></i>
+                            <span>Usuarios</span>
+                        </a>
+                        <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "perfiles" ? "active" : "")">
+                            <i class="ti ti-user-shield fr-icon"></i>
+                            <span>Perfiles</span>
+                        </a>
+                        <a asp-area="Admin" asp-controller="Configuracion" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
+                            <i class="ti ti-settings fr-icon"></i>
+                            <span>Configuración</span>
+                        </a>
+                    }
+
+                    @if (User.EsSuperAdmin())
+                    {
+                        <div class="fr-sidebar-group">SaaS Admin</div>
+                        <a asp-area="Admin" asp-controller="Empresas" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "empresas" ? "active" : "")">
+                            <i class="ti ti-building fr-icon"></i>
+                            <span>Empresas</span>
+                        </a>
+                    }
+
+                    <!-- Footer del sidebar -->
+                    <div class="mt-auto" style="border-top:1px solid rgba(255,255,255,.08);padding:12px 16px">
+                        <div style="font-size:11px;color:rgba(255,255,255,.4)">
+                            @User.FindFirstValue("nombre")
+                            <br />
+                            <span style="font-size:10px">@User.FindFirstValue("perfil_nombre")</span>
+                        </div>
+                    </div>
+                }
+            </nav>
+        </aside>
+
+        <!-- ── Contenido principal ──────────────────────────────── -->
+        <div class="fr-main" id="frMain">
+
+            <!-- Topbar -->
+            <header class="fr-topbar">
+                <button class="fr-btn fr-btn-ghost fr-btn-icon" id="btnToggleSidebar" title="Colapsar menú" aria-label="Colapsar menú">
+                    <i class="ti ti-menu-2"></i>
+                </button>
+                <span class="fr-topbar-title">@ViewData["Title"]</span>
+                <div class="ms-auto d-flex align-items-center gap-3">
+                    <!-- Notificaciones -->
+                    <button class="fr-btn fr-btn-ghost fr-btn-icon position-relative" aria-label="Notificaciones">
+                        <i class="ti ti-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill"
+                              style="background:var(--fr-danger);font-size:8px">3</span>
+                    </button>
+                    <!-- Avatar -->
+                    <div class="dropdown">
+                        <button class="fr-btn fr-btn-ghost fr-btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-label="Menú de usuario">
+                            <i class="ti ti-user-circle"></i>
+                            @User.FindFirstValue("nombre")
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">Mi perfil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form asp-area="Auth" asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="ti ti-logout me-2"></i>Cerrar sesión
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Contenido de la página -->
+            <main class="fr-content">
+                @RenderBody()
+            </main>
         </div>
-    </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+    </div>
+}
+
+<!-- Toast container -->
+<div class="fr-toast-container" id="frToastContainer"></div>
+
+<!-- Bootstrap JS -->
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<!-- jQuery + Validate -->
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+<script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+<!-- Freiroute JS -->
+<script src="~/js/freiroute.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

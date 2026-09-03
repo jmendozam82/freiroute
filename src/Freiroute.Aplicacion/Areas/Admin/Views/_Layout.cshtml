@@ -1,47 +1,113 @@
+@* Freiroute.Aplicacion/Areas/Admin/Views/_Layout.cshtml *@
+@using Freiroute.Aplicacion.Helpers
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Freiroute TMS</title>
+    <title>@ViewData["Title"] — Freiroute TMS</title>
+    <!-- Bootstrap 5.3 -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
+    <!-- Tabler Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+    <!-- Google Fonts (preconnect) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tabler-icons@3.0.0/font/tabler-icons.min.css" />
+    <!-- Freiroute Design System -->
+    <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
+<div class="fr-wrapper">
+
     <!-- Sidebar -->
-    <aside class="fr-sidebar">
-        <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="fr-sidebar-brand">
-            <div class="fr-sidebar-brand-logo">FR</div>
-            <span class="fr-sidebar-brand-name">Freiroute TMS</span>
+    <aside class="fr-sidebar" id="frSidebar">
+        <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="fr-sidebar-logo">
+            <div class="fr-logo-mark">FR</div>
+            <div>
+                <div class="fr-logo-text">Freiroute TMS</div>
+                <div class="fr-logo-tag">Admin</div>
+            </div>
         </a>
-        <ul class="fr-sidebar-nav">
-            <li class="fr-sidebar-label">Principal</li>
-            <li>
-                @{ var homeActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Home"; }
-                <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="sb-item @(homeActive ? "active" : "")">
-                    <i class="ti ti-layout-dashboard"></i> Dashboard
+
+        <nav class="mt-2">
+            <div class="fr-sidebar-group">Principal</div>
+            @{
+                var homeActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Home";
+            }
+            <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="fr-sidebar-item @(homeActive ? "active" : "")">
+                <i class="ti ti-layout-dashboard fr-icon"></i>
+                <span>Dashboard</span>
+            </a>
+
+            @if (User.IsInRole("SUPER_ADMIN"))
+            {
+                <div class="fr-sidebar-group">SaaS Admin</div>
+                var empresasActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Empresas";
+                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="fr-sidebar-item @(empresasActive ? "active" : "")">
+                    <i class="ti ti-building fr-icon"></i>
+                    <span>Empresas</span>
                 </a>
-            </li>
-            <li>
-                @{ var empresasActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Empresas"; }
-                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="sb-item @(empresasActive ? "active" : "")">
-                    <i class="ti ti-building-company"></i> Gestión de Tenants
-                </a>
-            </li>
-        </ul>
+            }
+
+            <div class="fr-sidebar-group">Administración</div>
+            @{
+                var perfilesActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Perfiles";
+                var usuariosActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Usuarios";
+                var configActive   = ViewContext.RouteData.Values["controller"]?.ToString() == "Configuracion";
+            }
+            <a asp-area="Admin" asp-controller="Usuarios" asp-action="Index" class="fr-sidebar-item @(usuariosActive ? "active" : "")">
+                <i class="ti ti-users fr-icon"></i>
+                <span>Usuarios</span>
+            </a>
+            <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index" class="fr-sidebar-item @(perfilesActive ? "active" : "")">
+                <i class="ti ti-user-shield fr-icon"></i>
+                <span>Perfiles</span>
+            </a>
+            <a asp-area="Admin" asp-controller="Configuracion" asp-action="Index" class="fr-sidebar-item @(configActive ? "active" : "")">
+                <i class="ti ti-settings fr-icon"></i>
+                <span>Configuración</span>
+            </a>
+        </nav>
+
+        <!-- Footer del sidebar -->
+        <div class="mt-auto" style="border-top:1px solid rgba(255,255,255,.08);padding:12px 16px">
+            <div style="font-size:11px;color:rgba(255,255,255,.4)">
+                @User.FindFirstValue("nombre")
+                <br />
+                <span style="font-size:10px">Super Admin</span>
+            </div>
+        </div>
     </aside>
 
     <!-- Main Content -->
-    <div class="fr-main">
+    <div class="fr-main" id="frMain">
         <!-- Topbar -->
         <header class="fr-topbar">
-            <h1 class="fr-topbar-title">@ViewData["Title"]</h1>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-secondary" style="font-size:12px;">Super Admin</span>
+            <button class="fr-btn fr-btn-ghost fr-btn-icon" id="btnToggleSidebar" title="Colapsar menú" aria-label="Colapsar menú">
+                <i class="ti ti-menu-2"></i>
+            </button>
+            <span class="fr-topbar-title">@ViewData["Title"]</span>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <!-- Avatar -->
+                <div class="dropdown">
+                    <button class="fr-btn fr-btn-ghost fr-btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-label="Menú de usuario">
+                        <i class="ti ti-user-circle"></i>
+                        @User.FindFirstValue("nombre")
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-area="Admin" asp-controller="Home" asp-action="Index">Mi perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form asp-area="Auth" asp-controller="Account" asp-action="Logout" method="post">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="ti ti-logout me-2"></i>Cerrar sesión
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </header>
 
@@ -50,16 +116,16 @@
             @RenderBody()
         </main>
     </div>
+</div>
 
-    <footer class="fr-footer">
-        &copy; @(DateTime.Now.Year) Freiroute TMS — Todos los derechos reservados.
-    </footer>
+<!-- Toast container -->
+<div class="fr-toast-container" id="frToastContainer"></div>
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
-    <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+<script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+<script src="~/js/freiroute.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

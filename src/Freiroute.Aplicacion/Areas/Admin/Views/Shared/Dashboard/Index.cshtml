@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"]      = "Dashboard — Super Admin";
+    ViewData["ActiveMenu"] = "dashboard";
+}
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Dashboard — Super Admin</h1>
+        <p class="fr-page-subtitle">Visión general de la plataforma Freiroute TMS</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="fr-btn fr-btn-ghost" onclick="FrToast.info('Actualización manual')">
+            <i class="ti ti-refresh"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="fr-kpi-grid">
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Empresas Activas</div>
+        <div class="fr-kpi-value kpi-blue">1</div>
+        <div class="fr-kpi-delta up">Tenant raíz</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Usuarios Totales</div>
+        <div class="fr-kpi-value">0</div>
+        <div class="fr-kpi-delta" style="color:var(--fr-text-muted)">Por registrar</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Embarques Hoy</div>
+        <div class="fr-kpi-value kpi-amber">0</div>
+        <div class="fr-kpi-delta" style="color:var(--fr-text-muted)">Sin datos</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">OTD %</div>
+        <div class="fr-kpi-value kpi-green">0%</div>
+        <div class="fr-kpi-delta" style="color:var(--fr-text-muted)">Sin datos</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Actividad Reciente -->
+    <div class="col-lg-7">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Actividad Reciente</span>
+                <a asp-area="Admin" asp-controller="Home" asp-action="Index" class="fr-btn fr-btn-ghost fr-btn-sm">Ver todo</a>
+            </div>
+            <div class="fr-card-body" style="padding:0">
+                <div class="fr-empty py-4">
+                    <div class="fr-empty-icon"><i class="ti ti-activity"></i></div>
+                    <div class="fr-empty-title">Sin actividad reciente</div>
+                    <div class="fr-empty-text">Las acciones del sistema aparecerán aquí.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empresas Recientes -->
+    <div class="col-lg-5">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Empresas Recientes</span>
+                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="fr-btn fr-btn-ghost fr-btn-sm">Ver todas</a>
+            </div>
+            <div class="fr-card-body" style="padding:0">
+                <table class="fr-table">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="fr-id-code">Freiroute SaaS Admin</span></td>
+                            <td><span class="fr-badge fr-badge-success">Activa</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,90 +1,76 @@
-using Freiroute.BLL.Services;
+using Freiroute.Aplicacion.Areas.Admin.Controllers;
+using Freiroute.BLL.Interfaces;
 using Freiroute.DTO.Empresa;
-using Microsoft.AspNetCore.Authorization;
+using Freiroute.Utility.Pagination;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.Extensions.Logging;
-using Serilog;
 
 namespace Freiroute.Aplicacion.Areas.Admin.Controllers;
 
-[Area("Admin")]
-[Authorize(Policy = "SuperAdminPolicy")]
-public class EmpresasController : Controller
+/// <summary>
+/// Gestión de empresas/tenants del panel Super Admin (HU-001).
+/// Solo el SUPER_ADMIN puede registrar/gestionar empresas (CA-07).
+/// Índice paginado (RNF-01.4: 20 por página) usando IEmpresaService.
+/// </summary>
+public class EmpresasController : BaseAdminController
 {
-    private readonly IEmpresaService _service;
-    private readonly ILogger<EmpresasController> _logger;
+    private readonly IEmpresaService _empresaService;
 
-    public EmpresasController(IEmpresaService service, ILogger<EmpresasController> logger)
+    public EmpresasController(IEmpresaService empresaService)
     {
-        _service = service;
-        _logger = logger;
+        _empresaService = empresaService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1, string? q = null, string? estado = null)
     {
-        try
+        if (!EsSuperAdmin)
         {
-            var empresas = await _service.GetAllAsync();
-            return View(empresas);
+            return Forbid();
         }
-        catch (Exception ex)
+
+        ViewData["Title"] = "Empresas";
+        ViewData["ActiveMenu"] = "empresas";
+        ViewData["Q"] = q;
+        ViewData["Estado"] = estado;
+
+        var todas = await _empresaService.GetAllAsync();
+
+        // Aplicar filtros
+        if (!string.IsNullOrWhiteSpace(q))
         {
-            _logger.LogError(ex, "Error al obtener lista de empresas");
-            TempData["ErrorMessage"] = "Error al cargar la lista de tenants. Intente nuevamente.";
-            return View(new List<EmpresaResponseDto>());
+            todas = todas.Where(e =>
+                e.Nombre.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (e.RucNit?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                e.EmailAdmin.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
+
+        if (!string.IsNullOrWhiteSpace(estado))
+        {
+            todas = todas.Where(e => string.Equals(e.Estado, estado, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var items = todas.ToList();
+        const int pageSize = 20;
+        var paged = new PagedResult<EmpresaResponseDto>
+        {
+            Items = items.Skip((page - 1) * pageSize).Take(pageSize),
+            TotalItems = items.Count,
+            PageNumber = Math.Max(1, page),
+            PageSize = pageSize
+        };
+
+        return View(paged);
     }
 
     [HttpGet]
     public IActionResult Create()
     {
-        ViewBag.PlanOptions = new SelectList(new[]
+        if (!EsSuperAdmin)
         {
-            new { Value = "starter", Text = "Starter" },
-            new { Value = "professional", Text = "Professional" },
-            new { Value = "enterprise", Text = "Enterprise" }
-        }, "Value", "Text", "starter");
+            return Forbid();
+        }
 
+        ViewData["Title"] = "Nueva Empresa";
+        ViewData["ActiveMenu"] = "empresas";
         return View(new EmpresaRequestDto());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(EmpresaRequestDto dto)
-    {
-        ViewBag.PlanOptions = new SelectList(new[]
-        {
-            new { Value = "starter", Text = "Starter" },
-            new { Value = "professional", Text = "Professional" },
-            new { Value = "enterprise", Text = "Enterprise" }
-        }, "Value", "Text", dto.Plan);
-
-        if (!ModelState.IsValid)
-        {
-            _logger.LogWarning("Validación fallida al crear tenant: {@ModelErrors}", ModelState.Values.SelectMany(v => v.Errors));
-            return View(dto);
-        }
-
-        try
-        {
-            await _service.CrearAsync(dto);
-            TempData["SuccessMessage"] = "Tenant creado exitosamente";
-            Log.Information("Tenant creado: {@Slug}", dto.Slug);
-            return RedirectToAction(nameof(Index));
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-            _logger.LogWarning(ex, "Conflict al crear tenant con slug duplicado: {@Slug}", dto.Slug);
-            return View(dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error inesperado al crear tenant");
-            TempData["ErrorMessage"] = "Ocurrió un error al crear el tenant. Intente nuevamente.";
-            return View(dto);
-        }
     }
 }

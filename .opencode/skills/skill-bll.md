@@ -1,7 +1,7 @@
-# Skill: @BackendDev (Desarrollador Backend freiroute TMS)
+# Skill: @BackendDev (Desarrollador Backend Freiroute TMS)
 
 ## Rol
-**@BackendDev** implementa la lógica de negocio (BLL Services), controladores API REST y validaciones FluentValidation. Es responsable de que cada operación del módulo respete la arquitectura N-Tier: Vista → Controller MVC → API Controller → BLL Service → DAL Repository → Supabase/PostgreSQL. Actúa después de @IngenieroDatos y entrega al @QA para pruebas.
+**@BackendDev** implementa la lógica de negocio en la BLL, los controladores API y los tests unitarios e integración. Trabaja con los contratos que @Arquitecto definió y sobre las tablas que @IngenieroDatos creó. Es responsable de que el flujo de datos sea correcto, seguro y con cobertura de tests suficiente.
 
 ---
 
@@ -11,562 +11,427 @@
 ```
 1. Leer AGENTS.md completo
 2. Leer spec.md del módulo (docs/specs/HU-XXX-nombre.md)
-3. Verificar Entity definida por @Arquitecto
-4. Revisar migración SQL creada por @IngenieroDatos
-5. Confirmar interfaces DAL existen (I[Modulo]Repository)
+3. Leer Entity, DTOs e Interfaces creados por @Arquitecto
+4. Confirmar que la migración de @IngenieroDatos está aplicada (supabase db diff vacío)
 ```
 
-### 2. Posición en el Flujo de HU
-```
-@PM planifica Sprint
-    → @Arquitecto define Entity + DTOs + Interfaces + ADR
-    → @IngenieroDatos crea migración SQL + RLS
-    → @BackendDev ← IMPLEMENTA BLL Service + FluentValidator + API Controller
-    → @QA ejecuta tests + valida cobertura
-    → @FrontendDev crea Vistas Razor con Design System Freiroute
-    → @PM revisa checklist + aprueba PR
-```
+### 2. FluentValidator
 
-### 3. Business Logic Layer (BLL) - Services
-
-**Implementar en:** `src/Freiroute.BLL/Services/[Modulo]Service.cs`
-
-#### Estructura base del Service
 ```csharp
-// ── src/Freiroute.BLL/Services/[Modulo]Service.cs ──────────────────────
-namespace Freiroute.BLL.Services;
-
-using Freiroute.BLL.Interfaces;
-using Freiroute.BLL.Validators;
-using Freiroute.DAL.Interfaces;
-using Freiroute.DTO.[Modulo];
-using Freiroute.Entity;
-using Freiroute.Utility.ApiResponse;
-using Microsoft.Extensions.Logging;
-using FluentValidation;
-
-/// <summary>
-/// Servicio de negocio para [descripción del módulo TMS].
-/// Encapsula reglas de dominio, coordinando DAL Repository y validaciones.
-/// </summary>
-public class [Modulo]Service : I[Modulo]Service
-{
-    private readonly I[Modulo]Repository _repository;
-    private readonly ILogger<[Modulo]Service> _logger;
-
-    public [Modulo]Service(
-        I[Modulo]Repository repository,
-        ILogger<[Modulo]Service> logger)
-    {
-        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    // ── GETALL ──────────────────────────────────────────────────────────
-    /// <summary>
-    /// Obtiene todos los registros activos del módulo para una empresa.
-    /// Filtro: activo = true (soft delete) + empresa_id (RLS).
-    /// </summary>
-    public async Task<IEnumerable<[Modulo]ResponseDto>> GetAllAsync(Guid empresaId)
-    {
-        _logger.LogInformation("Consultando todos los [modulo] para empresa {EmpresaId}", empresaId);
-        
-        var entidades = await _repository.GetAllAsync(empresaId);
-        return entidades.Select(MapToResponseDto).ToList();
-    }
-
-    // ── GETBYID ─────────────────────────────────────────────────────────
-    /// <summary>
-    /// Obtiene un registro individual por ID dentro del tenant.
-    /// Retorna null si no existe o está desactivado.
-    /// </summary>
-    public async Task<[Modulo]ResponseDto?> GetByIdAsync(Guid id, Guid empresaId)
-    {
-        _logger.LogDebug("Consultando [modulo] {Id} para empresa {EmpresaId}", id, empresaId);
-        
-        var entidad = await _repository.GetByIdAsync(id, empresaId);
-        return entidad != null ? MapToResponseDto(entidad) : null;
-    }
-
-    // ── CREATE ──────────────────────────────────────────────────────────
-    /// <summary>
-    /// Crea un nuevo registro validando reglas de negocio del dominio TMS.
-    /// El empresa_id viene del JWT, nunca del request.
-    /// </summary>
-    public async Task<[Modulo]ResponseDto> CreateAsync([Modulo]RequestDto dto, Guid empresaId)
-    {
-        _logger.LogInformation("Creando [modulo] para empresa {EmpresaId}", empresaId);
-
-        // 1. Validar DTO con FluentValidation
-        var validator = new [Modulo]Validator();
-        var validationResult = await validator.ValidateAsync(dto);
-        if (!validationResult.IsValid)
-            throw new ValidationException(validationResult.Errors);
-
-        // 2. Reglas de negocio adicionales del dominio
-        ValidateBusinessRules(dto, empresaId);
-
-        // 3. Mapear DTO a Entity (sin campos de auditoría — los genera la BD)
-        var entidad = MapToEntity(dto, empresaId);
-
-        // 4. Persistir y obtener ID generado
-        var id = await _repository.CreateAsync(entidad);
-
-        _logger.LogInformation("[modulo] creado exitosamente {Id}", id);
-
-        // 5. Retornar el registro completo creado
-        var creado = await _repository.GetByIdAsync(id, empresaId);
-        return MapToResponseDto(creado!);
-    }
-
-    // ── UPDATE ──────────────────────────────────────────────────────────
-    /// <summary>
-    /// Actualiza un registro existente. Solo modifica campos del DTO enviado.
-    /// Verifica existencia antes de actualizar.
-    /// </summary>
-    public async Task<[Modulo]ResponseDto> UpdateAsync(Guid id, [Modulo]RequestDto dto, Guid empresaId)
-    {
-        _logger.LogInformation("Actualizando [modulo] {Id} para empresa {EmpresaId}", id, empresaId);
-
-        // 1. Validar DTO
-        var validator = new [Modulo]Validator();
-        var validationResult = await validator.ValidateAsync(dto);
-        if (!validationResult.IsValid)
-            throw new ValidationException(validationResult.Errors);
-
-        // 2. Verificar que el registro existe y es del tenant
-        var existente = await _repository.GetByIdAsync(id, empresaId);
-        if (existente == null)
-        {
-            _logger.LogWarning("[modulo] {Id} no encontrado para empresa {EmpresaId}", id, empresaId);
-            throw new KeyNotFoundException($"El registro {id} no existe o fue desactivado");
-        }
-
-        // 3. Aplicar cambios sobre la entidad existente
-        ApplyUpdates(existente, dto);
-        existente.FechaModificacion = DateTime.UtcNow;
-
-        // 4. Persistir
-        var actualizado = await _repository.UpdateAsync(existente);
-        if (!actualizado)
-            throw new KeyNotFoundException($"No se pudo actualizar el registro {id}");
-
-        _logger.LogInformation("[modulo] {Id} actualizado exitosamente", id);
-
-        // 5. Retornar el registro actualizado
-        return await _repository.GetByIdAsync(id, empresaId)
-            .ContinueWith(t => MapToResponseDto(t.Result!));
-    }
-
-    // ── DEACTIVATE (SOFT DELETE) ────────────────────────────────────────
-    /// <summary>
-    /// Desactiva un registro lógicamente (activo = false).
-    /// Nunca se usa DeleteAsync — ver ADR-005.
-    /// </summary>
-    public async Task<bool> DeactivateAsync(Guid id, Guid empresaId)
-    {
-        _logger.LogInformation("Desactivando [modulo] {Id} para empresa {EmpresaId}", id, empresaId);
-
-        var resultado = await _repository.DeactivateAsync(id, empresaId);
-
-        if (resultado)
-            _logger.LogInformation("[modulo] {Id} desactivado exitosamente", id);
-        else
-            _logger.LogWarning("[modulo] {Id} no encontrado para desactivar", id);
-
-        return resultado;
-    }
-}
-```
-
-#### Método de mapeo DTO ↔ Entity
-```csharp
-private static [Modulo] MapToEntity([Modulo]RequestDto dto, Guid empresaId)
-{
-    return new [Modulo]
-    {
-        EmpresaId = empresaId,          // SIEMPRE del JWT
-        Nombre = dto.Nombre.Trim(),
-        // Campos específicos del módulo TMS
-        Estado = dto.Estado,
-        // ...
-    };
-}
-
-private static [Modulo]ResponseDto MapToResponseDto([Modulo] entity)
-{
-    return new [Modulo]ResponseDto
-    {
-        Id = entity.Id,
-        Nombre = entity.Nombre,
-        Estado = entity.Estado,
-        // Agregar label de estado en español para UI
-        EstadoLabel = GetEstadoLabel(entity.Estado),
-        Activo = entity.Activo,
-        FechaCreacion = entity.FechaCreacion,
-        FechaModificacion = entity.FechaModificacion
-    };
-}
-
-private static string GetEstadoLabel(string estado)
-{
-    return estado switch
-    {
-        "DRAFT"               => "Borrador",
-        "CONFIRMED"           => "Confirmado",
-        "ASSIGNED"            => "Asignado",
-        "IN_TRANSIT"          => "En tránsito",
-        "DELIVERED"           => "Entregado",
-        "FAILED_DELIVERY"     => "Entrega fallida",
-        "ON_HOLD"             => "En espera",
-        "CANCELLED"           => "Cancelado",
-        _                     => estado
-    };
-}
-```
-
-### 4. FluentValidation — Validators
-
-**Implementar en:** `src/Freiroute.BLL/Validators/[Modulo]Validator.cs`
-
-#### Pattern genérico del Validator
-```csharp
+// Freiroute.BLL/Validators/[Modulo]Validator.cs
 namespace Freiroute.BLL.Validators;
 
-using Freiroute.DTO.[Modulo];
-using Freiroute.Utility.Constants;
-using FluentValidation;
-
-/// <summary>
-/// Validación de reglas de entrada para [Modulo]RequestDto.
-/// Los mensajes están en español conforme a la convención de idioma.
-/// </summary>
 public class [Modulo]Validator : AbstractValidator<[Modulo]RequestDto>
 {
     public [Modulo]Validator()
     {
-        // ── Campo obligatorio genérico ──────────────────────────────
+        // ── Campos de texto ──────────────────────────────────────────
         RuleFor(x => x.Nombre)
             .NotEmpty().WithMessage("El nombre es obligatorio")
-            .NotNull().WithMessage("El nombre no puede ser nulo")
-            .MaximumLength(200).WithMessage("El nombre no puede exceder 200 caracteres")
-            .MinimumLength(2).WithMessage("El nombre debe tener al menos 2 caracteres");
+            .MaximumLength(200).WithMessage("El nombre no puede exceder 200 caracteres");
 
-        // ── Campos numéricos del dominio TMS ─────────────────────────
-        RuleFor(x => x.PesoTotal)
-            .GreaterThanOrEqualTo(0).WithMessage("El peso total no puede ser negativo")
-            .When(x => x.PesoTotal.HasValue)
-            .LessThan(50000).WithMessage("El peso no puede exceder 50,000 kg (límite máximo de carga)");
+        // ── Campos numéricos (ejemplo para tarifas TMS) ──────────────
+        RuleFor(x => x.PesoKg)
+            .GreaterThan(0).WithMessage("El peso debe ser mayor a 0")
+            .LessThanOrEqualTo(50000).WithMessage("El peso no puede exceder 50,000 kg");
 
-        RuleFor(x => x.CostoFlete)
-            .GreaterThan(0).WithMessage("El costo de flete debe ser mayor a 0")
-            .LessThan(999999999m).WithMessage("El costo de flete excede el máximo permitido");
+        RuleFor(x => x.VolumenM3)
+            .GreaterThan(0).WithMessage("El volumen debe ser mayor a 0");
 
-        // ── Campos de fecha ─────────────────────────────────────────
+        // ── Fechas (ejemplo para embarques TMS) ──────────────────────
         RuleFor(x => x.FechaEntregaRequerida)
-            .GreaterThanOrEqualTo(DateTime.UtcNow.Date)
-                .WithMessage("La fecha de entrega requerida debe ser hoy o futura")
-            .When(x => x.FechaEntregaRequerida.HasValue);
+            .GreaterThan(x => x.FechaPickupPlanificada)
+            .WithMessage("La fecha de entrega debe ser posterior al pickup");
 
-        // ── Estado válido según constantes de dominio ────────────────
-        RuleFor(x => x.Estado)
-            .Must((dto, estado) => IsValidEstado(estado))
-            .WithMessage("Estado inválido. Consulte los valores permitidos del módulo.");
+        RuleFor(x => x.FechaPickupPlanificada)
+            .GreaterThanOrEqualTo(DateTime.Today)
+            .WithMessage("La fecha de pickup no puede ser en el pasado");
 
-        // ── Regla dependiente (solo cuando aplica) ──────────────────
-        RuleFor(x => x.Observaciones)
-            .MaximumLength(2000).WithMessage("Las observaciones no pueden exceder 2000 caracteres")
-            .When(x => !string.IsNullOrWhiteSpace(x.Observaciones));
-    }
+        // ── Enums / estados válidos del dominio TMS ───────────────────
+        RuleFor(x => x.ModoTransporte)
+            .Must(m => new[] { "FTL", "LTL", "AEREO", "MARITIMO", "FERROVIARIO", "INTERMODAL" }.Contains(m))
+            .WithMessage("Modo de transporte inválido. Valores permitidos: FTL, LTL, AEREO, MARITIMO, FERROVIARIO, INTERMODAL");
 
-    private bool IsValidEstado(string? estado)
-    {
-        if (string.IsNullOrEmpty(estado)) return false;
-        
-        return estado is
-            OrdenStatus.Draft or
-            OrdenStatus.Confirmed or
-            OrdenStatus.Assigned or
-            OrdenStatus.InTransit or
-            OrdenStatus.Delivered or
-            OrdenStatus.Cancelled or
-            OrdenStatus.OnHold or
-            OrdenStatus.FailedDelivery;
+        // ── GUIDs requeridos ─────────────────────────────────────────
+        RuleFor(x => x.ClienteId)
+            .NotEmpty().WithMessage("El cliente es obligatorio");
+
+        RuleFor(x => x.OrigenId)
+            .NotEmpty().WithMessage("La ubicación de origen es obligatoria");
+
+        RuleFor(x => x.DestinoId)
+            .NotEmpty().WithMessage("La ubicación de destino es obligatoria")
+            .NotEqual(x => x.OrigenId).WithMessage("El destino no puede ser igual al origen");
     }
 }
 ```
 
-### 5. API Controllers — Endpoints REST
+### 3. BLL Service
 
-**Implementar en:** `src/Freiroute.API/Controllers/[Modulo]Controller.cs`
-
-#### Controller completo con permisos y wrapper
 ```csharp
-// ── src/Freiroute.API/Controllers/[Modulo]Controller.cs ────────────────
+// Freiroute.BLL/Services/[Modulo]Service.cs
+namespace Freiroute.BLL.Services;
+
+public class [Modulo]Service : I[Modulo]Service
+{
+    private readonly I[Modulo]Repository _repository;
+    private readonly IValidator<[Modulo]RequestDto> _validator;
+    private readonly ILogger<[Modulo]Service> _logger;
+
+    public [Modulo]Service(
+        I[Modulo]Repository repository,
+        IValidator<[Modulo]RequestDto> validator,
+        ILogger<[Modulo]Service> logger)
+    {
+        _repository = repository;
+        _validator  = validator;
+        _logger     = logger;
+    }
+
+    // ── GET ALL ──────────────────────────────────────────────────────
+    public async Task<IEnumerable<[Modulo]ResponseDto>> GetAllAsync(Guid empresaId)
+    {
+        _logger.LogInformation("Getting all {Modulo} for empresa {EmpresaId}", nameof([Modulo]), empresaId);
+        var entidades = await _repository.GetAllAsync(empresaId);
+        return entidades.Select(MapToResponseDto);
+    }
+
+    // ── GET BY ID ────────────────────────────────────────────────────
+    public async Task<[Modulo]ResponseDto?> GetByIdAsync(Guid id, Guid empresaId)
+    {
+        var entidad = await _repository.GetByIdAsync(id, empresaId);
+        return entidad != null ? MapToResponseDto(entidad) : null;
+    }
+
+    // ── CREATE ───────────────────────────────────────────────────────
+    public async Task<[Modulo]ResponseDto> CreateAsync([Modulo]RequestDto dto, Guid empresaId)
+    {
+        // 1. Validar
+        var validation = await _validator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            throw new ValidationException(validation.Errors);
+
+        // 2. Mapear DTO → Entity
+        var entidad = new [Modulo]
+        {
+            EmpresaId = empresaId,
+            Nombre    = dto.Nombre.Trim(),
+            // ... mapear demás propiedades
+        };
+
+        // 3. Persistir
+        var id = await _repository.CreateAsync(entidad);
+        _logger.LogInformation("Created {Modulo} {Id} for empresa {EmpresaId}", nameof([Modulo]), id, empresaId);
+
+        // 4. Retornar registro creado
+        var creado = await _repository.GetByIdAsync(id, empresaId);
+        return MapToResponseDto(creado!);
+    }
+
+    // ── UPDATE ───────────────────────────────────────────────────────
+    public async Task<[Modulo]ResponseDto> UpdateAsync(Guid id, [Modulo]RequestDto dto, Guid empresaId)
+    {
+        // 1. Verificar existencia
+        var existente = await _repository.GetByIdAsync(id, empresaId)
+            ?? throw new KeyNotFoundException($"[Modulo] {id} no encontrado");
+
+        // 2. Validar
+        var validation = await _validator.ValidateAsync(dto);
+        if (!validation.IsValid)
+            throw new ValidationException(validation.Errors);
+
+        // 3. Actualizar entity
+        existente.Nombre = dto.Nombre.Trim();
+        // ... mapear demás propiedades
+
+        await _repository.UpdateAsync(existente);
+        _logger.LogInformation("Updated {Modulo} {Id}", nameof([Modulo]), id);
+
+        // 4. Retornar actualizado
+        var actualizado = await _repository.GetByIdAsync(id, empresaId);
+        return MapToResponseDto(actualizado!);
+    }
+
+    // ── DEACTIVATE ───────────────────────────────────────────────────
+    public async Task<bool> DeactivateAsync(Guid id, Guid empresaId)
+    {
+        var resultado = await _repository.DeactivateAsync(id, empresaId);
+        if (resultado)
+            _logger.LogInformation("Deactivated {Modulo} {Id}", nameof([Modulo]), id);
+        return resultado;
+    }
+
+    // ── MAPEO PRIVADO ────────────────────────────────────────────────
+    private static [Modulo]ResponseDto MapToResponseDto([Modulo] e) => new()
+    {
+        Id                = e.Id,
+        Nombre            = e.Nombre,
+        Activo            = e.Activo,
+        FechaCreacion     = e.FechaCreacion,
+        FechaModificacion = e.FechaModificacion
+    };
+}
+```
+
+**Mapeo de estados TMS con label en español:**
+```csharp
+private static string GetEstadoLabel(string estado) => estado switch
+{
+    "DRAFT"            => "Borrador",
+    "CONFIRMED"        => "Confirmado",
+    "ASSIGNED"         => "Asignado",
+    "PICKUP_SCHEDULED" => "Pickup programado",
+    "IN_TRANSIT"       => "En tránsito",
+    "DELIVERED"        => "Entregado",
+    "INVOICED"         => "Facturado",
+    "CLOSED"           => "Cerrado",
+    "CANCELLED"        => "Cancelado",
+    "ON_HOLD"          => "En espera",
+    "FAILED_DELIVERY"  => "Entrega fallida",
+    _                  => estado
+};
+```
+
+### 4. Cambio de Estado (State Machine TMS)
+
+```csharp
+// Freiroute.BLL/Services/EmbarqueService.cs — método adicional
+public async Task<EmbarqueResponseDto> CambiarEstadoAsync(
+    Guid id, string nuevoEstado, Guid empresaId)
+{
+    var embarque = await _repository.GetByIdAsync(id, empresaId)
+        ?? throw new KeyNotFoundException($"Embarque {id} no encontrado");
+
+    // Validar transición permitida
+    if (!EsTransicionValida(embarque.Estado, nuevoEstado))
+        throw new BusinessException(
+            $"No se puede cambiar de {embarque.Estado} a {nuevoEstado}");
+
+    embarque.Estado = nuevoEstado;
+    await _repository.UpdateAsync(embarque);
+
+    _logger.LogInformation(
+        "Embarque {Id} changed state from {From} to {To}",
+        id, embarque.Estado, nuevoEstado);
+
+    return MapToResponseDto(embarque);
+}
+
+private static bool EsTransicionValida(string estadoActual, string nuevoEstado)
+{
+    var transicionesPermitidas = new Dictionary<string, string[]>
+    {
+        ["DRAFT"]            = ["CONFIRMED", "CANCELLED"],
+        ["CONFIRMED"]        = ["ASSIGNED", "CANCELLED", "ON_HOLD"],
+        ["ASSIGNED"]         = ["PICKUP_SCHEDULED", "CANCELLED", "ON_HOLD"],
+        ["PICKUP_SCHEDULED"] = ["IN_TRANSIT", "CANCELLED"],
+        ["IN_TRANSIT"]       = ["DELIVERED", "FAILED_DELIVERY", "ON_HOLD"],
+        ["DELIVERED"]        = ["INVOICED"],
+        ["INVOICED"]         = ["CLOSED"],
+        ["ON_HOLD"]          = ["CONFIRMED", "CANCELLED"],
+        ["FAILED_DELIVERY"]  = ["IN_TRANSIT", "CANCELLED"]
+    };
+
+    return transicionesPermitidas.TryGetValue(estadoActual, out var permitidos)
+           && permitidos.Contains(nuevoEstado);
+}
+```
+
+### 5. ApiResponse<T> Wrapper
+
+```csharp
+// Freiroute.Utility/ApiResponse.cs
+namespace Freiroute.Utility;
+
+public class ApiResponse<T>
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public T? Data { get; set; }
+    public List<string> Errors { get; set; } = [];
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+    public static ApiResponse<T> Ok(T data, string message = "OK") => new()
+    {
+        Success = true,
+        Message = message,
+        Data    = data
+    };
+
+    public static ApiResponse<T> Fail(string message, List<string>? errors = null) => new()
+    {
+        Success = false,
+        Message = message,
+        Errors  = errors ?? []
+    };
+}
+```
+
+### 6. API Controller
+
+```csharp
+// Freiroute.API/Controllers/[Modulo]Controller.cs
 namespace Freiroute.API.Controllers;
 
-using Freiroute.API.Filters;       // RequirePermission filter
-using Freiroute.BLL.Interfaces;
-using Freiroute.DTO.[Modulo];
-using Freiroute.Entity;
-using Freiroute.Utility.ApiResponse;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-
 /// <summary>
-/// Controlador REST para el módulo [Modulo].
-/// Todos los endpoints requieren autenticación JWT y permiso específico.
+/// Controlador REST para la gestión de [Modulo] del TMS Freiroute.
+/// Requiere autenticación JWT y permisos granulares por operación.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]   // Valida token JWT en cada llamada
+[Authorize]
 [Produces("application/json")]
 public class [Modulo]Controller : ControllerBase
 {
     private readonly I[Modulo]Service _service;
     private readonly ILogger<[Modulo]Controller> _logger;
 
-    public [Modulo]Controller(
-        I[Modulo]Service service,
-        ILogger<[Modulo]Controller> logger)
+    public [Modulo]Controller(I[Modulo]Service service, ILogger<[Modulo]Controller> logger)
     {
         _service = service;
+        _logger  = logger;
+    }
+
+    private Guid EmpresaId => Guid.Parse(User.FindFirstValue("empresa_id")!);
+
+    /// <summary>Obtiene todos los [modulo] activos de la empresa del usuario autenticado.</summary>
+    [HttpGet]
+    [RequirePermission("[modulo]", PermissionType.Read)]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<[Modulo]ResponseDto>>), 200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _service.GetAllAsync(EmpresaId);
+        return Ok(ApiResponse<IEnumerable<[Modulo]ResponseDto>>.Ok(result));
+    }
+
+    /// <summary>Obtiene un [modulo] por su ID.</summary>
+    [HttpGet("{id:guid}")]
+    [RequirePermission("[modulo]", PermissionType.Read)]
+    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var result = await _service.GetByIdAsync(id, EmpresaId);
+        if (result is null)
+            return NotFound(ApiResponse<[Modulo]ResponseDto>.Fail($"[Modulo] {id} no encontrado"));
+        return Ok(ApiResponse<[Modulo]ResponseDto>.Ok(result));
+    }
+
+    /// <summary>Crea un nuevo [modulo].</summary>
+    [HttpPost]
+    [RequirePermission("[modulo]", PermissionType.Create)]
+    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), 201)]
+    [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+    public async Task<IActionResult> Create([FromBody] [Modulo]RequestDto dto)
+    {
+        var result = await _service.CreateAsync(dto, EmpresaId);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id },
+            ApiResponse<[Modulo]ResponseDto>.Ok(result, "[Modulo] creado exitosamente"));
+    }
+
+    /// <summary>Actualiza un [modulo] existente.</summary>
+    [HttpPut("{id:guid}")]
+    [RequirePermission("[modulo]", PermissionType.Update)]
+    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] [Modulo]RequestDto dto)
+    {
+        var result = await _service.UpdateAsync(id, dto, EmpresaId);
+        return Ok(ApiResponse<[Modulo]ResponseDto>.Ok(result, "[Modulo] actualizado exitosamente"));
+    }
+
+    /// <summary>Desactiva (eliminación lógica) un [modulo]. No elimina físicamente.</summary>
+    [HttpDelete("{id:guid}/deactivate")]
+    [RequirePermission("[modulo]", PermissionType.Update)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Deactivate(Guid id)
+    {
+        var result = await _service.DeactivateAsync(id, EmpresaId);
+        if (!result)
+            return NotFound(ApiResponse<bool>.Fail($"[Modulo] {id} no encontrado"));
+        return Ok(ApiResponse<bool>.Ok(true, "[Modulo] desactivado exitosamente"));
+    }
+}
+```
+
+### 7. Global Exception Handler
+
+```csharp
+// Freiroute.API/Middleware/GlobalExceptionMiddleware.cs
+public class GlobalExceptionMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<GlobalExceptionMiddleware> _logger;
+
+    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    {
+        _next   = next;
         _logger = logger;
     }
 
-    // ── GET api/[modulo] ───────────────────────────────────────────────
-    /// <summary>Obtiene todos los registros activos del módulo.</summary>
-    [HttpGet]
-    [RequirePermission("[modulo]", PermissionType.Read)]
-    [ProducesResponseType(typeof(ApiResponse<IEnumerable<[Modulo]ResponseDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll()
+    public async Task InvokeAsync(HttpContext context)
     {
-        var empresaId = User.GetEmpresaIdFromClaims();
-        var result = await _service.GetAllAsync(empresaId);
-        return Ok(ApiResponse<IEnumerable<[Modulo]ResponseDto>>.Ok(result, "Consulta exitosa"));
-    }
-
-    // ── GET api/[modulo]/:id ───────────────────────────────────────────
-    /// <summary>Obtiene un registro por su identificador único.</summary>
-    [HttpGet("{id:guid}")]
-    [RequirePermission("[modulo]", PermissionType.Read)]
-    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<Unit>), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById(Guid id)
-    {
-        var empresaId = User.GetEmpresaIdFromClaims();
-        var result = await _service.GetByIdAsync(id, empresaId);
-        
-        if (result == null)
-            return NotFound(ApiResponse<Unit>.Error("Registro no encontrado"));
-        
-        return Ok(ApiResponse<[Modulo]ResponseDto>.Ok(result, "Consulta exitosa"));
-    }
-
-    // ── POST api/[modulo] ──────────────────────────────────────────────
-    /// <summary>Crea un nuevo registro para la empresa del usuario.</summary>
-    [HttpPost]
-    [RequirePermission("[modulo]", PermissionType.Create)]
-    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<List<string>>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create([FromBody] [Modulo]RequestDto dto)
-    {
-        var empresaId = User.GetEmpresaIdFromClaims();
-
         try
         {
-            var result = await _service.CreateAsync(dto, empresaId);
-            return CreatedAtAction(nameof(GetById),
-                new { id = result.Id },
-                ApiResponse<[Modulo]ResponseDto>.Ok(result, "Registro creado exitosamente"));
+            await _next(context);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Validación fallida al crear [modulo]");
-            return BadRequest(ApiResponse<List<string>>.Error(ex.Errors.Select(e => e.ErrorMessage).ToList()));
+            context.Response.StatusCode = 400;
+            var errores = ex.Errors.Select(e => e.ErrorMessage).ToList();
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("Error de validación", errores));
         }
-    }
-
-    // ── PUT api/[modulo]/:id ───────────────────────────────────────────
-    /// <summary>Actualiza un registro existente.</summary>
-    [HttpPut("{id:guid}")]
-    [RequirePermission("[modulo]", PermissionType.Update)]
-    [ProducesResponseType(typeof(ApiResponse<[Modulo]ResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<Unit>), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ApiResponse<List<string>>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Update(Guid id, [FromBody] [Modulo]RequestDto dto)
-    {
-        var empresaId = User.GetEmpresaIdFromClaims();
-
-        try
+        catch (KeyNotFoundException ex)
         {
-            var result = await _service.UpdateAsync(id, dto, empresaId);
-            return Ok(ApiResponse<[Modulo]ResponseDto>.Ok(result, "Registro actualizado exitosamente"));
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message));
         }
-        catch (KeyNotFoundException)
+        catch (BusinessException ex)
         {
-            return NotFound(ApiResponse<Unit>.Error("Registro no encontrado o ya desactivado"));
-        }
-        catch (ValidationException ex)
-        {
-            return BadRequest(ApiResponse<List<string>>.Error(ex.Errors.Select(e => e.ErrorMessage).ToList()));
-        }
-    }
-
-    // ── POST api/[modulo]/:id/deactivate ───────────────────────────────
-    /// <summary>Desactiva lógicamente un registro (soft delete).</summary>
-    [HttpPost("{id:guid}/deactivate")]
-    [RequirePermission("[modulo]", PermissionType.Update)]
-    [ProducesResponseType(typeof(ApiResponse<Unit>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<Unit>), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Deactivate(Guid id)
-    {
-        var empresaId = User.GetEmpresaIdFromClaims();
-
-        try
-        {
-            var result = await _service.DeactivateAsync(id, empresaId);
-            if (!result)
-                return NotFound(ApiResponse<Unit>.Error("Registro no encontrado o ya desactivado"));
-            
-            return Ok(ApiResponse<Unit>.Ok(Unit.Instance, "Registro desactivado exitosamente"));
+            context.Response.StatusCode = 422;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail(ex.Message));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al desactivar [modulo] {Id}", id);
-            return StatusCode(500, ApiResponse<Unit>.Error("Error interno al procesar la solicitud"));
+            _logger.LogError(ex, "Unhandled exception");
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsJsonAsync(
+                ApiResponse<object>.Fail("Error interno del servidor"));
         }
     }
 }
-```
 
-### 6. Patrón ApiResponse<T>
-
-**Respuesta envuelta en TODOS los endpoints.** Nunca retornar tipos puros:
-```csharp
-// ── src/Freiroute.Utility/ApiResponse/ApiResponse{T}.cs ───────────────
-namespace Freiroute.Utility.ApiResponse;
-
-public class ApiResponse<T>
+// Freiroute.Utility/Exceptions/BusinessException.cs
+public class BusinessException : Exception
 {
-    public bool Success { get; set; }
-    public T? Data { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public List<string>? Errors { get; set; }
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-
-    public static ApiResponse<T> Ok(T data, string message = "Operación exitosa") =>
-        new() { Success = true, Data = data, Message = message };
-
-    public static ApiResponse<T> Error(string message, List<string>? details = null) =>
-        new() { Success = false, Message = message, Errors = details };
+    public BusinessException(string message) : base(message) { }
 }
-
-public class Unit { public static Unit Instance => new(); }
 ```
 
-### 7. Integración con IOC (Dependency Injection)
+### 8. Checklist de Entregable Backend
 
-Configurar en `Freiroute.IOC/DependencyInjection.cs` (compartido entre proyectos):
-```csharp
-// Servicios BLL + Validators se registran automáticamente por convención
-services.Scan(scan => scan
-    .FromAssemblyOf<I[Modulo]Service>()
-    .AddClasses(c => c.AssignableTo(typeof(IEnumerable<>)))
-        .AsImplementedInterfaces()
-        .WithTransientLifetime());
-
-services.AddScoped<IValidator<[Modulo]RequestDto>, [Modulo]Validator>();
-```
-
-### 8. Logging con Serilog
-
-**Patrón estructurado para logs JSON:**
-```csharp
-// Log informativo (nivel INFO)
-_logger.LogInformation("Creando embarque para empresa {EmpresaId}, operador {UsuarioId}", 
-    empresaId, userId);
-
-// Log de debug (nivel DEBUG)
-_logger.LogDebug("ValidandoDTO para embarque {Numero}, campos válidos: {CampoCount}", 
-    dto.Numero, campoCount);
-
-// Log de warning (nivel WARN)
-_logger.LogWarning("Estado de embarque {Id} no permitido: {EstadoActual} → {NuevoEstado}", 
-    id, estadoActual, nuevoEstado);
-
-// Log de error (nivel ERROR)
-_logger.LogError(ex, "Error crítico al crear embarque para empresa {EmpresaId}", empresaId);
-```
-
-**NUNCA incluir datos sensibles en logs:**
-```csharp
-// ❌ PROHIBIDO
-_logger.LogInformation("Usuario {Password} intentó acceder", password);
-_logger.LogInformation("Token: {Token}", accessToken);
-
-// ✅ CORRECTO
-_logger.LogInformation("Usuario {UserId} con perfil {PerfilId} accede al módulo", userId, perfilId);
-```
-
-### 9. Reglas Críticas de Implementación
-
-| # | Regla | Violación | Impacto |
-|---|---|---|---|
-| 1 | `empresa_id` SIEMPRE del JWT, nunca del request | DTO recibe `empresa_id` | 🔴 Multi-tenant roto |
-| 2 | Métodos asíncronos terminan en `Async` | `GetAll()`, `Create()` | 🟡 Convención rota |
-| 3 | Respuestas envueltas en `ApiResponse<T>` | Retornar `IEnumerable<Entity>` | 🟡 Consistencia API rota |
-| 4 | Nunca `DeleteAsync`, solo `DeactivateAsync` | `DeleteAsync()` en interfaz | 🟡 ADR-005 violado |
-| 5 | DTOs ≠ Entities | Exponer Entity directamente | 🔴 Data leakage |
-| 6 | Mensajes de validación en español | Mensajes en inglés | 🟡 Convención de idioma |
-| 7 | Serilog sin datos sensibles | Passwords/tokens en log | 🔴 Seguridad crítica |
-
-### 10. Checklist de Entregable (revisado por @PM)
-
-- [ ] BLL Service implementado con todos los métodos CRUD + Deactivate
-- [ ] Servicio inyecta `I[Modulo]Repository` vía constructor (DI)
-- [ ] `empresa_id` extraído de JWT, nunca recibido desde DTO
-- [ ] FluentValidator con mensajes en español en TODAS las propiedades
-- [ ] Reglas de negocio TMS específicas implementadas (estados, montos, fechas)
-- [ ] API Controller con `[Authorize]` + `[RequirePermission]` en cada endpoint
-- [ ] Cada endpoint retorna `ApiResponse<T>` — ningún tipo puro
-- [ ] Documentación Swagger (`/// <summary>`) en cada endpoint público
-- [ ] Serilog con logging estructurado en INFO, DEBUG, WARN, ERROR
-- [ ] Tests unitarios escritos (ver @QA)
-- [ ] Sin warnings en `dotnet build`
-- [ ] `dotnet test` pasa sin fallos
-
-### 11. Contexto Freiroute TMS
-
-@BackendDev implementa la lógica de negocio para el sistema de gestión de transporte más ambicioso del mercado:
-
-**Módulos MVP (Sprints 1–11):**
-- **EP-01:** Auth multi-tenant, roles (SUPER_ADMIN, ADMIN, OPERADOR, CONDUCTOR, CLIENTE)
-- **EP-03:** Maestros — Empresas, Clientes, Ubicaciones, Vehículos, Conductores, Carriers
-- **EP-04:** Order Management — Órdenes (DRAFT→CONFIRMED→CLOSED), consolidación LTL/FTL
-- **EP-05:** Carrier Management — Tarifas, contratos, evaluación de desempeño
-- **EP-06:** Shipment Planning — Embarques, asignación a carriers/conductores, optimización
-- **EP-07:** Route Optimization — Secuencia de paradas, restricciones de capacidad
-- **EP-08:** Track & Trace — Posiciones GPS en tiempo real, geofences, ETA dinámico
-- **EP-09:** Document Management — Carta de porte, POD digital, facturación electrónica
-
-**Reglas de dominio críticas:**
-- OTD (On-Time Delivery): % de entregas a tiempo vs SLA contractual
-- Geocodificación inversa de direcciones de origen/destino
-- Cálculo de costos: tarifa base + recargos combustible + peajes + maniobras
-- Estados de embarque con máquina de estados finita (nunca saltar etapas)
-- Integración con APIs de rastreo GPS (Teltonika, Queclink, Verizon Connect)
-- Numeración de documentos con prefijos configurables: `FR-{YYYY}-{NNNNN}`
-
-**Filosofía:** La lógica de negocio es sagrada — cada regla TMS documentada en el spec debe estar reflejada como código verificable en tests unitarios. Si no hay un test que lo pruebe, no existe.
+- [ ] **FluentValidator** con mensajes en español para todos los campos del RequestDto
+- [ ] **BLL Service** con GetAll, GetById, Create, Update, Deactivate + métodos de negocio TMS
+- [ ] **Mapeo privado** `MapToResponseDto` en el Service (no en el Controller)
+- [ ] **State machine** si el módulo tiene estados (Órdenes, Embarques, etc.)
+- [ ] **API Controller** con `[Authorize]`, `[RequirePermission]`, `ApiResponse<T>` en todos los endpoints
+- [ ] **Swagger** documentado con `/// <summary>` en cada endpoint y `[ProducesResponseType]`
+- [ ] **Logging** con Serilog en operaciones de Create, Update, Deactivate y cambios de estado
+- [ ] **GlobalExceptionMiddleware** registrado en Program.cs
+- [ ] Tests unitarios BLL con cobertura ≥ 80% (ver skill-testing.md)
+- [ ] Tests de integración API con cobertura ≥ 60% (ver skill-testing.md)
+- [ ] `dotnet build` sin warnings
+- [ ] `dotnet test` sin fallos
 
 ---
 
-## Dependencias entre Agentes
+## Contexto Freiroute TMS
 
-| Recibe de | Entrega a | Formato de handoff |
-|---|---|---|
-| @Arquitecto | Entity + DTOs + Interfaces | Archivos creados en sus ubicaciones correctas |
-| @IngenieroDatos | Migración SQL aplicada + tabla lista | `supabase db push` completado |
-| @QA | Código implementado listo para testear | PR abierto con changes |
-| @FrontendDev | API endpoints documentados en Swagger | URLs base `/api/[modulo]` |
+@BackendDev implementa la lógica de transporte asegurando que cada operación filtre por `empresa_id`, los estados de embarque sigan transiciones válidas, los cálculos de flete consideren tarifas y recargos, y los reportes de OTD, utilización de flota y costos sean precisos. Los módulos críticos con reglas de negocio complejas son: Órdenes, Embarques, Carriers, Rutas, Track & Trace y Freight Audit.

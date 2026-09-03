@@ -1,7 +1,7 @@
-# Skill: @FrontendDev (Desarrollo Frontend freiroute TMS)
+# Skill: @FrontendDev (Desarrollador Frontend Freiroute TMS)
 
 ## Rol
-**@FrontendDev** implementa vistas Razor MVC, el Design System Freiroute, validación cliente con jQuery Validate, y toda la capa de presentación usando Bootstrap 5.3. Asegura que el UI sea responsivo, accesible, consistente y refleje fielmente los estados operacionales del TMS. Actúa después de @BackendDev (API endpoints listos) y entrega a @PM para revisión final.
+**@FrontendDev** es responsable de las vistas Razor MVC, la validación cliente con jQuery Validate, y la interfaz de usuario usando el **Design System Freiroute** sobre Bootstrap 5.3. Cada pantalla debe reflejar la identidad visual profesional del TMS: sidebar navy, badges semánticos, tipografía Inter, y componentes consistentes en todos los módulos.
 
 ---
 
@@ -9,988 +9,1144 @@
 
 ### 1. Lectura Obligatoria al Inicio de Sesión
 ```
-1. Leer AGENTS.md completo — sección Design System Freiroute
+1. Leer AGENTS.md — sección "Design System Freiroute" completa - Referencia completa en: `docs/framework/freiroute-design-system.md`
 2. Leer spec.md del módulo (docs/specs/HU-XXX-nombre.md)
-3. Verificar API endpoints documentados por @BackendDev
-4. Revisar Design System completo (docs/framework/freiroute-design-system.md)
-5. Confirmar colores, tipografía y componentes del Design System
+3. Revisar los ResponseDtos disponibles de @BackendDev
+4. Verificar que freiroute.css y freiroute.js están en wwwroot/
 ```
 
-### 2. Posición en el Flujo de HU
+---
+
+## Design System Freiroute — Implementación Frontend
+
+### CSS Variables (wwwroot/css/freiroute.css)
+
+```css
+/* ================================================================
+   FREIROUTE TMS — Design System v1.0
+   Fuentes: Inter (UI) · DM Sans (Display) · JetBrains Mono (Datos)
+   Referencia: Oracle TMS · SAP TM · Trimble Modus · MercuryGate
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* ── Identidad Freiroute ──────────────────────────────── */
+  --fr-navy-primary:    #0B2545;
+  --fr-navy-mid:        #1B4F8A;
+  --fr-navy-hover:      rgba(255,255,255,.06);
+  --fr-action-blue:     #1A73E8;
+  --fr-action-hover:    #1557B0;
+  --fr-cyan-accent:     #00D4FF;
+  --fr-blue-tint:       #E3F0FF;
+
+  /* ── Semántica operacional TMS ───────────────────────── */
+  --fr-success:         #2E7D32;
+  --fr-success-light:   #E6F4EA;
+  --fr-warning:         #F57F17;
+  --fr-warning-light:   #FFF8E1;
+  --fr-danger:          #E53935;
+  --fr-danger-light:    #FFEBEE;
+  --fr-info:            #1A73E8;
+  --fr-info-light:      #E3F0FF;
+  --fr-neutral:         #64748B;
+  --fr-neutral-light:   #F1F5F9;
+
+  /* ── Superficies ─────────────────────────────────────── */
+  --fr-surface-bg:      #F8FAFC;
+  --fr-surface-card:    #FFFFFF;
+  --fr-surface-hover:   #F1F5F9;
+  --fr-border:          #E2E8F0;
+  --fr-border-strong:   #CBD5E1;
+  --fr-shadow-sm:       0 1px 3px rgba(0,0,0,.08);
+  --fr-shadow-md:       0 4px 12px rgba(0,0,0,.10);
+
+  /* ── Texto ───────────────────────────────────────────── */
+  --fr-text-primary:    #1E293B;
+  --fr-text-secondary:  #475569;
+  --fr-text-muted:      #64748B;
+  --fr-text-disabled:   #94A3B8;
+
+  /* ── Layout ──────────────────────────────────────────── */
+  --fr-sidebar-width:   240px;
+  --fr-sidebar-collapsed: 64px;
+  --fr-topbar-height:   56px;
+  --fr-radius-sm:       6px;
+  --fr-radius-md:       10px;
+  --fr-radius-lg:       14px;
+}
+
+/* ── Reset y base ─────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--fr-text-primary);
+  background: var(--fr-surface-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout principal ─────────────────────────────────────── */
+.fr-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.fr-main {
+  flex: 1;
+  margin-left: var(--fr-sidebar-width);
+  transition: margin-left .25s ease;
+}
+
+.fr-main.sidebar-collapsed {
+  margin-left: var(--fr-sidebar-collapsed);
+}
+
+/* ── Topbar ───────────────────────────────────────────────── */
+.fr-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--fr-topbar-height);
+  background: var(--fr-surface-card);
+  border-bottom: 1px solid var(--fr-border);
+  box-shadow: var(--fr-shadow-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+.fr-topbar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fr-text-primary);
+}
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+.fr-sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: var(--fr-sidebar-width);
+  background: var(--fr-navy-primary);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 200;
+  transition: width .25s ease;
+}
+
+.fr-sidebar.collapsed { width: var(--fr-sidebar-collapsed); }
+
+/* Logo */
+.fr-sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  text-decoration: none;
+}
+
+.fr-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--fr-cyan-accent);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800;
+  color: var(--fr-navy-primary);
+  letter-spacing: -.5px;
+  flex-shrink: 0;
+}
+
+.fr-logo-text {
+  font-size: 16px; font-weight: 700;
+  color: #fff; letter-spacing: -.3px;
+}
+
+.fr-logo-tag {
+  font-size: 9px; color: rgba(255,255,255,.45);
+  letter-spacing: .05em; text-transform: uppercase;
+}
+
+/* Grupos y items del sidebar */
+.fr-sidebar-group {
+  font-size: 9px; font-weight: 600;
+  color: rgba(255,255,255,.3);
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 16px 16px 4px;
+}
+
+.fr-sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  font-size: 12px; font-weight: 500;
+  color: rgba(255,255,255,.6);
+  text-decoration: none;
+  border-right: 2px solid transparent;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+
+.fr-sidebar-item:hover {
+  background: var(--fr-navy-hover);
+  color: rgba(255,255,255,.9);
+}
+
+.fr-sidebar-item.active {
+  background: rgba(0,212,255,.12);
+  color: var(--fr-cyan-accent);
+  border-right-color: var(--fr-cyan-accent);
+  font-weight: 600;
+}
+
+.fr-sidebar-item .fr-icon {
+  font-size: 16px; flex-shrink: 0;
+}
+
+/* ── Contenido principal ──────────────────────────────────── */
+.fr-content {
+  padding: 24px;
+  min-height: calc(100vh - var(--fr-topbar-height));
+}
+
+/* ── Page header ──────────────────────────────────────────── */
+.fr-page-header {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px; gap: 16px;
+}
+
+.fr-page-title {
+  font-size: 22px; font-weight: 700;
+  color: var(--fr-text-primary); line-height: 1.2;
+}
+
+.fr-page-subtitle {
+  font-size: 13px; color: var(--fr-text-muted);
+  margin-top: 2px;
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.fr-card {
+  background: var(--fr-surface-card);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-md);
+  box-shadow: var(--fr-shadow-sm);
+}
+
+.fr-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--fr-border);
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+
+.fr-card-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--fr-text-primary);
+}
+
+.fr-card-body { padding: 20px; }
+
+/* ── KPI Cards ────────────────────────────────────────────── */
+.fr-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; margin-bottom: 24px;
+}
+
+.fr-kpi-card {
+  background: var(--fr-surface-card);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--fr-shadow-sm);
+}
+
+.fr-kpi-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--fr-text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+
+.fr-kpi-value {
+  font-size: 28px; font-weight: 700;
+  color: var(--fr-text-primary); line-height: 1;
+}
+
+.fr-kpi-value.kpi-blue    { color: var(--fr-action-blue); }
+.fr-kpi-value.kpi-green   { color: var(--fr-success); }
+.fr-kpi-value.kpi-amber   { color: var(--fr-warning); }
+.fr-kpi-value.kpi-red     { color: var(--fr-danger); }
+
+.fr-kpi-delta {
+  font-size: 11px; margin-top: 4px; font-weight: 500;
+}
+.fr-kpi-delta.up   { color: var(--fr-success); }
+.fr-kpi-delta.down { color: var(--fr-danger); }
+
+/* ── Tablas ───────────────────────────────────────────────── */
+.fr-table-wrapper {
+  background: var(--fr-surface-card);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-md);
+  overflow: hidden;
+  box-shadow: var(--fr-shadow-sm);
+}
+
+.fr-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px;
+}
+
+.fr-table thead th {
+  padding: 10px 14px;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--fr-text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+  background: var(--fr-surface-bg);
+  border-bottom: 1px solid var(--fr-border);
+  white-space: nowrap;
+}
+
+.fr-table tbody td {
+  padding: 11px 14px;
+  color: var(--fr-text-primary);
+  border-bottom: 1px solid var(--fr-border);
+  vertical-align: middle;
+}
+
+.fr-table tbody tr:last-child td { border-bottom: none; }
+
+.fr-table tbody tr:hover td {
+  background: var(--fr-surface-hover);
+}
+
+/* Código de embarque / IDs */
+.fr-id-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 500;
+  color: var(--fr-action-blue);
+}
+
+/* ── Badges de estado TMS ─────────────────────────────────── */
+.fr-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 100px;
+  font-size: 10.5px; font-weight: 600;
+  letter-spacing: .02em; white-space: nowrap;
+}
+
+.fr-badge-success  { background: var(--fr-success-light);  color: var(--fr-success); }
+.fr-badge-warning  { background: var(--fr-warning-light);  color: var(--fr-warning); }
+.fr-badge-danger   { background: var(--fr-danger-light);   color: var(--fr-danger); }
+.fr-badge-info     { background: var(--fr-info-light);     color: var(--fr-info); }
+.fr-badge-neutral  { background: var(--fr-neutral-light);  color: var(--fr-neutral);
+                     border: 1px solid var(--fr-border); }
+
+/* ── Botones ──────────────────────────────────────────────── */
+.fr-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--fr-radius-sm);
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border: none; transition: all .15s ease; text-decoration: none;
+}
+
+.fr-btn-primary   { background: var(--fr-action-blue);  color: #fff; }
+.fr-btn-primary:hover { background: var(--fr-action-hover); color: #fff; }
+
+.fr-btn-secondary {
+  background: transparent; color: var(--fr-action-blue);
+  border: 1.5px solid var(--fr-action-blue);
+}
+.fr-btn-secondary:hover { background: var(--fr-blue-tint); }
+
+.fr-btn-success   { background: var(--fr-success);  color: #fff; }
+.fr-btn-danger    { background: var(--fr-danger);   color: #fff; }
+.fr-btn-ghost     { background: var(--fr-surface-bg); color: var(--fr-text-secondary);
+                    border: 1px solid var(--fr-border); }
+.fr-btn-ghost:hover { background: var(--fr-surface-hover); }
+
+.fr-btn-sm { padding: 5px 10px; font-size: 11.5px; }
+.fr-btn-icon { padding: 7px; }
+
+/* ── Formularios ──────────────────────────────────────────── */
+.fr-form-label {
+  font-size: 12px; font-weight: 600;
+  color: var(--fr-text-secondary);
+  margin-bottom: 5px; display: block;
+}
+
+.fr-form-required::after {
+  content: ' *'; color: var(--fr-danger);
+}
+
+.fr-form-control {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px; font-family: 'Inter', sans-serif;
+  color: var(--fr-text-primary);
+  background: var(--fr-surface-card);
+  border: 1px solid var(--fr-border-strong);
+  border-radius: var(--fr-radius-sm);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.fr-form-control:focus {
+  outline: none;
+  border-color: var(--fr-action-blue);
+  box-shadow: 0 0 0 3px rgba(26,115,232,.15);
+}
+
+.fr-form-control.is-invalid { border-color: var(--fr-danger); }
+.fr-form-control.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(229,57,53,.15);
+}
+
+.fr-form-error {
+  font-size: 11px; color: var(--fr-danger);
+  margin-top: 4px; display: block;
+}
+
+.fr-form-hint {
+  font-size: 11px; color: var(--fr-text-muted);
+  margin-top: 4px; display: block;
+}
+
+/* ── Paginación ───────────────────────────────────────────── */
+.fr-pagination {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--fr-border);
+  font-size: 12px; color: var(--fr-text-muted);
+}
+
+.fr-pagination-info { font-size: 12px; color: var(--fr-text-muted); }
+
+.fr-page-btn {
+  padding: 5px 10px; border-radius: var(--fr-radius-sm);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--fr-border);
+  background: var(--fr-surface-card);
+  color: var(--fr-text-secondary);
+  transition: all .15s;
+}
+.fr-page-btn:hover:not(:disabled) { border-color: var(--fr-action-blue); color: var(--fr-action-blue); }
+.fr-page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Toasts ───────────────────────────────────────────────── */
+.fr-toast-container {
+  position: fixed; top: 16px; right: 16px;
+  z-index: 9999; display: flex; flex-direction: column; gap: 8px;
+}
+
+.fr-toast {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px; border-radius: var(--fr-radius-md);
+  min-width: 280px; max-width: 380px;
+  background: var(--fr-surface-card);
+  border: 1px solid var(--fr-border);
+  box-shadow: var(--fr-shadow-md);
+  animation: fr-toast-in .2s ease;
+}
+
+.fr-toast-success { border-left: 3px solid var(--fr-success); }
+.fr-toast-error   { border-left: 3px solid var(--fr-danger); }
+.fr-toast-warning { border-left: 3px solid var(--fr-warning); }
+.fr-toast-info    { border-left: 3px solid var(--fr-action-blue); }
+
+@keyframes fr-toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.fr-tabs {
+  display: flex; gap: 2px;
+  background: var(--fr-surface-bg);
+  border: 1px solid var(--fr-border);
+  border-radius: var(--fr-radius-sm);
+  padding: 3px; margin-bottom: 16px;
+  width: fit-content;
+}
+
+.fr-tab {
+  padding: 6px 14px; border-radius: 5px;
+  font-size: 12px; font-weight: 600;
+  color: var(--fr-text-muted); cursor: pointer;
+  border: none; background: none; transition: all .15s;
+}
+
+.fr-tab.active {
+  background: var(--fr-surface-card);
+  color: var(--fr-text-primary);
+  box-shadow: var(--fr-shadow-sm);
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────── */
+.fr-breadcrumb {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--fr-text-muted);
+  margin-bottom: 16px;
+}
+
+.fr-breadcrumb a { color: var(--fr-action-blue); text-decoration: none; }
+.fr-breadcrumb a:hover { text-decoration: underline; }
+.fr-breadcrumb-sep { color: var(--fr-border-strong); }
+
+/* ── Empty state ──────────────────────────────────────────── */
+.fr-empty {
+  text-align: center; padding: 48px 24px;
+  color: var(--fr-text-muted);
+}
+
+.fr-empty-icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
+.fr-empty-title { font-size: 14px; font-weight: 600; color: var(--fr-text-secondary); }
+.fr-empty-text  { font-size: 12px; margin-top: 4px; }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .fr-sidebar { width: var(--fr-sidebar-collapsed); }
+  .fr-main    { margin-left: var(--fr-sidebar-collapsed); }
+  .fr-kpi-grid { grid-template-columns: 1fr 1fr; }
+  .fr-content { padding: 16px; }
+}
 ```
-@PM planifica Sprint
-    → @Arquitecto define Entity + DTOs + Interfaces + ADR
-    → @IngenieroDatos crea migración SQL + RLS
-    → @BackendDev implementa BLL Service + FluentValidator + API Controller
-    → @QA ejecuta tests + valida cobertura
-    → @FrontendDev ← CREA VISTAS RAZOR + DESIGN SYSTEM FREIRROUTE
-    → @PM revisa checklist completo + aprueba PR
-```
 
-### 3. Estructura de Directorios MVC
+---
 
-**Ruta base:** `src/Freiroute.Aplicacion/Areas/[Area]/Views/[Modulo]/`
+### Layout Principal (_Layout.cshtml)
 
-| Módulo | Área | Ruta | Descripción |
-|---|---|---|---|
-| Empresas | Admin | `Areas/Admin/Views/Empresas/` | Gestión de tenants SaaS |
-| Usuarios | Admin | `Areas/Admin/Views/Usuarios/` | Usuarios por tenant |
-| Clientes | Tenant | `Areas/Tenant/Views/Clientes/` | Master de clientes |
-| Carriers | Tenant | `Areas/Tenant/Views/Carriers/` | Transportistas |
-| Ordenes | Portal | `Areas/Portal/Views/Ordenes/` | Órdenes de transporte |
-| Embarques | Portal | `Areas/Portal/Views/Embarques/` | Embarques activos |
-
-**Vistas estándar por módulo:**
-```
-Areas/[Area]/Views/[Modulo]/
-├── Index.cshtml          # Listado paginado con filtros
-├── Create.cshtml         # Formulario creación
-├── Edit.cshtml           # Formulario edición
-├── Details.cshtml        # Vista detalle
-└── _ModalDeactivate.cshtml  # Modal confirmación desactivar
-```
-
-### 4. Layout Base — Sidebar + Topbar
-
-**`Areas/[Area]/Views/Shared/_Layout.cshtml`:**
 ```html
+@* Freiroute.Aplicacion/Views/Shared/_Layout.cshtml *@
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] - freiroute TMS</title>
-
-    <!-- Google Fonts: Inter (UI) + DM Sans (Display) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Freiroute TMS</title>
+    <link rel="icon" type="image/svg+xml" href="~/favicon.svg" />
+    <!-- Bootstrap 5.3 -->
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
     <!-- Tabler Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-    
-    <!-- Bootstrap 5.3 CSS -->
-    <link href="~/lib/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <!-- Design System Freiroute -->
-    <link href="~/css/freiroute.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css" />
+    <!-- Freiroute Design System -->
+    <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
-<body class="fr-bg-surface">
+<body>
+<div class="fr-wrapper">
 
-    <!-- ═══ SIDEBAR ═══ -->
-    <aside class="sidebar sidebar-expanded">
-        <div class="sidebar-brand">
-            <img src="~/assets/logo-freiroute.svg" alt="Freiroute Logo" height="32" />
-            <span class="brand-text">freiroute</span>
-        </div>
+    <!-- ── Sidebar ──────────────────────────────────────────── -->
+    <aside class="fr-sidebar" id="frSidebar">
+        <a class="fr-sidebar-logo" href="/">
+            <div class="fr-logo-mark">FR</div>
+            <div class="fr-sidebar-logo-text">
+                <div class="fr-logo-text">Freiroute</div>
+                <div class="fr-logo-tag">TMS · @ViewData["TenantNombre"]</div>
+            </div>
+        </a>
 
-        <nav class="sidebar-nav">
-            <!-- Dashboard siempre visible -->
-            <a asp-action="Dashboard" asp-controller="Home" class="sb-item @(ViewContext.ActionDescriptor?.ActionName == "Dashboard" ? "active" : "")">
-                <i class="ti ti-layout-dashboard"></i> Dashboard
+        <nav class="mt-2">
+            <div class="fr-sidebar-group">Principal</div>
+            <a asp-area="" asp-controller="Dashboard" asp-action="Index"
+               class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "dashboard" ? "active" : "")">
+                <i class="ti ti-layout-dashboard fr-icon"></i>
+                <span>Dashboard</span>
             </a>
 
-            @if (ViewData["EsSuperAdmin"] != null && ViewData["EsSuperAdmin"].ToString() == "true") {
-                <!-- Módulos Super Admin -->
-                <a asp-area="Admin" asp-action="Index" asp-controller="Empresas" class="sb-item">
-                    <i class="ti ti-building-company"></i> Empresas
-                </a>
-                <a asp-area="Admin" asp-action="Index" asp-controller="Usuarios" class="sb-item">
-                    <i class="ti ti-users"></i> Usuarios
-                </a>
-            } else {
-                <!-- Módulos Tenant según permisos -->
-                @if (User.HasPermission("clientes", "READ")) {
-                    <a asp-action="Index" asp-controller="Clientes" class="sb-item @(ViewContext.Controller.ValueProvider.GetValue("controller")?.FirstValue == "Clientes" ? "active" : "")">
-                        <i class="ti ti-users-group"></i> Clientes
+            @if (User.HasAnyPermission("ordenes", "embarques"))
+            {
+                <div class="fr-sidebar-group">Operación</div>
+
+                @if (User.HasPermission("ordenes", "READ"))
+                {
+                    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index"
+                       class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "ordenes" ? "active" : "")">
+                        <i class="ti ti-clipboard-list fr-icon"></i>
+                        <span>Órdenes</span>
                     </a>
                 }
-                @if (User.HasPermission("carriers", "READ")) {
-                    <a asp-action="Index" asp-controller="Carriers" class="sb-item @(ViewContext.Controller.ValueProvider.GetValue("controller")?.FirstValue == "Carriers" ? "active" : "")">
-                        <i class="ti ti-truck"></i> Carriers
+
+                @if (User.HasPermission("embarques", "READ"))
+                {
+                    <a asp-area="Tenant" asp-controller="Embarques" asp-action="Index"
+                       class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "embarques" ? "active" : "")">
+                        <i class="ti ti-truck fr-icon"></i>
+                        <span>Embarques</span>
                     </a>
                 }
-                @if (User.HasPermission("ordenes", "READ")) {
-                    <a asp-action="Index" asp-controller="Ordenes" class="sb-item @(ViewContext.Controller.ValueProvider.GetValue("controller")?.FirstValue == "Ordenes" ? "active" : "")">
-                        <i class="ti ti-file-text"></i> Órdenes
-                    </a>
-                }
-                @if (User.HasPermission("embarques", "READ")) {
-                    <a asp-action="Index" asp-controller="Embarques" class="sb-item @(ViewContext.Controller.ValueProvider.GetValue("controller")?.FirstValue == "Embarques" ? "active" : "")">
-                        <i class="ti ti-route"></i> Embarques
+
+                @if (User.HasPermission("carriers", "READ"))
+                {
+                    <a asp-area="Tenant" asp-controller="Carriers" asp-action="Index"
+                       class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "carriers" ? "active" : "")">
+                        <i class="ti ti-building-warehouse fr-icon"></i>
+                        <span>Carriers</span>
                     </a>
                 }
             }
+
+            @if (User.HasPermission("rutas", "READ"))
+            {
+                <div class="fr-sidebar-group">Planificación</div>
+                <a asp-area="Tenant" asp-controller="Rutas" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "rutas" ? "active" : "")">
+                    <i class="ti ti-map-route fr-icon"></i>
+                    <span>Rutas</span>
+                </a>
+                <a asp-area="Tenant" asp-controller="TrackTrace" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "track" ? "active" : "")">
+                    <i class="ti ti-map-pin fr-icon"></i>
+                    <span>Track &amp; Trace</span>
+                </a>
+            }
+
+            @if (User.HasPermission("analytics", "READ"))
+            {
+                <div class="fr-sidebar-group">Inteligencia</div>
+                <a asp-area="Tenant" asp-controller="Analytics" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "analytics" ? "active" : "")">
+                    <i class="ti ti-chart-bar fr-icon"></i>
+                    <span>Analytics</span>
+                </a>
+            }
+
+            @if (User.IsInRole("SUPER_ADMIN") || User.IsInRole("ADMIN"))
+            {
+                <div class="fr-sidebar-group">Administración</div>
+                <a asp-area="Admin" asp-controller="Usuarios" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "usuarios" ? "active" : "")">
+                    <i class="ti ti-users fr-icon"></i>
+                    <span>Usuarios</span>
+                </a>
+                <a asp-area="Admin" asp-controller="Configuracion" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
+                    <i class="ti ti-settings fr-icon"></i>
+                    <span>Configuración</span>
+                </a>
+            }
+
+            @if (User.IsInRole("SUPER_ADMIN"))
+            {
+                <div class="fr-sidebar-group">SaaS Admin</div>
+                <a asp-area="Admin" asp-controller="Empresas" asp-action="Index"
+                   class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "empresas" ? "active" : "")">
+                    <i class="ti ti-building fr-icon"></i>
+                    <span>Empresas</span>
+                </a>
+            }
         </nav>
 
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">@User.GetInitials()</div>
-                <div class="user-name">@User.GetDisplayName()</div>
-                <small class="user-role">@User.GetPerfilLabel()</small>
+        <!-- Footer del sidebar -->
+        <div class="mt-auto" style="border-top:1px solid rgba(255,255,255,.08);padding:12px 16px">
+            <div style="font-size:11px;color:rgba(255,255,255,.4)">
+                @User.FindFirstValue("nombre") <br />
+                <span style="font-size:10px">@User.FindFirstValue("perfil_nombre")</span>
             </div>
-            <a asp-action="Logout" asp-controller="Account" class="btn btn-link text-decoration-none">
-                <i class="ti ti-logout"></i>
-            </a>
         </div>
     </aside>
 
-    <!-- ═══ MAIN CONTENT ═══ -->
-    <div class="main-content">
+    <!-- ── Contenido principal ──────────────────────────────── -->
+    <div class="fr-main" id="frMain">
+
         <!-- Topbar -->
-        <header class="topbar">
-            <div class="topbar-breadcrumb">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-0">
-                        <li class="breadcrumb-item"><a asp-action="Dashboard" asp-controller="Home">Inicio</a></li>
-                        @RenderBreadcrumbItems()
-                    </ol>
-                </nav>
-            </div>
-            <div class="topbar-actions">
-                <button class="btn btn-icon btn-light" title="Notificaciones">
+        <header class="fr-topbar">
+            <button class="fr-btn fr-btn-ghost fr-btn-icon" id="btnToggleSidebar" title="Colapsar menú">
+                <i class="ti ti-menu-2"></i>
+            </button>
+            <span class="fr-topbar-title">@ViewData["Title"]</span>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <!-- Notificaciones -->
+                <button class="fr-btn fr-btn-ghost fr-btn-icon position-relative">
                     <i class="ti ti-bell"></i>
-                    <span class="badge-notification">3</span>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill"
+                          style="background:var(--fr-danger);font-size:8px">3</span>
                 </button>
+                <!-- Avatar -->
+                <div class="dropdown">
+                    <button class="fr-btn fr-btn-ghost fr-btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="ti ti-user-circle"></i>
+                        @User.FindFirstValue("nombre")
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">Mi perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="ti ti-logout me-2"></i>Cerrar sesión
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </header>
 
-        <!-- Flash Messages -->
-        @if (TempData["SuccessMessage"] != null) {
-            <div class="alert alert-success alert-dismissible fade show fr-alert-shadow" role="alert">
-                <i class="ti ti-check-circle"></i>
-                @TempData["SuccessMessage"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-        @if (TempData["ErrorMessage"] != null) {
-            <div class="alert alert-danger alert-dismissible fade show fr-alert-shadow" role="alert">
-                <i class="ti ti-alert-circle"></i>
-                @TempData["ErrorMessage"]
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-
-        <!-- Content Body -->
-        <main class="content-body">
+        <!-- Contenido de la página -->
+        <main class="fr-content">
             @RenderBody()
         </main>
     </div>
+</div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>
+<!-- Toast container -->
+<div class="fr-toast-container" id="frToastContainer"></div>
 
-    <!-- Scripts -->
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
-    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/freiroute.js"></script>
+<!-- Bootstrap JS -->
+<script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- jQuery + Validate -->
+<script src="~/lib/jquery/jquery.min.js"></script>
+<script src="~/lib/jquery-validation/jquery.validate.min.js"></script>
+<script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+<!-- Freiroute JS -->
+<script src="~/js/freiroute.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
 ```
 
-### 5. Design System CSS — freiroute.css
+---
 
-**`wwwroot/css/freiroute.css`:**
-```css
-/* ═══════════════════════════════════════════════════════════ */
-/* Design System Freiroute TMS                                */
-/* Versión 2.0 · Paleta operacional                           */
-/* ═══════════════════════════════════════════════════════════ */
+### JavaScript Global (wwwroot/js/freiroute.js)
 
-:root {
-    /* Identidad Freiroute */
-    --fr-navy-primary:   #0B2545;
-    --fr-navy-mid:       #1B4F8A;
-    --fr-action-blue:    #1A73E8;
-    --fr-cyan-accent:    #00D4FF;
-    --fr-blue-tint:      #E3F0FF;
+```javascript
+/* ================================================================
+   FREIROUTE TMS — JavaScript Global v1.0
+   ================================================================ */
 
-    /* Semántica operacional TMS */
-    --fr-success:        #2E7D32;
-    --fr-success-light:  #E6F4EA;
-    --fr-warning:        #F57F17;
-    --fr-warning-light:  #FFF8E1;
-    --fr-danger:         #E53935;
-    --fr-danger-light:   #FFEBEE;
-    --fr-draft:          #64748B;
-    --fr-draft-light:    #F1F5F9;
-    --fr-onhold:         #C2410C;
-    --fr-onhold-light:   #FFF7ED;
-    --fr-info:           #1A73E8;
-    --fr-info-light:     #E3F0FF;
+// ── Toggle Sidebar ─────────────────────────────────────────────
+document.getElementById('btnToggleSidebar')?.addEventListener('click', () => {
+    const sidebar = document.getElementById('frSidebar');
+    const main    = document.getElementById('frMain');
+    sidebar.classList.toggle('collapsed');
+    main.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('fr_sidebar', sidebar.classList.contains('collapsed') ? '1' : '0');
+});
 
-    /* Neutrales */
-    --fr-surface-bg:     #F8FAFC;
-    --fr-surface-card:   #FFFFFF;
-    --fr-text-primary:   #1E293B;
-    --fr-text-secondary: #64748B;
-    --fr-border:         #E2E8F0;
-    --fr-sidebar-w:      240px;
+// Restaurar estado del sidebar
+if (localStorage.getItem('fr_sidebar') === '1') {
+    document.getElementById('frSidebar')?.classList.add('collapsed');
+    document.getElementById('frMain')?.classList.add('sidebar-collapsed');
 }
 
-/* ── Body & Background ─────────────────────────────────── */
-.fr-bg-surface {
-    background-color: var(--fr-surface-bg);
-    font-family: 'Inter', sans-serif;
-}
+// ── Sistema de Toasts ──────────────────────────────────────────
+const FrToast = {
+    show(mensaje, tipo = 'info', titulo = null) {
+        const iconos = { success: 'ti-circle-check', error: 'ti-circle-x',
+                         warning: 'ti-alert-triangle', info: 'ti-info-circle' };
+        const titulos = { success: 'Éxito', error: 'Error',
+                          warning: 'Advertencia', info: 'Información' };
 
-/* ── KPI Cards ─────────────────────────────────────────── */
-.kpi-card {
-    border-radius: 10px;
-    border: 1px solid var(--fr-border);
-    background: var(--fr-surface-card);
-    padding: 20px;
-    transition: box-shadow 0.2s;
-}
-.kpi-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-}
-.kpi-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--fr-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.kpi-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--fr-navy-primary);
-    line-height: 1.2;
-}
-.kpi-up { color: var(--fr-success); }
-.kpi-down { color: var(--fr-danger); }
+        const toast = document.createElement('div');
+        toast.className = `fr-toast fr-toast-${tipo}`;
+        toast.innerHTML = `
+            <i class="ti ${iconos[tipo]}" style="font-size:18px;color:var(--fr-${tipo === 'error' ? 'danger' : tipo === 'success' ? 'success' : tipo === 'warning' ? 'warning' : 'action-blue'});flex-shrink:0"></i>
+            <div style="flex:1">
+                <div style="font-size:12px;font-weight:700;color:var(--fr-text-primary)">${titulo || titulos[tipo]}</div>
+                <div style="font-size:11.5px;color:var(--fr-text-secondary);margin-top:2px">${mensaje}</div>
+            </div>
+            <button onclick="this.closest('.fr-toast').remove()"
+                    style="background:none;border:none;cursor:pointer;color:var(--fr-text-muted);padding:0;font-size:16px">
+                <i class="ti ti-x"></i>
+            </button>`;
 
-/* ── Table Fr ──────────────────────────────────────────── */
-.table-fr thead th {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--fr-text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 2px solid var(--fr-border) !important;
-    padding: 12px 16px;
-    background: var(--fr-surface-bg);
-}
-.table-fr tbody tr {
-    border-bottom: 1px solid var(--fr-border);
-    transition: background 0.15s;
-}
-.table-fr tbody tr:hover {
-    background: var(--fr-blue-tint);
-}
+        document.getElementById('frToastContainer').appendChild(toast);
+        setTimeout(() => toast.remove(), 4500);
+    },
+    success: (msg, title) => FrToast.show(msg, 'success', title),
+    error:   (msg, title) => FrToast.show(msg, 'error',   title),
+    warning: (msg, title) => FrToast.show(msg, 'warning', title),
+    info:    (msg, title) => FrToast.show(msg, 'info',    title)
+};
 
-/* ── Badges Operacionales ──────────────────────────────── */
-.badge-fr {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-.badge-fr-success   { background: var(--fr-success-light); color: var(--fr-success); }
-.badge-fr-info      { background: var(--fr-info-light);    color: var(--fr-info); }
-.badge-fr-warning   { background: var(--fr-warning-light); color: var(--fr-warning); }
-.badge-fr-danger    { background: var(--fr-danger-light);  color: var(--fr-danger); }
-.badge-fr-neutral   { background: var(--fr-draft-light);   color: var(--fr-draft); }
-.badge-fr-onhold    { background: var(--fr-onhold-light);  color: var(--fr-onhold); }
+// ── AJAX Helper para ApiResponse<T> ───────────────────────────
+const FrApi = {
+    async post(url, data) {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json',
+                       'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+            body: JSON.stringify(data)
+        });
+        return await resp.json();
+    },
+    async put(url, data) {
+        const resp = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json',
+                       'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+            body: JSON.stringify(data)
+        });
+        return await resp.json();
+    },
+    async delete(url) {
+        const resp = await fetch(url, {
+            method: 'DELETE',
+            headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
+        });
+        return await resp.json();
+    },
+    handleResponse(response, onSuccess) {
+        if (response.success) {
+            FrToast.success(response.message || 'Operación exitosa');
+            if (onSuccess) onSuccess(response.data);
+        } else {
+            if (response.errors?.length) {
+                response.errors.forEach(e => FrToast.error(e));
+            } else {
+                FrToast.error(response.message || 'Error en la operación');
+            }
+        }
+    }
+};
 
-/* ── Botones Fr ────────────────────────────────────────── */
-.btn-fr-primary {
-    background: var(--fr-action-blue);
-    border: none;
-    color: white;
-    font-weight: 500;
-    border-radius: 8px;
-    padding: 8px 20px;
-}
-.btn-fr-primary:hover {
-    background: var(--fr-navy-mid);
-    color: white;
-}
+// ── Confirmación de desactivación ─────────────────────────────
+document.querySelectorAll('[data-fr-deactivate]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+        e.preventDefault();
+        const nombre = btn.dataset.frNombre || 'este registro';
+        if (!confirm(`¿Está seguro de desactivar "${nombre}"? Esta acción puede revertirse.`)) return;
+        const url = btn.dataset.frDeactivate;
+        const resp = await FrApi.delete(url);
+        FrApi.handleResponse(resp, () => {
+            btn.closest('tr')?.remove();
+        });
+    });
+});
 
-/* ── Search Bar ────────────────────────────────────────── */
-.fr-search-bar {
-    position: relative;
-    max-width: 360px;
-}
-.fr-search-bar .form-control {
-    padding-right: 40px;
-    border-radius: 8px;
-    border: 1px solid var(--fr-border);
-    font-size: 13px;
-}
-.fr-search-bar .form-control:focus {
-    border-color: var(--fr-action-blue);
-    box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
-}
-.fr-search-bar i {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--fr-text-secondary);
-}
+// ── Badge helper por estado TMS ───────────────────────────────
+const FrBadge = {
+    claseEstado(estado) {
+        const mapa = {
+            'DRAFT':            'fr-badge-neutral',
+            'CONFIRMED':        'fr-badge-info',
+            'ASSIGNED':         'fr-badge-info',
+            'PICKUP_SCHEDULED': 'fr-badge-info',
+            'IN_TRANSIT':       'fr-badge-warning',
+            'DELIVERED':        'fr-badge-success',
+            'INVOICED':         'fr-badge-success',
+            'CLOSED':           'fr-badge-neutral',
+            'CANCELLED':        'fr-badge-danger',
+            'ON_HOLD':          'fr-badge-warning',
+            'FAILED_DELIVERY':  'fr-badge-danger'
+        };
+        return mapa[estado] || 'fr-badge-neutral';
+    }
+};
 ```
 
-### 6. Vistas Estándar por Módulo
+---
 
-#### 6.1 Index.cshtml — Listado Paginado con Filtros
+### Vista Index (Listado Estándar)
 
 ```html
-@model PaginatedList<EmbarqueResponseDto>
+@* Freiroute.Aplicacion/Areas/Tenant/Views/[Modulo]/Index.cshtml *@
+@model Freiroute.Utility.Pagination.PagedResult<[Modulo]ResponseDto>
 @{
-    ViewData["Title"] = "Gestión de Embarques";
-    Layout = "~/Areas/Portal/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]      = "[Módulo]";
+    ViewData["ActiveMenu"] = "[modulo]";
 }
 
-<!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>[Módulo]</span>
+</nav>
+
+<!-- Page header -->
+<div class="fr-page-header">
     <div>
-        <h1 class="page-title">Embarques</h1>
-        <p class="text-muted mb-0">Gestione y rastree todos los embarques activos</p>
+        <h1 class="fr-page-title">Gestión de [Módulo]</h1>
+        <p class="fr-page-subtitle">@Model.TotalItems registros activos</p>
     </div>
-    @if (User.HasPermission("embarques", "CREATE")) {
-        <a asp-action="Create" class="btn btn-fr-primary">
-            <i class="ti ti-plus"></i> Nuevo Embarque
-        </a>
-    }
-</div>
-
-<!-- KPI Dashboard Row -->
-<div class="row g-3 mb-4">
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-label">Embarques Hoy</div>
-            <div class="kpi-value">@ViewData["EmbarquesHoy"]</div>
-            <div class="kpi-delta kpi-up">↑ 12% vs ayer</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-label">En Tránsito</div>
-            <div class="kpi-value text-fr-warning">@ViewData["EnTransito"]</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-label">Entregados Hoy</div>
-            <div class="kpi-value text-fr-success">@ViewData["EntregadosHoy"]</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-label">SLA Incumplido</div>
-            <div class="kpi-value text-fr-danger">@ViewData["SlaIncumplido"]</div>
-        </div>
+    <div class="d-flex gap-2">
+        @if (User.HasPermission("[modulo]", "CREATE"))
+        {
+            <a asp-action="Create" class="fr-btn fr-btn-primary">
+                <i class="ti ti-plus"></i> Nuevo [Módulo]
+            </a>
+        }
+        <button class="fr-btn fr-btn-ghost" onclick="exportarExcel()">
+            <i class="ti ti-table-export"></i> Exportar
+        </button>
     </div>
 </div>
 
-<!-- Filters Panel -->
-<div class="card card-fr mb-4">
-    <div class="card-header d-flex align-items-center justify-content-between py-3 px-4">
-        <h6 class="mb-0 fw-semibold"><i class="ti ti-filter me-2"></i>Filtros</h6>
-        <button class="btn btn-sm btn-link text-decoration-none" onclick="toggleFilters()">Ocultar</button>
-    </div>
-    <div class="card-body pt-0" id="filterPanel">
-        <form asp-action="Index" method="get" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">Buscar</label>
-                <div class="fr-search-bar">
-                    <input type="text" name="buscar" class="form-control" 
-                           value="@ViewData["Buscar"]" placeholder="Número embarque, cliente...">
-                    <i class="ti ti-search"></i>
-                </div>
+<!-- Filtros -->
+<div class="fr-card mb-4">
+    <div class="fr-card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="fr-form-label">Buscar</label>
+                <input name="q" value="@ViewData["Q"]" class="fr-form-control"
+                       placeholder="Nombre, código..." />
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Estado</label>
-                <select name="estado" class="form-select">
+            <div class="col-md-3">
+                <label class="fr-form-label">Estado</label>
+                <select name="estado" class="fr-form-control">
                     <option value="">Todos</option>
-                    <option value="DRAFT" selected="@(ViewData["Estado"] as string == "DRAFT")">Borrador</option>
-                    <option value="CONFIRMED" selected="@(ViewData["Estado"] as string == "CONFIRMED")">Confirmado</option>
-                    <option value="ASSIGNED" selected="@(ViewData["Estado"] as string == "ASSIGNED")">Asignado</option>
-                    <option value="IN_TRANSIT" selected="@(ViewData["Estado"] as string == "IN_TRANSIT")">En tránsito</option>
-                    <option value="DELIVERED" selected="@(ViewData["Estado"] as string == "DELIVERED")">Entregado</option>
-                    <option value="FAILED_DELIVERY" selected="@(ViewData["Estado"] as string == "FAILED_DELIVERY")">Fallido</option>
+                    <option value="DRAFT">Borrador</option>
+                    <option value="CONFIRMED">Confirmado</option>
+                    <option value="IN_TRANSIT">En tránsito</option>
+                    <option value="DELIVERED">Entregado</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Desde</label>
-                <input type="date" name="fechaDesde" class="form-control" value="@ViewData["FechaDesde"]">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Hasta</label>
-                <input type="date" name="fechaHasta" class="form-control" value="@ViewData["FechaHasta"]">
-            </div>
-            <div class="col-md-3 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-fr-primary">Filtrar</button>
-                <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+            <div class="col-md-auto">
+                <button type="submit" class="fr-btn fr-btn-primary">
+                    <i class="ti ti-search"></i> Filtrar
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Data Table -->
-<div class="card card-fr">
-    <div class="table-responsive">
-        <table class="table table-fr mb-0">
+<!-- Tabla -->
+<div class="fr-table-wrapper">
+    @if (!Model.Items.Any())
+    {
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+            <div class="fr-empty-title">No hay [módulo] registrados</div>
+            <div class="fr-empty-text">Crea el primero usando el botón "Nuevo [Módulo]"</div>
+        </div>
+    }
+    else
+    {
+        <table class="fr-table">
             <thead>
                 <tr>
-                    <th>Número</th>
-                    <th>Cliente</th>
-                    <th>Origen → Destino</th>
+                    <th>N° / Código</th>
+                    <th>Nombre</th>
                     <th>Estado</th>
-                    <th>ETA</th>
-                    <th>Carrier</th>
-                    <th>OTD</th>
-                    <th class="text-end">Acciones</th>
+                    <th>Fecha Creación</th>
+                    <th style="width:120px">Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var item in Model)
-                {
-                    <tr>
-                        <td>
-                            <span class="code-font fw-medium">@item.NumeroEmbarque</span>
-                        </td>
-                        <td>@item.ClienteNombre</td>
-                        <td>
-                            <div class="fw-medium small">@item.OrigenCiudad</div>
-                            <i class="ti ti-arrow-down text-muted small"></i>
-                            <div class="fw-medium small">@item.DestinoCiudad</div>
-                        </td>
-                        <td>
-                            @switch (item.Estado)
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td><span class="fr-id-code">@item.Codigo</span></td>
+                    <td>@item.Nombre</td>
+                    <td>
+                        <span class="fr-badge @FrHelper.BadgeClase(item.Estado)">
+                            @item.EstadoLabel
+                        </span>
+                    </td>
+                    <td>@item.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            @if (User.HasPermission("[modulo]", "READ"))
                             {
-                                case "DRAFT":
-                                    <span class="badge-fr badge-fr-neutral"><i class="ti ti-circle-dot"></i> Borrador</span>
-                                    break;
-                                case "CONFIRMED":
-                                    <span class="badge-fr badge-fr-info"><i class="ti ti-circle-check"></i> Confirmado</span>
-                                    break;
-                                case "ASSIGNED":
-                                    <span class="badge-fr badge-fr-info"><i class="ti ti-truck"></i> Asignado</span>
-                                    break;
-                                case "IN_TRANSIT":
-                                    <span class="badge-fr badge-fr-warning"><i class="ti ti-truck-loading"></i> En tránsito</span>
-                                    break;
-                                case "DELIVERED":
-                                    <span class="badge-fr badge-fr-success"><i class="ti ti-package-check"></i> Entregado</span>
-                                    break;
-                                case "FAILED_DELIVERY":
-                                    <span class="badge-fr badge-fr-danger"><i class="ti ti-circle-x"></i> Fallido</span>
-                                    break;
-                                case "ON_HOLD":
-                                    <span class="badge-fr badge-fr-onhold"><i class="ti ti-clock-hour-4"></i> En espera</span>
-                                    break;
-                                default:
-                                    <span class="badge-fr badge-fr-neutral">@item.EstadoLabel</span>
-                                    break;
-                            }
-                        </td>
-                        <td>
-                            @if (item.Eta.HasValue)
-                            {
-                                <span class="small @(item.SlaEnRiesgo ? "text-fr-warning fw-medium" : "")">
-                                    @item.Eta.Value.ToString("HH:mm")
-                                </span>
-                            }
-                            else { — }
-                        </td>
-                        <td class="small">@item.CarrierNombre ?? "-"</td>
-                        <td>
-                            <span class="code-font @(item.OtdCumplido ? "text-fr-success" : "text-fr-danger")">
-                                @(item.OtdCumplido ? "✓" : "✗")
-                            </span>
-                        </td>
-                        <td class="text-end">
-                            @if (User.HasPermission("embarques", "UPDATE")) {
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-light me-1" title="Editar">
-                                    <i class="ti ti-edit"></i>
-                                </a>
-                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-light" title="Detalle">
+                                <a asp-action="Detail" asp-route-id="@item.Id"
+                                   class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle">
                                     <i class="ti ti-eye"></i>
                                 </a>
                             }
-                            @if (User.HasPermission("embarques", "CREATE")) {
-                                <a asp-action="PrintPOD" asp-route-id="@item.Id" class="btn btn-sm btn-light" title="Imprimir POD">
-                                    <i class="ti ti-printer"></i>
+                            @if (User.HasPermission("[modulo]", "UPDATE"))
+                            {
+                                <a asp-action="Edit" asp-route-id="@item.Id"
+                                   class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar">
+                                    <i class="ti ti-pencil"></i>
                                 </a>
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        data-fr-deactivate="/api/[modulo]/@item.Id/deactivate"
+                                        data-fr-nombre="@item.Nombre"
+                                        title="Desactivar">
+                                    <i class="ti ti-trash" style="color:var(--fr-danger)"></i>
+                                </button>
                             }
-                        </td>
-                    </tr>
-                }
-                @if (!Model.Any()) {
-                    <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
-                            <i class="ti ti-package-off fs-1 d-block mb-2"></i>
-                            No se encontraron embarques con los filtros aplicados
-                        </td>
-                    </tr>
-                }
+                        </div>
+                    </td>
+                </tr>
+            }
             </tbody>
         </table>
-    </div>
 
-    <!-- Pagination — 20 registros/página (RNF-01.4) -->
-    <div class="card-footer d-flex justify-content-between align-items-center py-3 px-4">
-        <small class="text-muted">
-            Mostrando @Model.Count de @Model.TotalItemCount registros
-            (página @Model.PageIndex de @Model.PageCount)
-        </small>
-        <ul class="pagination pagination-sm mb-0">
-            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
-                <a class="page-link" asp-action="Index" asp-route-page="$(Model.PageIndex - 1)">Anterior</a>
-            </li>
-            @for (int i = Math.Max(1, Model.PageIndex - 2); i <= Math.Min(Model.PageCount, Model.PageIndex + 2); i++) {
-                <li class="page-item @(i == Model.PageIndex ? "active" : "")">
-                    <a class="page-link" asp-action="Index" asp-route-page="@(i)">@i</a>
-                </li>
-            }
-            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
-                <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageIndex + 1)">Siguiente</a>
-            </li>
-        </ul>
-    </div>
+        <!-- Paginación -->
+        <div class="fr-pagination">
+            <span class="fr-pagination-info">
+                Mostrando @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalItems))
+                de @Model.TotalItems registros
+            </span>
+            <div class="d-flex gap-2">
+                <a asp-action="Index" asp-route-page="@(Model.PageNumber - 1)"
+                   asp-route-q="@ViewData["Q"]"
+                   class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
+                    ← Anterior
+                </a>
+                <a asp-action="Index" asp-route-page="@(Model.PageNumber + 1)"
+                   asp-route-q="@ViewData["Q"]"
+                   class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
+                    Siguiente →
+                </a>
+            </div>
+        </div>
+    }
 </div>
 ```
 
-#### 6.2 Create.cshtml / Edit.cshtml — Formulario con Validación
+---
+
+### Vista Create/Edit (Formulario Estándar)
 
 ```html
-@model EmbarqueRequestDto
+@* Views/[Modulo]/Create.cshtml *@
+@model [Modulo]RequestDto
 @{
-    ViewData["Title"] = Model.Id == Guid.Empty ? "Nuevo Embarque" : "Editar Embarque";
-    Layout = "~/Areas/Portal/Views/Shared/_Layout.cshtml";
+    ViewData["Title"]      = "Nuevo [Módulo]";
+    ViewData["ActiveMenu"] = "[modulo]";
+    var esEdicion          = ViewData["EsEdicion"] as bool? ?? false;
 }
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index" asp-controller="Embarques">Embarques</a></li>
-        <li class="breadcrumb-item active">@ViewData["Title"]</li>
-    </ol>
+<nav class="fr-breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <a asp-action="Index">[Módulo]</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>@(esEdicion ? "Editar" : "Nuevo")</span>
 </nav>
 
-<div class="row">
-    <div class="col-lg-8">
-        <div class="card card-fr">
-            <div class="card-header py-3 px-4 d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold">Información del Embarque</h6>
-                <a asp-action="Index" class="btn btn-sm btn-light">
-                    <i class="ti ti-arrow-left"></i> Volver
-                </a>
-            </div>
-            <div class="card-body p-4">
-                <form id="formEmbarque" asp-action="Create" asp-controller="Embarques" method="post">
-                    @if (Model.Id != Guid.Empty) {
-                        <input type="hidden" asp-for="Id" />
-                    }
-
-                    <input type="hidden" id="empresaId" name="EmpresaId" 
-                           value="@User.GetEmpresaId()" />
-
-                    <!-- Sección: Datos Generales -->
-                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
-                        <i class="ti ti-info-circle me-1"></i>Datos Generales
-                    </h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label asp-for="ClienteId" class="form-label">Cliente <span class="text-danger">*</span></label>
-                            <select asp-for="ClienteId" class="form-select"
-                                    asp-items="@(new SelectList((IEnumerable<SelectListItem>)ViewBag.Clientes, "Id", "Nombre"))"
-                                    data-val="true"
-                                    data-val-required="Debe seleccionar un cliente">
-                                <option value="">-- Seleccionar Cliente --</option>
-                            </select>
-                            <span asp-validation-for="ClienteId" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="TipoCarga" class="form-label">Tipo de Carga</label>
-                            <select asp-for="TipoCarga" class="form-select">
-                                <option value="FTL">FTL — Camión Completo</option>
-                                <option value="LTL">LTL — Carga Parcial</option>
-                                <option value="EXCEPTIONAL">Excepcional</option>
-                            </select>
-                            <span asp-validation-for="TipoCarga" class="text-danger small"></span>
-                        </div>
-                    </div>
-
-                    <!-- Sección: Origen y Destino -->
-                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
-                        <i class="ti ti-map-pin me-1"></i>Ruta
-                    </h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label asp-for="OrigenUbicacionId" class="form-label">Origen <span class="text-danger">*</span></label>
-                            <select asp-for="OrigenUbicacionId" class="form-select"
-                                    data-val="true" data-val-required="Seleccione origen">
-                                <option value="">-- Seleccionar Origen --</option>
-                            </select>
-                            <span asp-validation-for="OrigenUbicacionId" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="DestinoUbicacionId" class="form-label">Destino <span class="text-danger">*</span></label>
-                            <select asp-for="DestinoUbicacionId" class="form-select"
-                                    data-val="true" data-val-required="Seleccione destino">
-                                <option value="">-- Seleccionar Destino --</option>
-                            </select>
-                            <span asp-validation-for="DestinoUbicacionId" class="text-danger small"></span>
-                        </div>
-                    </div>
-
-                    <!-- Sección: Fecha y Tiempo -->
-                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
-                        <i class="ti ti-calendar me-1"></i>Cronograma
-                    </h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label asp-for="FechaPickupPlanificada" class="form-label">Fecha Pickup</label>
-                            <input asp-for="FechaPickupPlanificada" type="datetime-local" class="form-control" />
-                            <span asp-validation-for="FechaPickupPlanificada" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-4">
-                            <label asp-for="FechaEntregaRequerida" class="form-label">Entrega Requerida</label>
-                            <input asp-for="FechaEntregaRequerida" type="datetime-local" class="form-control"
-                                   data-val="true"
-                                   data-val-required="Fecha requerida"
-                                   data-val-greaterthan="Debe ser posterior al pickup" />
-                            <span asp-validation-for="FechaEntregaRequerida" class="text-danger small"></span>
-                        </div>
-                    </div>
-
-                    <!-- Sección: Detalles de Carga -->
-                    <h6 class="fw-semibold mb-3 pb-2 border-bottom">
-                        <i class="ti ti-package me-1"></i>Detalles de Carga
-                    </h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label asp-for="PesoTotal" class="form-label">Peso (kg)</label>
-                            <input asp-for="PesoTotal" type="number" step="0.01" min="0" max="50000" class="form-control" />
-                            <span asp-validation-for="PesoTotal" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-3">
-                            <label asp-for="VolumenTotal" class="form-label">Volumen (m³)</label>
-                            <input asp-for="VolumenTotal" type="number" step="0.01" min="0" class="form-control" />
-                            <span asp-validation-for="VolumenTotal" class="text-danger small"></span>
-                        </div>
-                        <div class="col-md-3">
-                            <label asp-for="CostoFlete" class="form-label">Costo Flete</label>
-                            <input asp-for="CostoFlete" type="number" step="0.01" min="0" class="form-control" />
-                            <span asp-validation-for="CostoFlete" class="text-danger small"></span>
-                        </div>
-                    </div>
-
-                    <!-- Observaciones -->
-                    <div class="mb-4">
-                        <label asp-for="Observaciones" class="form-label">Observaciones</label>
-                        <textarea asp-for="Observaciones" rows="3" class="form-control" maxlength="2000"></textarea>
-                        <span asp-validation-for="Observaciones" class="text-danger small"></span>
-                        <div class="form-text text-end">@Model.Observaciones.Length / 2000</div>
-                    </div>
-
-                    <!-- Acciones -->
-                    <div class="d-flex gap-2 justify-content-end pt-3 border-top">
-                        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
-                        <button type="submit" class="btn btn-fr-primary" id="btnSubmit">
-                            <i class="ti ti-device-floppy me-1"></i>Guardar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">@(esEdicion ? "Editar [Módulo]" : "Nuevo [Módulo]")</h1>
+        <p class="fr-page-subtitle">@(esEdicion ? "Modifica los datos del registro" : "Completa los campos requeridos")</p>
     </div>
+</div>
 
-    <!-- Info Panel Lateral -->
-    <div class="col-lg-4">
-        <div class="card card-fr mb-3">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-3"><i class="ti ti-help-circle me-1"></i>Ayuda</h6>
-                <ul class="list-unstyled mb-0">
-                    <li class="mb-2 small">
-                        <i class="ti ti-circle-filled text-fr-info me-2"></i>
-                        El número de embarque se genera automáticamente
-                    </li>
-                    <li class="mb-2 small">
-                        <i class="ti ti-circle-filled text-fr-warning me-2"></i>
-                        Fecha de entrega debe ser posterior al pickup
-                    </li>
-                    <li class="small">
-                        <i class="ti ti-circle-filled text-fr-danger me-2"></i>
-                        Peso máximo por embarque: 50,000 kg
-                    </li>
-                </ul>
+<div class="fr-card" style="max-width:760px">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Datos del [Módulo]</span>
+    </div>
+    <div class="fr-card-body">
+        <form id="frForm" method="post" novalidate>
+            @Html.AntiForgeryToken()
+            @if (esEdicion) { <input type="hidden" asp-for="Id" /> }
+
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Nombre" class="fr-form-control"
+                           placeholder="Ingrese el nombre"
+                           data-val="true"
+                           data-val-required="El nombre es obligatorio"
+                           data-val-maxlength-max="200"
+                           data-val-maxlength="No puede exceder 200 caracteres" />
+                    <span asp-validation-for="Nombre" class="fr-form-error"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Estado" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="Estado" class="fr-form-control"
+                            data-val="true" data-val-required="El estado es obligatorio">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="DRAFT">Borrador</option>
+                        <option value="CONFIRMED">Confirmado</option>
+                    </select>
+                    <span asp-validation-for="Estado" class="fr-form-error"></span>
+                </div>
             </div>
-        </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i>
+                    @(esEdicion ? "Guardar cambios" : "Crear [Módulo]")
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script src="~/js/modules/embarque-form.js"></script>
-}
-```
+<script>
+    $.validator.unobtrusive.parse('#frForm');
 
-### 7. JavaScript — freiroute.js y Modulares
-
-**`wwwroot/js/freiroute.js` — Utilidades globales:**
-```javascript
-/**
- * freiroute.js — Utilidades globales del Design System
- * Mantiene consistencia en toasts, confirmaciones y llamadas API
- */
-
-// ── Toast Notification System ──────────────────────────────
-function mostrarToast(tipo, titulo, mensaje, duracion = 5000) {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
-
-    const bgClass = tipo === 'success' ? 'text-bg-success' :
-                    tipo === 'error' ? 'text-bg-danger' :
-                    tipo === 'warning' ? 'text-bg-warning' : 'text-bg-info';
-
-    const icon = tipo === 'success' ? 'ti-check-circle' :
-                 tipo === 'error' ? 'ti-alert-circle' :
-                 tipo === 'warning' ? 'ti-alert-triangle' : 'ti-info-circle';
-
-    const toastEl = document.createElement('div');
-    toastEl.className = `toast align-items-center ${bgClass} border-0`;
-    toastEl.setAttribute('role', 'alert');
-    toastEl.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="ti ${icon} me-2"></i>
-                <strong>${titulo}</strong> ${mensaje}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-
-    container.appendChild(toastEl);
-    const bsToast = new bootstrap.Toast(toastEl, { delay: duracion });
-    bsToast.show();
-
-    // Remover DOM cuando termine
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
-}
-
-// ── Confirm Modal Genérico ─────────────────────────────────
-function confirmarAccion(titulo, mensaje, callback) {
-    const modalDiv = document.createElement('div');
-    modalDiv.className = 'modal fade';
-    modalDiv.id = 'confirmModal';
-    modalDiv.tabIndex = -1;
-    modalDiv.innerHTML = `
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 12px;">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title">${titulo}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body pt-0">
-                    <p>${mensaje}</p>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="confirmBtn">Confirmar</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modalDiv);
-    const modal = new bootstrap.Modal(modalDiv);
-    modal.show();
-
-    document.getElementById('confirmBtn').onclick = () => {
-        modal.hide();
-        callback();
-        modalDiv.remove();
-    };
-}
-
-// ── API Call Helper ────────────────────────────────────────
-async function apiCall(method, url, data = null) {
-    const token = getJwtToken();
-    const options = {
-        method,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+    $('#frForm').on('submit', async function(e) {
+        e.preventDefault();
+        if (!$(this).valid()) {
+            FrToast.warning('Por favor corrija los errores del formulario');
+            return;
         }
-    };
-    if (data) options.body = JSON.stringify(data);
 
-    const response = await fetch(url, options);
-    const result = await response.json();
+        const btn = document.getElementById('btnGuardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
 
-    if (!response.ok) {
-        if (result.errors) {
-            result.errors.forEach(err => mostrarToast('error', 'Validación', err));
-        } else {
-            mostrarToast('error', 'Error', result.message || 'Error inesperado');
-        }
-        throw new Error(result.message);
-    }
+        const url    = '@(esEdicion ? $"/api/[modulo]/{Model.Id}" : "/api/[modulo]")';
+        const method = '@(esEdicion ? "put" : "post")';
+        const data   = Object.fromEntries(new FormData(this));
 
-    mostrarToast('success', 'Éxito', result.message || 'Operación completada');
-    return result;
-}
+        const resp = await FrApi[method](url, data);
 
-function getJwtToken() {
-    return localStorage.getItem('freiroute_token') || '';
-}
-```
-
-**`wwwroot/js/modules/embarque-form.js` — Específico del módulo:**
-```javascript
-/**
- * empaque-form.js — Validación específica para formularios de embarque
- */
-$(document).ready(function () {
-    const form = $('#formEmbarque');
-
-    // jQuery Validate + Unobtrusive ya configurado en _ValidationScriptsPartial
-    $.validator.setDefaults({
-        errorClass: 'is-invalid',
-        validClass: 'is-valid',
-        errorPlacement: function (error, element) {
-            error.addClass('invalid-feedback');
-            element.closest('.col-md-3, .col-md-4, .col-md-6').append(error);
-        },
-        highlight: function (element) {
-            $(element).addClass('is-invalid').removeClass('is-valid');
-        },
-        unhighlight: function (element) {
-            $(element).removeClass('is-invalid').addClass('is-valid');
-        }
-    });
-
-    form.submit(function (e) {
-        if ($(this).valid()) {
-            // Deshabilitar botón para prevenir doble envío
-            $('#btnSubmit').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Guardando...');
-
-            $.ajax({
-                url: form.attr('action'),
-                type: form.attr('method') || 'POST',
-                data: form.serialize(),
-                success: function (response) {
-                    mostrarToast('success', 'Registrado', response.message || 'Embarque guardado exitosamente');
-                    setTimeout(() => window.location.href = '/embarques', 1000);
-                },
-                error: function (xhr) {
-                    $('#btnSubmit').prop('disabled', false).html('<i class="ti ti-device-floppy me-1"></i>Guardar');
-                    
-                    if (xhr.responseJSON?.errors) {
-                        xhr.responseJSON.errors.forEach(err => mostrarToast('error', 'Error', err));
-                    } else {
-                        mostrarToast('error', 'Error', 'No se pudo guardar el embarque');
-                    }
-                }
-            });
-            e.preventDefault();
-        }
-    });
-
-    // Autocomplete de ubicaciones vía API
-    $('#OrigenUbicacionId, #DestinoUbicacionId').on('change', function () {
-        // Aquí se puede cargar coordenadas para mapa
-        const val = $(this).val();
-        if (val) loadLocationCoords(val);
-    });
-});
-
-function loadLocationCoords(ubicacionId) {
-    apiCall('GET', `/api/ubicaciones/${ubicacionId}/coords`)
-        .then(coords => {
-            console.log(`Coordenadas cargadas para ubicación ${ubicacionId}`);
-            updateMapMarker(coords.lat, coords.lng);
+        FrApi.handleResponse(resp, () => {
+            setTimeout(() => window.location.href = '@Url.Action("Index")', 800);
         });
+
+        btn.disabled = false;
+        btn.innerHTML = '@(esEdicion ? "Guardar cambios" : "Crear [Módulo]")';
+    });
+</script>
 }
 ```
-
-### 8. Componentes Operacionales TMS
-
-#### Badges de Estado de Embarque (mapeo visual)
-
-| Estado TMS | Clase Badge | Color Hex | Icono | Label |
-|---|---|---|---|---|
-| DRAFT | `badge-fr-neutral` | `#64748B` | `ti-circle-dot` | Borrador |
-| CONFIRMED | `badge-fr-info` | `#1A73E8` | `ti-circle-check` | Confirmado |
-| ASSIGNED | `badge-fr-info` | `#0891B2` | `ti-truck` | Asignado |
-| IN_TRANSIT | `badge-fr-warning` | `#F57F17` | `ti-truck-loading` | En tránsito |
-| DELIVERED | `badge-fr-success` | `#2E7D32` | `ti-package-check` | Entregado |
-| FAILED_DELIVERY | `badge-fr-danger` | `#E53935` | `ti-circle-x` | Fallido |
-| ON_HOLD | `badge-fr-onhold` | `#C2410C` | `ti-clock-hour-4` | En espera |
-| CANCELLED | `badge-fr-neutral` | `#374151` | `ti-ban` | Cancelado |
-
-#### KPI Cards Pattern
-
-```html
-<div class="kpi-card">
-    <div class="kpi-label">[Título del KPI]</div>
-    <div class="kpi-value [text-fr-success | text-fr-warning | text-fr-danger]">[Valor]</div>
-    <div class="kpi-delta kpi-up">↑ 12% vs ayer</div>
-</div>
-```
-
-### 9. Convenciones de Código Frontend
-
-| Regla | Ejemplo Correcto | Prohibido |
-|---|---|---|
-| Razor helpers | `asp-action="Index"` | `<a href="/modulo/index">` manual |
-| CSS classes | `form-label`, `form-control`, `form-select` | estilos inline |
-| Iconos | `<i class="ti ti-truck"></i>` | emoji o imagen propia |
-| Tooltips | `title="Descripción"` en botones | sin contexto |
-| JS modular | `js/modules/[modulo]-form.js` | scripts sueltos en views |
-| Validación HTML | `data-val-*` attributes | solo JS validation |
-| Accesibilidad | `aria-label` en botones icon-only | sin labels |
-
-### 10. Checklist de Entregable (revisado por @PM)
-
-- [ ] Index.cshtml con listado paginado (20 items), filtros funcionales y tabla `table-fr`
-- [ ] Create.cshtml con formulario completo, validación jQuery Validate (`data-val-*`)
-- [ ] Edit.cshtml con valores prellenados desde controller
-- [ ] Details.cshtml si aplica al módulo
-- [ ] _Layout.cshtml con sidebar, breadcrumbs, flash messages y User context
-- [ ] Diseño responsive: funciona en 1280×720px mínimo
-- [ ] Colores y badges consistentes con Design System Freiroute (AGENTS.md UI/UX)
-- [ ] Estados de embarque usan clases semánticas correctas (DRAFT→neutral, IN_TRANSIT→warning, etc.)
-- [ ] Permisos UI: botones ocultos según rol del JWT
-- [ ] Toasts de éxito/error funcionando con API integration
-- [ ] Sin dependencias externas no permitidas (solo Bootstrap 5.3, jQuery, Tabler Icons)
-- [ ] Textos y labels en español
-- [ ] Sin warnings en build
-
-### 11. Contexto Freiroute TMS — Diseño Orientado al Operador
-
-@FrontendDev diseña interfaces para operadores logísticos que necesitan información rápida y clara:
-
-**Principio UI/UX:** *"Menos es más — el dispatcher necesita tomar decisiones de transporte en segundos, no navegar por menús complejos."*
-
-**Módulos MVP con requisitos UI específicos:**
-- **Dashboard:** KPI cards con embarques hoy, OTD %, SLA en riesgo, alertas críticas
-- **Embarques:** Tabla principal con status badges operacionales, ETA dinámico, acceso directo a POD
-- **Órdenes:** Listado con filtros por estado DRAFT/CONFIRMED/CLOSED, botón de asignar carrier
-- **Track & Trace:** Mapa integrado con markers GPS, timeline de eventos, geofences
-- **Reportes:** Gráficos OTD, costos por carrier, tiempos de entrega, análisis de SLA
-- **Master Data:** Formularios CRUD con validación fuerte y autocomplete inteligente
-
-**Prioridades de diseño:**
-1. **Performance visual:** tablas rápidas, carga progresiva de datos
-2. **Scanability:** colores semánticos operacionales, badges claros, jerarquía tipográfica
-3. **Eficiencia operativa:** atajos de teclado, acciones masivas, reusabilidad de formularios
-4. **Mobile-first:** sidebar colapsable, tablas scroll-horiz en móvil, touch targets ≥ 44px
 
 ---
 
-## Dependencias entre Agentes
+### Helper C# para Badges
 
-| Recibe de | Entrega a | Formato de handoff |
-|---|---|---|
-| @BackendDev | API endpoints + Swagger docs | URLs `/api/[modulo]` documentadas |
-| @QA | Tests aprobados (pasan + cobertura mínima) | PR aprobado por QA |
-| @PM | Specs + criterios de aceptación | `docs/specs/HU-XXX-nombre.md` |
-| @PM | Resultado de revisión visual/UI | Comments en PR con feedback |
+```csharp
+// Freiroute.Aplicacion/Helpers/FrHelper.cs
+namespace Freiroute.Aplicacion.Helpers;
+
+public static class FrHelper
+{
+    public static string BadgeClase(string? estado) => estado switch
+    {
+        "DRAFT"            => "fr-badge-neutral",
+        "CONFIRMED"        => "fr-badge-info",
+        "ASSIGNED"         => "fr-badge-info",
+        "PICKUP_SCHEDULED" => "fr-badge-info",
+        "IN_TRANSIT"       => "fr-badge-warning",
+        "DELIVERED"        => "fr-badge-success",
+        "INVOICED"         => "fr-badge-success",
+        "CLOSED"           => "fr-badge-neutral",
+        "CANCELLED"        => "fr-badge-danger",
+        "ON_HOLD"          => "fr-badge-warning",
+        "FAILED_DELIVERY"  => "fr-badge-danger",
+        _                  => "fr-badge-neutral"
+    };
+}
+```
+
+---
+
+### Checklist de Entregable Frontend
+
+- [ ] `freiroute.css` actualizado con los estilos del módulo (si hay componentes nuevos)
+- [ ] `_Layout.cshtml` con enlace del nuevo módulo en la sección correcta del sidebar
+- [ ] **Index.cshtml**: tabla `fr-table`, badges semánticos, paginación `fr-pagination`, filtros, acciones por rol
+- [ ] **Create.cshtml**: formulario con clases `fr-form-*`, validación jQuery Validate, envío AJAX con `FrApi`
+- [ ] **Edit.cshtml**: misma estructura que Create, con datos prellenados
+- [ ] Badges con `FrHelper.BadgeClase(estado)` — nunca colores hardcodeados
+- [ ] IDs y códigos con clase `fr-id-code` (fuente JetBrains Mono)
+- [ ] Toasts con `FrToast.success/error/warning` — nunca `alert()`
+- [ ] Desactivación con `data-fr-deactivate` — nunca `confirm()` nativo
+- [ ] Mensajes de validación en español consistentes con FluentValidation del servidor
+- [ ] Acciones protegidas con `User.HasPermission("[modulo]", "ACTION")`
+- [ ] `ViewData["ActiveMenu"]` asignado para resaltar el ítem correcto del sidebar
+- [ ] Responsivo en 1280×720px mínimo
+- [ ] Sin colores hardcodeados — solo variables CSS `var(--fr-*)`
+
+---
+
+## Contexto Freiroute TMS
+
+El frontend debe reflejar la identidad de un TMS de nivel mundial: sidebar navy profesional con íconos Tabler, KPI cards en el dashboard, tablas densas con información de embarques y estados semánticos, mapas para track & trace, y formularios claros para registro de órdenes y carriers. El operador/dispatcher vive 8+ horas en esta interfaz — la velocidad, claridad y consistencia son prioritarias sobre la decoración.

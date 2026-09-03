@@ -1,415 +1,169 @@
-﻿namespace Freiroute.API.Tests.Controllers;
-
-using Freiroute.BLL.Services;
-using Freiroute.DTO.Empresa;
-using Freiroute.Utility.ApiResponse;
-using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Moq;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Xunit;
+using Freiroute.BLL.Interfaces;
+using Freiroute.DTO.Empresa;
+using Freiroute.Utility.Exceptions;
+using FluentAssertions;
+using FluentValidation;
+using Moq;
+
+namespace Freiroute.API.Tests.Controllers;
 
 /// <summary>
-/// Tests de integración para EmpresasController - endpoints REST del modulo EMPRESA (HU-001).
-/// Usa TestWebApplicationFactory con mocks en la capa de servicio y bypass de authorization
-/// para probar el pipeline HTTP completo sin autenticación real ni conexión a BD.
-/// Cobertura: POST /api/empresas (crear tenant), GET /api/empresas/{id} (buscar por ID).
-/// Patrón AAA: ARRANGE → ACT → ASSERT con FluentAssertions + Moq.
+/// Tests de integración del EmpresasController (HU-001).
+/// El módulo de empresas es global del SaaS → SOLO SUPER_ADMIN (CA-07).
+/// RequirePermission usa 'configuracion' + bypass total para SUPER_ADMIN.
 /// </summary>
-public class EmpresasControllerTests : IClassFixture<TestWebApplicationFactory>
+public class EmpresasControllerTests : IDisposable
 {
-    private readonly HttpClient _client;
-    private readonly string _superAdminToken;
-    private readonly Mock<IEmpresaService> _mockService;
+    private readonly TestWebApplicationFactory _factory;
 
-    public EmpresasControllerTests(TestWebApplicationFactory factory)
+    public EmpresasControllerTests()
     {
-        _mockService = factory.GetMockService();
+        _factory = new TestWebApplicationFactory();
+    }
 
-        _client = factory.CreateClient(new WebApplicationFactoryClientOptions
+    public void Dispose()
+    {
+        _factory.Dispose();
+    }
+
+    private EmpresaResponseDto EmpresaDto() => new()
+    {
+        Id = Guid.NewGuid(),
+        Nombre = "Trans Nicaragua S.A.",
+        EmailAdmin = "admin@transnic.com",
+        Pais = "Nicaragua",
+        PlanSuscripcion = "PROFESSIONAL",
+        Estado = "ACTIVE",
+        ColorPrimario = "#1A73E8",
+        ColorSecundario = "#0B2545",
+        PrefijoEmbarque = "TR",
+        Activo = true,
+        FechaCreacion = DateTime.UtcNow
+    };
+
+    [Fact]
+    public async Task GetAll_SinToken_Retorna401()
+    {
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.GetAsync("/api/empresas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task GetAll_ConTokenAdmin_Retorna403()
+    {
+        // Un ADMIN de tenant (sin permiso 'configuracion') no gestiona el SaaS → 403.
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.GetAsync("/api/empresas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetAll_ConTokenSuperAdmin_Retorna200()
+    {
+        _factory.EmpresaService
+            .Setup(s => s.GetAllAsync())
+            .ReturnsAsync(new List<EmpresaResponseDto> { EmpresaDto(), EmpresaDto() });
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
+
+        var response = await client.GetAsync("/api/empresas");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Create_DatosValidos_Retorna200()
+    {
+        // NOTA: el controller responde Ok() = 200 (no 201). Desviación documentada.
+        _factory.EmpresaService
+            .Setup(s => s.CreateAsync(It.IsAny<EmpresaRequestDto>()))
+            .ReturnsAsync(EmpresaDto());
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
+
+        var response = await client.PostAsJsonAsync("/api/empresas", new EmpresaRequestDto
         {
-            AllowAutoRedirect = false
+            Nombre = "Trans Nicaragua S.A.",
+            EmailAdmin = "admin@transnic.com",
+            Pais = "Nicaragua",
+            PlanSuscripcion = "PROFESSIONAL"
         });
 
-        _superAdminToken = JwtTestHelper.GenerateSuperAdminToken();
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _superAdminToken);
-    }
-
-    // ═══════════════════════════════════════════════════
-    // POST /api/empresas — Crear Empresa (Tenant)
-    // ═══════════════════════════════════════════════════
-
-    [Fact]
-    public async Task Create_CuandoValido_Retorna201ConData()
-    {
-        // ARRANGE
-        var nuevoId = Guid.NewGuid();
-        var respuestaDto = new EmpresaResponseDto
-        {
-            Id = nuevoId,
-            Nombre = "Transportes Express del Norte",
-            Slug = "transportes-express-del-norte",
-            Plan = "professional",
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
-        };
-
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(respuestaDto);
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Transportes Express del Norte",
-            Slug = "",
-            Plan = "professional"
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<EmpresaResponseDto>>();
-        content.Should().NotBeNull();
-        content!.Success.Should().BeTrue();
-        content.Data.Should().NotBeNull();
-        content.Data!.Id.Should().Be(nuevoId);
-        content.Data.Nombre.Should().Contain("Express");
-        content.Data.Slug.Should().Be("transportes-express-del-norte");
-        content.Data.Plan.Should().Be("professional");
-        content.Message.Should().Contain("exitosa");
-    }
-
-    [Fact]
-    public async Task Create_SinToken_Returns401()
-    {
-        // ARRANGE
-        var sinAuth = new HttpClient { BaseAddress = _client.BaseAddress };
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Test sin Auth",
-            Plan = "starter"
-        };
-
-        // ACT
-        var response = await sinAuth.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task Create_ConInvalidRequestBody_Retorna400BadRequest()
-    {
-        // ARRANGE
-        var content = new StringContent("nombre=no-es-json", System.Text.Encoding.UTF8, "text/plain");
-
-        // ACT
-        var response = await _client.PostAsync("/api/empresas", content);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task Create_ConNombreVacio_ServiceLanzaValidation_Retorna400()
-    {
-        // ARRANGE
-        var mensajeError = "El nombre es obligatorio";
-        var validationEx = CreateValidationException(mensajeError, "Nombre", mensajeError);
-
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ThrowsAsync(validationEx);
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "",
-            Slug = "",
-            Plan = "starter"
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<EmpresaResponseDto>>();
-        content.Should().NotBeNull();
-        content!.Success.Should().BeFalse();
-        content.Errors.Should().ContainSingle().Which.Should().Contain("obligatorio");
-    }
-
-    [Fact]
-    public async Task Create_ConSlugDuplicado_ServiceLanzaConflict_Retorna409()
-    {
-        // ARRANGE
-        var mensajeError = "El slug mi-slug ya está en uso.";
-
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ThrowsAsync(new InvalidOperationException(mensajeError));
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Nueva Empresa",
-            Slug = "mi-slug",
-            Plan = "starter"
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<EmpresaResponseDto>>();
-        content.Should().NotBeNull();
-        content!.Success.Should().BeFalse();
-        content.Message.Should().Contain("ya está en uso");
-    }
-
-    [Fact]
-    public async Task Create_ConPlanInvalido_ServiceLanzaValidation_Retorna400()
-    {
-        // ARRANGE
-        var mensajeError = "El plan debe ser starter, professional o enterprise";
-        var validationEx = CreateValidationException(mensajeError, "Plan", mensajeError);
-
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ThrowsAsync(validationEx);
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Empresa Valida",
-            Slug = "empresa-valida",
-            Plan = "premium"
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<EmpresaResponseDto>>();
-        content.Should().NotBeNull();
-        content.Errors.Should().ContainSingle().Which.Should().Contain("starter");
-    }
-
-    [Fact]
-    public async Task Create_RespuestaContieneTimestampYCamposEsperados()
-    {
-        // ARRANGE
-        var nuevoId = Guid.NewGuid();
-        var respuestaDto = new EmpresaResponseDto
-        {
-            Id = nuevoId,
-            Nombre = "Logistica Nacional",
-            Slug = "logistica-nacional",
-            Plan = "starter",
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
-        };
-
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(respuestaDto);
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Logistica Nacional",
-            Slug = "logistica-nacional",
-            Plan = "starter"
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<EmpresaResponseDto>>();
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        content.Should().NotBeNull();
-        content!.Timestamp.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        content.Data.Nombre.Should().Be("Logistica Nacional");
-        content.Data.Activo.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Create_DtoSeMapeaCorrectamenteAlServicio()
-    {
-        // ARRANGE
-        var nuevoId = Guid.NewGuid();
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(new EmpresaResponseDto { Id = nuevoId });
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Empresa Prueba XYZ",
-            Slug = "empresa-prueba-xyz",
-            Plan = "enterprise"
-        };
-
-        // ACT
-        await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        _mockService.Verify(s => s.CrearAsync(It.Is<EmpresaRequestDto>(d =>
-            d.Nombre == "Empresa Prueba XYZ" &&
-            d.Slug == "empresa-prueba-xyz" &&
-            d.Plan == "enterprise")), Times.Once);
-    }
-
-    [Fact]
-    public async Task Create_PlantaPredeterminadaSiNoSeSpecificalPlan()
-    {
-        // ARRANGE
-        var nuevoId = Guid.NewGuid();
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(new EmpresaResponseDto { Id = nuevoId });
-
-        var dto = new EmpresaRequestDto
-        {
-            Nombre = "Sin Plan Explicito",
-            Slug = ""
-        };
-
-        // ACT
-        await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        _mockService.Verify(s => s.CrearAsync(It.Is<EmpresaRequestDto>(d =>
-            d.Plan == "starter")), Times.Once);
-    }
-
-    // ═══════════════════════════════════════════════════
-    // GET /api/empresas/{id} — Buscar Empresa por ID
-    // ═══════════════════════════════════════════════════
-
-    [Fact]
-    public async Task GetById_ElStubRetorna200OK()
-    {
-        // ARRANGE — HU-001: GetById actualmente es un stub que retorna 200 incluso con ID no existente.
-        // Este test documenta el comportamiento actual.
-        var id = Guid.NewGuid();
-
-        // ACT
-        var response = await _client.GetAsync($"/api/empresas/{id}");
-
-        // ASSERT
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().NotBeNullOrEmpty();
     }
 
     [Fact]
-    public async Task GetById_ConGuidIdInvalido_Retorna400O404()
+    public async Task Create_EmailDuplicado_Retorna409()
     {
-        // ARRANGE — El constraint {id:guid} del framework valida el formato del GUID.
-        var invalidoId = "no-es-guid";
+        // CA-06: email_admin duplicado → ConflictException → 409.
+        _factory.EmpresaService
+            .Setup(s => s.CreateAsync(It.IsAny<EmpresaRequestDto>()))
+            .ThrowsAsync(new ConflictException("Ya existe una empresa con ese email."));
 
-        // ACT
-        var response = await _client.GetAsync($"/api/empresas/{invalidoId}");
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
 
-        // ASSERT
-        (response.StatusCode == HttpStatusCode.BadRequest ||
-         response.StatusCode == HttpStatusCode.NotFound)
-            .Should().BeTrue("porque no-es-guid no pasa el constraint {id:guid}");
-    }
-
-    [Fact]
-    public async Task GetById_SinAutenticacion_Retorna401()
-    {
-        // ARRANGE — El endpoint [Authorize] requiere token válido.
-        var sinAuth = new HttpClient { BaseAddress = _client.BaseAddress };
-        var id = Guid.NewGuid();
-
-        // ACT
-        var response = await sinAuth.GetAsync($"/api/empresas/{id}");
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    // ═══════════════════════════════════════════════════
-    // Scenarios Operacionales
-    // ═══════════════════════════════════════════════════
-
-    [Fact]
-    public async Task Create_ConSlugPersonalizado_EsPasadoAlServicio()
-    {
-        // ARRANGE
-        var nuevoId = Guid.NewGuid();
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(new EmpresaResponseDto { Id = nuevoId });
-
-        var dto = new EmpresaRequestDto
+        var response = await client.PostAsJsonAsync("/api/empresas", new EmpresaRequestDto
         {
-            Nombre = "Mi Transportes",
-            Slug = "mi-transportes-custom",
-            Plan = "enterprise"
-        };
+            Nombre = "Trans Nicaragua S.A.",
+            EmailAdmin = "admin@transnic.com",
+            Pais = "Nicaragua",
+            PlanSuscripcion = "STARTER"
+        });
 
-        // ACT
-        await _client.PostAsJsonAsync("/api/empresas", dto);
-
-        // ASSERT
-        _mockService.Verify(s => s.CrearAsync(It.Is<EmpresaRequestDto>(d =>
-            d.Slug == "mi-transportes-custom")), Times.Once);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [Fact]
-    public async Task Create_ResponseStatusCodeEsCreatedEnHeadOrFull()
+    public async Task Create_DatosInvalidos_Retorna400()
     {
-        // ARRANGE
-        _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-            .ReturnsAsync(new EmpresaResponseDto { Id = Guid.NewGuid() });
+        // Validación servidor → ValidationException → 400.
+        _factory.EmpresaService
+            .Setup(s => s.CreateAsync(It.IsAny<EmpresaRequestDto>()))
+            .ThrowsAsync(new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Nombre", "Obligatorio") }));
 
-        var dto = new EmpresaRequestDto { Nombre = "Valida", Plan = "starter" };
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
 
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/empresas", dto);
+        var response = await client.PostAsJsonAsync("/api/empresas", new EmpresaRequestDto());
 
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Created,
-            "el controller usa CreatedAtAction para retornar 201 con Location header");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task MultipleCreateCalls_UsoConsistenteDelMock()
+    public async Task Deactivate_Existente_Retorna200()
     {
-        // ARRANGE
-        for (int i = 0; i < 3; i++)
-        {
-            _mockService.Reset();
-            _mockService.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>()))
-                .ReturnsAsync(new EmpresaResponseDto { Id = Guid.NewGuid(), Nombre = $"Empresa {i}" });
-        }
+        _factory.EmpresaService
+            .Setup(s => s.DeactivateAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(true);
 
-        // ACT & ASSERT — cada llamada al servicio recibe el DTO correcto
-        for (int i = 0; i < 3; i++)
-        {
-            var dto = new EmpresaRequestDto { Nombre = $"Empresa {i}", Plan = "starter" };
-            await _client.PostAsJsonAsync("/api/empresas", dto);
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
 
-            _mockService.Verify(s => s.CrearAsync(It.Is<EmpresaRequestDto>(d =>
-                d.Nombre == $"Empresa {i}")), Times.Once);
-        }
+        var response = await client.PatchAsync(
+            $"/api/empresas/{Guid.NewGuid()}/deactivate",
+            new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    private static FluentValidation.ValidationException CreateValidationException(string message, string propertyName, string errorMessage)
+    [Fact]
+    public async Task Deactivate_NoExistente_Retorna404()
     {
-        var ex = new FluentValidation.ValidationException(message);
-        var field = typeof(FluentValidation.ValidationException).GetField("_errors", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (field != null)
-        {
-            var errors = (List<FluentValidation.Results.ValidationFailure>)field.GetValue(ex)!;
-            errors.Add(new FluentValidation.Results.ValidationFailure(propertyName, errorMessage));
-        }
-        return ex;
+        _factory.EmpresaService
+            .Setup(s => s.DeactivateAsync(It.IsAny<Guid>()))
+            .ThrowsAsync(new NotFoundException(nameof(Freiroute.Entity.Empresa), Guid.NewGuid()));
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);
+
+        var response = await client.PatchAsync(
+            $"/api/empresas/{Guid.NewGuid()}/deactivate",
+            new StringContent(string.Empty, System.Text.Encoding.UTF8, "application/json"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

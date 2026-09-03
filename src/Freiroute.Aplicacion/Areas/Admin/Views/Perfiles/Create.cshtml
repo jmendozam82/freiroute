@@ -1,0 +1,101 @@
+@model PerfilRequestDto
+@{
+    ViewData["Title"]      = "Nuevo Perfil";
+    ViewData["ActiveMenu"] = "perfiles";
+}
+
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index">Perfiles</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Nuevo</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Nuevo Perfil</h1>
+        <p class="fr-page-subtitle">Crea un perfil personalizado para tu tenant</p>
+    </div>
+</div>
+
+<div class="fr-card" style="max-width:560px">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Datos del Perfil</span>
+    </div>
+    <div class="fr-card-body">
+        <form id="frForm" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                <input asp-for="Nombre" class="fr-form-control"
+                       placeholder="Nombre del perfil"
+                       data-val="true"
+                       data-val-required="El nombre es obligatorio"
+                       data-val-maxlength-max="100"
+                       data-val-maxlength="No puede exceder 100 caracteres" />
+                <span asp-validation-for="Nombre" class="fr-form-error"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="TipoPerfil" class="fr-form-label fr-form-required"></label>
+                <select asp-for="TipoPerfil" class="fr-form-control"
+                        data-val="true" data-val-required="Seleccione un tipo de perfil">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="DISPATCHER">Dispatcher</option>
+                    <option value="OPERADOR">Operador</option>
+                    <option value="CONDUCTOR">Conductor</option>
+                    <option value="CLIENTE">Cliente</option>
+                    <option value="CUSTOM">Personalizado</option>
+                </select>
+                <span asp-validation-for="TipoPerfil" class="fr-form-error"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Descripcion" class="fr-form-label"></label>
+                <textarea asp-for="Descripcion" class="fr-form-control" rows="3"
+                          placeholder="Descripción del perfil y sus responsabilidades"></textarea>
+                <span asp-validation-for="Descripcion" class="fr-form-error"></span>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i>
+                    Crear Perfil
+                </button>
+                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frForm');
+
+    $('#frForm').on('submit', async function (e) {
+        e.preventDefault();
+        if (!$(this).valid()) {
+            FrToast.warning('Por favor corrija los errores del formulario');
+            return;
+        }
+
+        const btn = document.getElementById('btnGuardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        const data = Object.fromEntries(new FormData(this));
+
+        const resp = await FrApi.post('/api/perfiles', data);
+
+        FrApi.handleResponse(resp, () => {
+            setTimeout(() => window.location.href = '@Url.Action("Index", "Perfiles", new { area = "Admin" })', 800);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i> Crear Perfil';
+    });
+</script>
+}

@@ -1,0 +1,112 @@
+@model LoginRequestDto
+@{
+    ViewData["Title"] = "Iniciar sesión";
+    ViewData["HideSidebar"] = true;
+}
+
+<div class="fr-auth-wrapper">
+    <div class="fr-auth-card">
+        <!-- Logo -->
+        <div class="fr-auth-logo">
+            <div class="fr-logo-mark">FR</div>
+            <span class="fr-logo-text" style="color:var(--fr-navy-primary);font-size:20px">Freiroute TMS</span>
+        </div>
+
+        <h1 class="fr-auth-title">Bienvenido</h1>
+        <p class="fr-auth-subtitle">Ingresa tus credenciales para acceder a la plataforma</p>
+
+        <form id="loginForm" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="mb-3">
+                <label asp-for="Email" class="fr-form-label fr-form-required"></label>
+                <input asp-for="Email" type="email" class="fr-form-control"
+                       placeholder="admin@freiroute.com"
+                       autocomplete="username"
+                       data-val="true"
+                       data-val-required="El email es obligatorio"
+                       data-val-email="Ingrese un email válido" />
+                <span asp-validation-for="Email" class="fr-form-error"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="fr-form-label fr-form-required"></label>
+                <input asp-for="Password" type="password" class="fr-form-control"
+                       placeholder="••••••••"
+                       autocomplete="current-password"
+                       data-val="true"
+                       data-val-required="La contraseña es obligatoria" />
+                <span asp-validation-for="Password" class="fr-form-error"></span>
+            </div>
+
+            <div class="d-flex justify-content-end mb-3">
+                <a asp-area="Auth" asp-controller="Account" asp-action="ForgotPassword" style="font-size:12px;color:var(--fr-action-blue);text-decoration:none">
+                    ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+
+            <button type="submit" class="fr-btn fr-btn-primary w-100 justify-content-center" id="btnLogin" style="padding:11px 16px">
+                <i class="ti ti-login"></i>
+                Iniciar sesión
+            </button>
+        </form>
+
+        <!-- Badges demo -->
+        <div class="mt-4 p-3" style="background:var(--fr-surface-bg);border:1px solid var(--fr-border);border-radius:8px">
+            <div style="font-size:11px;font-weight:600;color:var(--fr-text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Cuenta demo</div>
+            <div style="font-size:12px;color:var(--fr-text-secondary)">
+                <code class="fr-id-code">admin@freiroute.com</code> / <code class="fr-id-code">Admin123!</code>
+            </div>
+        </div>
+
+        <div style="text-align:center;font-size:11px;color:var(--fr-text-muted);margin-top:24px">
+            &copy; 2026 Freiroute TMS — Todos los derechos reservados
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#loginForm');
+
+    $('#loginForm').on('submit', async function (e) {
+        e.preventDefault();
+        if (!$(this).valid()) {
+            FrToast.warning('Por favor corrija los errores del formulario');
+            return;
+        }
+
+        const btn = document.getElementById('btnLogin');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Ingresando...';
+
+        const data = {
+            email: $('#Email').val(),
+            password: $('#Password').val()
+        };
+
+        try {
+            const resp = await FrApi.post('@Url.Action("Login", "Account", new { area = "Auth" })', data);
+
+            if (resp.success) {
+                FrToast.success(resp.message || 'Inicio de sesión exitoso');
+                setTimeout(() => {
+                    const tipo = resp.data?.usuario?.tipoUsuario;
+                    window.location.href = tipo === 'SUPER_ADMIN' ? '/Admin' : '/';
+                }, 800);
+            } else {
+                if (resp.errors?.length) {
+                    resp.errors.forEach(err => FrToast.error(err));
+                } else {
+                    FrToast.error(resp.message || 'Credenciales inválidas');
+                }
+            }
+        } catch (err) {
+            FrToast.error('No se pudo conectar con el servidor');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-login"></i> Iniciar sesión';
+    });
+</script>
+}

@@ -1,7 +1,7 @@
-# Skill: @QA (Quality Assurance freiroute TMS)
+# Skill: @QA (Ingeniero de Calidad Freiroute TMS)
 
 ## Rol
-**@QA** es el garante de calidad del sistema Freiroute TMS. Ejecuta y mantiene tests unitarios (BLL ≥80%) e integración (API ≥60%), valida criterios de aceptación de cada HU, y verifica que la cobertura cumpla los umbrales obligatorios antes de cada merge a `main`. Opera bajo filosofía TDD: el test que falla ES la especificación ejecutable. Actúa después de @BackendDev y aprueba o rechaza para @PM.
+**@QA** es responsable de garantizar la calidad del sistema mediante tests unitarios de la BLL, tests de integración de la API, y la validación de criterios de aceptación de cada Historia de Usuario. Actúa después de @BackendDev y antes de que @PM apruebe el PR.
 
 ---
 
@@ -10,893 +10,739 @@
 ### 1. Lectura Obligatoria al Inicio de Sesión
 ```
 1. Leer AGENTS.md completo
-2. Leer spec.md del módulo (docs/specs/HU-XXX-nombre.md)
-3. Revisar código implementado por @BackendDev
-4. Verificar cobertura actual con `dotnet test --collect:"XPlat Code Coverage"`
-5. Revisar PR pendiente y comentarios previos de QA
+2. Leer spec.md del módulo — verificar criterios de aceptación
+3. Revisar la implementación de @BackendDev (BLL Service + API Controller)
+4. Ejecutar dotnet build — debe estar sin warnings antes de escribir tests
 ```
 
-### 2. Posición en el Flujo de HU
-```
-@PM planifica Sprint
-    → @Arquitecto define Entity + DTOs + Interfaces + ADR
-    → @IngenieroDatos crea migración SQL + RLS
-    → @BackendDev implementa BLL Service + FluentValidator + API Controller
-    → @QA ← EJECUTA TESTS + VALIDA COBERTURA + CRITERIOS DE ACEPTACIÓN
-    → @FrontendDev crea Vistas Razor con Design System Freiroute
-    → @PM revisa checklist completo + aprueba PR
-```
+---
 
-### 3. Filosofía TDD — Reglas No Negociables
+## Estructura de Tests
 
-#### Rule #1: El Test Primero
 ```
-TDD Workflow obligatorio para cada método nuevo:
-┌─────────────────────────────────────────────────────┐
-│ 1. Escribir test que FALLA (Rojo)                  │
-│ 2. Implementar lógica mínima para pasar el test     │
-│ 3. Refactorizar manteniendo tests verdes (Verde)    │
-│ 4. Repetir                                          │
-└─────────────────────────────────────────────────────┘
+tests/
+├── Freiroute.BLL.Tests/
+│   ├── Services/
+│   │   ├── [Modulo]ServiceTests.cs
+│   │   └── EmbarqueServiceTests.cs
+│   └── Validators/
+│       ├── [Modulo]ValidatorTests.cs
+│       └── EmbarqueValidatorTests.cs
+└── Freiroute.API.Tests/
+    ├── Controllers/
+    │   └── [Modulo]ControllerTests.cs
+    ├── Helpers/
+    │   └── JwtTestHelper.cs
+    └── TestWebApplicationFactory.cs
 ```
 
-#### Rule #2: Naming Convention Estricto
+### Paquetes NuGet Requeridos
+
+```xml
+<!-- Freiroute.BLL.Tests.csproj -->
+<PackageReference Include="xunit" Version="2.8.*" />
+<PackageReference Include="xunit.runner.visualstudio" Version="2.8.*" />
+<PackageReference Include="Moq" Version="4.20.*" />
+<PackageReference Include="FluentAssertions" Version="6.12.*" />
+<PackageReference Include="coverlet.collector" Version="6.0.*" />
+
+<!-- Freiroute.API.Tests.csproj -->
+<PackageReference Include="xunit" Version="2.8.*" />
+<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.*" />
+<PackageReference Include="FluentAssertions" Version="6.12.*" />
+<PackageReference Include="Moq" Version="4.20.*" />
 ```
-[Método]_[Escenario]_[ResultadoEsperado]
 
-Ejemplos correctos:
-  ✅ GetAllAsync_CuandoExistenRegistros_RetornaLista
-  ✅ CreateAsync_CuandoDtoInvalido_LanzaValidationException
-  ✅ DeactivateAsync_CuandoRegistroNoExiste_RetornaFalse
-  ✅ UpdateAsync_CuandoEmpresaIdDiferente_NoActualiza
+---
 
-Ejemplos incorrectos (NUNCA):
-  ❌ Test1
-  ❌ prueba_crear
-  ❌ getall
-  ❌ test_validacion
-```
+## Tests Unitarios BLL
 
-#### Rule #3: Patrón AAA en Cada Test
+### Patrón Base AAA (Arrange–Act–Assert)
+
 ```csharp
-// ── Arrange ──────────────────────────────────────────────────────────
-// Preparar datos, mocks, fixtures. Todo lo necesario ANTES de la acción.
+// tests/Freiroute.BLL.Tests/Services/[Modulo]ServiceTests.cs
+namespace Freiroute.BLL.Tests.Services;
 
-// ── Act ──────────────────────────────────────────────────────────────
-// UNA sola llamada al método bajo prueba. Nada más.
-
-// ── Assert ───────────────────────────────────────────────────────────
-// Verificar resultados con FluentAssertions. Nada de if/else manual.
-```
-
-### 4. Unit Tests — BLL Layer (≥ 80% Cobertura)
-
-**Proyecto:** `tests/Freiroute.BLL.Tests/`  
-**Herramientas:** xUnit + Moq + FluentAssertions  
-**Cobertura mínima:** ≥ 80%
-
-#### Estructura completa del Test Class
-```csharp
-namespace Freiroute.BLL.Tests.OrdenTests;
-
-using Freiroute.BLL.Services;
-using Freiroute.BLL.Validators;
-using Freiroute.DAL.Interfaces;
-using Freiroute.DTO.Orden;
-using Freiroute.Entity;
-using Microsoft.Extensions.Logging;
-using Moq;
-using FluentAssertions;
-using Xunit;
-
-/// <summary>
-/// Tests unitarios para OrdenService — cubre reglas de negocio
-/// de gestión de órdenes de transporte (EP-04).
-/// </summary>
-public class OrdenServiceTests
+public class [Modulo]ServiceTests
 {
-    private readonly Mock<IOrdenRepository> _repositoryMock;
-    private readonly Mock<ILogger<OrdenService>> _loggerMock;
-    private readonly OrdenService _service;
+    // ── Mocks y sujeto bajo prueba ────────────────────────────────
+    private readonly Mock<I[Modulo]Repository> _repoMock = new();
+    private readonly Mock<ILogger<[Modulo]Service>> _loggerMock = new();
+    private readonly [Modulo]Validator _validator = new();
+    private readonly [Modulo]Service _sut;
 
-    // Constructor shared entre todos los tests del mismo clase
-    public OrdenServiceTests()
+    public [Modulo]ServiceTests()
     {
-        _repositoryMock = new Mock<IOrdenRepository>();
-        _loggerMock = new Mock<ILogger<OrdenService>>();
-        _service = new OrdenService(_repositoryMock.Object, _loggerMock.Object);
+        _sut = new [Modulo]Service(_repoMock.Object, _validator, _loggerMock.Object);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // GETALL ASYNC — Casos positivos y negativos
-    // ═══════════════════════════════════════════════════════════════════
-
+    // ── HAPPY PATH: GetAllAsync ───────────────────────────────────
     [Fact]
-    public async Task GetAllAsync_CuandoExistenRegistros_RetornaListaCompleta()
+    public async Task GetAllAsync_CuandoExistenRegistros_RetornaListaMapeada()
     {
-        // ARRANGE
+        // Arrange
         var empresaId = Guid.NewGuid();
-        var ordenesEsperadas = new List<Orden>
+        var entidades = new List<[Modulo]>
         {
-            new()
-            {
-                Id = Guid.NewGuid(),
-                EmpresaId = empresaId,
-                NumeroOrden = "ORD-2026-001",
-                Estado = OrdenStatus.Confirmed,
-                Activo = true,
-                FechaCreacion = DateTime.UtcNow
-            },
-            new()
-            {
-                Id = Guid.NewGuid(),
-                EmpresaId = empresaId,
-                NumeroOrden = "ORD-2026-002",
-                Estado = OrdenStatus.Draft,
-                Activo = true,
-                FechaCreacion = DateTime.UtcNow
-            }
+            new() { Id = Guid.NewGuid(), EmpresaId = empresaId, Nombre = "Carrier A", Activo = true },
+            new() { Id = Guid.NewGuid(), EmpresaId = empresaId, Nombre = "Carrier B", Activo = true }
         };
+        _repoMock.Setup(r => r.GetAllAsync(empresaId)).ReturnsAsync(entidades);
 
-        _repositoryMock
-            .Setup(r => r.GetAllAsync(empresaId))
-            .ReturnsAsync(ordenesEsperadas);
+        // Act
+        var result = await _sut.GetAllAsync(empresaId);
 
-        // ACT
-        var resultado = await _service.GetAllAsync(empresaId);
-
-        // ASSERT
-        resultado.Should().NotBeNull();
-        resultado.Should().HaveCount(2);
-        resultado.First().NumeroOrden.Should().Be("ORD-2026-001");
-        _repositoryMock.Verify(r => r.GetAllAsync(empresaId), Times.Once);
+        // Assert
+        result.Should().NotBeNull().And.HaveCount(2);
+        result.First().Nombre.Should().Be("Carrier A");
+        _repoMock.Verify(r => r.GetAllAsync(empresaId), Times.Once);
     }
 
     [Fact]
-    public async Task GetAllAsync_CuandoNoHayRegistros_RetornaListaVacia()
+    public async Task GetAllAsync_CuandoNoExistenRegistros_RetornaListaVacia()
     {
-        // ARRANGE
+        // Arrange
         var empresaId = Guid.NewGuid();
-        _repositoryMock
-            .Setup(r => r.GetAllAsync(empresaId))
-            .ReturnsAsync(new List<Orden>());
+        _repoMock.Setup(r => r.GetAllAsync(empresaId)).ReturnsAsync([]);
 
-        // ACT
-        var resultado = await _service.GetAllAsync(empresaId);
+        // Act
+        var result = await _sut.GetAllAsync(empresaId);
 
-        // ASSERT
-        resultado.Should().BeEmpty();
+        // Assert
+        result.Should().NotBeNull().And.BeEmpty();
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // GETBYID ASYNC
-    // ═══════════════════════════════════════════════════════════════════
-
+    // ── HAPPY PATH: GetByIdAsync ──────────────────────────────────
     [Fact]
-    public async Task GetByIdAsync_CuandoIdValido_RetornaOrden()
+    public async Task GetByIdAsync_CuandoExiste_RetornaDto()
     {
-        // ARRANGE
         var id = Guid.NewGuid();
         var empresaId = Guid.NewGuid();
-        var orden = new Orden
-        {
-            Id = id,
-            EmpresaId = empresaId,
-            NumeroOrden = "ORD-2026-001",
-            Activo = true
-        };
-        _repositoryMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(orden);
+        var entidad = new [Modulo] { Id = id, EmpresaId = empresaId, Nombre = "Test", Activo = true };
 
-        // ACT
-        var resultado = await _service.GetByIdAsync(id, empresaId);
+        _repoMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(entidad);
 
-        // ASSERT
-        resultado.Should().NotBeNull();
-        resultado!.NumeroOrden.Should().Be("ORD-2026-001");
+        var result = await _sut.GetByIdAsync(id, empresaId);
+
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(id);
+        result.Nombre.Should().Be("Test");
     }
 
     [Fact]
-    public async Task GetByIdAsync_CuandoIdInexistente_RetornaNull()
+    public async Task GetByIdAsync_CuandoNoExiste_RetornaNull()
     {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var empresaId = Guid.NewGuid();
-        _repositoryMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync((Orden?)null);
+        _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+                 .ReturnsAsync(([ Modulo]?)null);
 
-        // ACT
-        var resultado = await _service.GetByIdAsync(id, empresaId);
+        var result = await _sut.GetByIdAsync(Guid.NewGuid(), Guid.NewGuid());
 
-        // ASSERT
-        resultado.Should().BeNull();
+        result.Should().BeNull();
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // CREATE ASYNC — Validaciones y reglas de negocio
-    // ═══════════════════════════════════════════════════════════════════
-
+    // ── HAPPY PATH: CreateAsync ───────────────────────────────────
     [Fact]
-    public async Task CreateAsync_CuandoNombreEsNuloOVacio_LanzaValidationException()
+    public async Task CreateAsync_CuandoDtoValido_RetornaDtoCreado()
     {
-        // ARRANGE
-        var dto = new OrdenRequestDto { NombreCliente = "", MontoFlete = 150.00m };
         var empresaId = Guid.NewGuid();
+        var nuevoId   = Guid.NewGuid();
+        var dto = new [Modulo]RequestDto { Nombre = "Nuevo Registro" };
 
-        // ACT & ASSERT
-        var act = async () => await _service.CreateAsync(dto, empresaId);
+        _repoMock.Setup(r => r.CreateAsync(It.IsAny<[Modulo]>())).ReturnsAsync(nuevoId);
+        _repoMock.Setup(r => r.GetByIdAsync(nuevoId, empresaId))
+                 .ReturnsAsync(new [Modulo] { Id = nuevoId, EmpresaId = empresaId, Nombre = "Nuevo Registro", Activo = true });
+
+        var result = await _sut.CreateAsync(dto, empresaId);
+
+        result.Should().NotBeNull();
+        result.Id.Should().Be(nuevoId);
+        result.Nombre.Should().Be("Nuevo Registro");
+        _repoMock.Verify(r => r.CreateAsync(It.Is<[Modulo]>(e =>
+            e.EmpresaId == empresaId && e.Nombre == "Nuevo Registro")), Times.Once);
+    }
+
+    // ── ERROR PATH: CreateAsync con datos inválidos ───────────────
+    [Fact]
+    public async Task CreateAsync_CuandoNombreVacio_LanzaValidationException()
+    {
+        var dto = new [Modulo]RequestDto { Nombre = "" };
+
+        var act = async () => await _sut.CreateAsync(dto, Guid.NewGuid());
+
         await act.Should().ThrowAsync<ValidationException>()
             .WithMessage("*nombre*");
+        _repoMock.Verify(r => r.CreateAsync(It.IsAny<[Modulo]>()), Times.Never);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(-999)]
-    public async Task CreateAsync_CuandoMontoNegativo_OIgualACero_LanzaValidationException(decimal monto)
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Transportes Express",
-            MontoFlete = monto
-        };
-        var empresaId = Guid.NewGuid();
-
-        // ACT & ASSERT
-        var act = async () => await _service.CreateAsync(dto, empresaId);
-        await act.Should().ThrowAsync<ValidationException>();
-    }
-
+    // ── HAPPY PATH: UpdateAsync ───────────────────────────────────
     [Fact]
-    public async Task CreateAsync_CuandoEstadoInicialNoEsDraft_LanzaBusinessException()
+    public async Task UpdateAsync_CuandoExisteYDtoValido_RetornaActualizado()
     {
-        // ARRANGE
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Logística Nacional",
-            Estado = OrdenStatus.InTransit, // Error: solo DRAFT permitido al crear
-            MontoFlete = 500.00m
-        };
-        var empresaId = Guid.NewGuid();
-
-        // ACT & ASSERT — la regla de negocio no permite crear en otro estado que no sea Draft
-        var act = async () => await _service.CreateAsync(dto, empresaId);
-        await act.Should().ThrowAsync<InvalidOperationException>();
-    }
-
-    // Multi-tenant isolation test: empresa_id siempre viene del JWT
-    [Fact]
-    public async Task CreateAsync_EmpresaIdSiempreDelJWT_NoDelDTO()
-    {
-        // ARRANGE
-        var empresaIdFromJwt = Guid.NewGuid();
-        var dto = new OrdenRequestDto { NombreCliente = "Test" };
-        _repositoryMock.Setup(r => r.CreateAsync(It.IsAny<Orden>()))
-                       .ReturnsAsync(Guid.NewGuid());
-
-        // ACT
-        var resultado = await _service.CreateAsync(dto, empresaIdFromJwt);
-
-        // ASSERT — verificar que se llamó al repositorio con el empresaId correcto
-        _repositoryMock.Verify(r => r.CreateAsync(
-            It.Is<Orden>(o => o.EmpresaId == empresaIdFromJwt)), Times.Once);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // UPDATE ASYNC
-    // ═══════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public async Task UpdateAsync_CuandoDtoValido_YEntidadExiste_RetornaActualizado()
-    {
-        // ARRANGE
         var id = Guid.NewGuid();
         var empresaId = Guid.NewGuid();
-        var ordenExistente = new Orden
-        {
-            Id = id, EmpresaId = empresaId,
-            NumeroOrden = "ORD-2026-001", Estado = OrdenStatus.Draft, Activo = true
-        };
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Nuevo Cliente", MontoFlete = 300.00m
-        };
-        _repositoryMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(ordenExistente);
-        _repositoryMock.Setup(r => r.UpdateAsync(It.IsAny<Orden>())).ReturnsAsync(true);
-        _repositoryMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(ordenExistente);
+        var existente = new [Modulo] { Id = id, EmpresaId = empresaId, Nombre = "Original", Activo = true };
+        var dto = new [Modulo]RequestDto { Nombre = "Actualizado" };
 
-        // ACT
-        var resultado = await _service.UpdateAsync(id, dto, empresaId);
+        _repoMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(existente);
+        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<[Modulo]>())).ReturnsAsync(true);
 
-        // ASSERT
-        resultado.Should().NotBeNull();
-        resultado.NombreCliente.Should().Be("Nuevo Cliente");
-        _repositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Orden>()), Times.Once);
+        var result = await _sut.UpdateAsync(id, dto, empresaId);
+
+        result.Should().NotBeNull();
+        _repoMock.Verify(r => r.UpdateAsync(It.Is<[Modulo]>(e => e.Nombre == "Actualizado")), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateAsync_CuandoEntidadNoExiste_LanzaKeyNotFoundException()
+    public async Task UpdateAsync_CuandoNoExiste_LanzaKeyNotFoundException()
     {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var empresaId = Guid.NewGuid();
-        _repositoryMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync((Orden?)null);
-        var dto = new OrdenRequestDto { NombreCliente = "Test" };
+        _repoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+                 .ReturnsAsync(([Modulo]?)null);
 
-        // ACT & ASSERT
-        var act = async () => await _service.UpdateAsync(id, dto, empresaId);
+        var act = async () => await _sut.UpdateAsync(Guid.NewGuid(), new [Modulo]RequestDto { Nombre = "X" }, Guid.NewGuid());
+
         await act.Should().ThrowAsync<KeyNotFoundException>();
+        _repoMock.Verify(r => r.UpdateAsync(It.IsAny<[Modulo]>()), Times.Never);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // DEACTIVATE ASYNC (Soft Delete)
-    // ═══════════════════════════════════════════════════════════════════
-
+    // ── HAPPY PATH: DeactivateAsync ───────────────────────────────
     [Fact]
-    public async Task DeactivateAsync_CuandoRegistroExiste_RetornaTrue()
+    public async Task DeactivateAsync_CuandoExiste_RetornaTrue()
     {
-        // ARRANGE
         var id = Guid.NewGuid();
         var empresaId = Guid.NewGuid();
-        _repositoryMock.Setup(r => r.DeactivateAsync(id, empresaId)).ReturnsAsync(true);
+        _repoMock.Setup(r => r.DeactivateAsync(id, empresaId)).ReturnsAsync(true);
 
-        // ACT
-        var resultado = await _service.DeactivateAsync(id, empresaId);
+        var result = await _sut.DeactivateAsync(id, empresaId);
 
-        // ASSERT
-        resultado.Should().BeTrue();
-        _repositoryMock.Verify(r => r.DeactivateAsync(id, empresaId), Times.Once);
+        result.Should().BeTrue();
+        _repoMock.Verify(r => r.DeactivateAsync(id, empresaId), Times.Once);
     }
 
     [Fact]
-    public async Task DeactivateAsync_CuandoRegistroInexistente_RetornaFalse()
+    public async Task DeactivateAsync_CuandoNoExiste_RetornaFalse()
     {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var empresaId = Guid.NewGuid();
-        _repositoryMock.Setup(r => r.DeactivateAsync(id, empresaId)).ReturnsAsync(false);
+        _repoMock.Setup(r => r.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+                 .ReturnsAsync(false);
 
-        // ACT
-        var resultado = await _service.DeactivateAsync(id, empresaId);
+        var result = await _sut.DeactivateAsync(Guid.NewGuid(), Guid.NewGuid());
 
-        // ASSERT
-        resultado.Should().BeFalse();
-    }
-
-    // Nunca se llama DeleteAsync — ver ADR-005
-    [Fact]
-    public async Task DeactivateAsync_NuncaLlamaDelete_UsaSoloDeactivate()
-    {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var empresaId = Guid.NewGuid();
-        _repositoryMock.Setup(r => r.DeactivateAsync(id, empresaId)).ReturnsAsync(true);
-
-        // ACT
-        await _service.DeactivateAsync(id, empresaId);
-
-        // ASSERT
-        _repositoryMock.Verify(r => r.DeleteAsync(id), Times.Never);
+        result.Should().BeFalse();
     }
 }
 ```
 
-### 5. Validator Tests — FluentValidators
+---
 
-**Proyecto:** `tests/Freiroute.BLL.Tests/Validators/`
+## Tests de Validadores
 
-#### Validator Test Completo
 ```csharp
-namespace Freiroute.BLL.Tests.OrdenTests.Validators;
+// tests/Freiroute.BLL.Tests/Validators/[Modulo]ValidatorTests.cs
+namespace Freiroute.BLL.Tests.Validators;
 
-using Freiroute.BLL.Validators;
-using Freiroute.DTO.Orden;
-using FluentAssertions;
-using Xunit;
-
-public class OrdenValidatorTests
+public class [Modulo]ValidatorTests
 {
-    private readonly OrdenValidator _validator = new();
+    private readonly [Modulo]Validator _validator = new();
 
     [Fact]
-    public void Validate_CuandoTodosLosCamposValidos_NoHayErrores()
+    public void Validate_CuandoTodosLosCamposValidos_NoTieneErrores()
     {
-        // ARRANGE
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Transportes Express del Sur S.A.",
-            MontoFlete = 1500.50m,
-            PesoTotal = 2500.00m,
-            Estado = OrdenStatus.Draft
-        };
+        var dto = new [Modulo]RequestDto { Nombre = "Registro válido" };
 
-        // ACT
-        var resultado = _validator.Validate(dto);
+        var result = _validator.Validate(dto);
 
-        // ASSERT
-        resultado.IsValid.Should().BeTrue();
-        resultado.Errors.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Validate_CuandoNombreVacio_TieneError()
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto { NombreCliente = "" };
-
-        // ACT
-        var resultado = _validator.Validate(dto);
-
-        // ASSERT
-        resultado.IsValid.Should().BeFalse();
-        resultado.Errors.Should().Contain(e => e.PropertyName == "NombreCliente");
-    }
-
-    [Fact]
-    public void Validate_CuandoNombreExcedeMaximo_TieneError()
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto { NombreCliente = new string('A', 201) };
-
-        // ACT
-        var resultado = _validator.Validate(dto);
-
-        // ASSERT
-        resultado.IsValid.Should().BeFalse();
-        resultado.Errors.Should().Contain(e => e.PropertyName == "NombreCliente");
-    }
-
-    [Fact]
-    public void Validate_CuandoMontoNegativo_TieneError()
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto { MontoFlete = -500m };
-
-        // ACT
-        var resultado = _validator.Validate(dto);
-
-        // ASSERT
-        resultado.IsValid.Should().BeFalse();
-        resultado.Errors.Should().Contain(e => e.PropertyName == "MontoFlete");
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Theory]
-    [InlineData(null)]
     [InlineData("")]
-    [InlineData("INVALIDO")]
-    [InlineData("PICKUP_SCHEDULED")]
-    public void Validate_CuandoEstadoInvalido_TieneError(string? estado)
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Validate_CuandoNombreVacioONulo_TieneError(string? nombre)
     {
-        // ARRANGE
-        var dto = new OrdenRequestDto { Estado = estado ?? "" };
+        var dto = new [Modulo]RequestDto { Nombre = nombre! };
 
-        // ACT
-        var resultado = _validator.Validate(dto);
+        var result = _validator.Validate(dto);
 
-        // ASSERT
-        resultado.IsValid.Should().BeFalse();
-        resultado.Errors.Should().Contain(e => e.PropertyName == "Estado");
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Nombre");
     }
 
-    // Theory para múltiples valores válidos de estado
-    [Theory]
-    [InlineData(OrdenStatus.Draft)]
-    [InlineData(OrdenStatus.Confirmed)]
-    [InlineData(OrdenStatus.Assigned)]
-    [InlineData(OrdenStatus.InTransit)]
-    [InlineData(OrdenStatus.Delivered)]
-    public void Validate_CuandoEstadoValido_NoHayError(string estado)
+    [Fact]
+    public void Validate_CuandoNombreExcede200Caracteres_TieneError()
     {
-        // ARRANGE
-        var dto = new OrdenRequestDto
+        var dto = new [Modulo]RequestDto { Nombre = new string('A', 201) };
+
+        var result = _validator.Validate(dto);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e =>
+            e.PropertyName == "Nombre" && e.ErrorMessage.Contains("200"));
+    }
+
+    // ── Tests específicos de dominio TMS ─────────────────────────
+    [Theory]
+    [InlineData("FTL")]
+    [InlineData("LTL")]
+    [InlineData("AEREO")]
+    [InlineData("MARITIMO")]
+    public void Validate_CuandoModoTransporteValido_NoTieneError(string modo)
+    {
+        var dto = new EmbarqueRequestDto { /* campos base */ ModoTransporte = modo };
+
+        var result = _validator.Validate(dto);
+
+        result.Errors.Should().NotContain(e => e.PropertyName == "ModoTransporte");
+    }
+
+    [Fact]
+    public void Validate_CuandoFechaEntregaAnteriorAPickup_TieneError()
+    {
+        var dto = new EmbarqueRequestDto
         {
-            NombreCliente = "Valid Test",
-            MontoFlete = 100m,
-            Estado = estado
+            FechaPickupPlanificada  = DateTime.Today.AddDays(3),
+            FechaEntregaRequerida   = DateTime.Today.AddDays(1) // Antes del pickup
         };
 
-        // ACT
-        var resultado = _validator.Validate(dto);
+        var result = _validator.Validate(dto);
 
-        // ASSERT
-        resultado.IsValid.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.PropertyName == "FechaEntregaRequerida");
     }
 }
 ```
 
-### 6. Integration Tests — API Layer (≥ 60% Cobertura)
+---
 
-**Proyecto:** `tests/Freiroute.API.Tests/`  
-**Herramientas:** xUnit + WebApplicationFactory + FluentAssertions  
-**Cobertura mínima:** ≥ 60%
+## Tests de Integración API
 
-#### Test WebApplicationFactory
+### TestWebApplicationFactory
+
 ```csharp
-// ── tests/Freiroute.API.Tests/TestWebApplicationFactory.cs ─────────────
+// tests/Freiroute.API.Tests/TestWebApplicationFactory.cs
 namespace Freiroute.API.Tests;
 
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
+    public Mock<I[Modulo]Service> [Modulo]ServiceMock { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
         {
-            // Reemplazar services reales con mocks para aislamiento total
-            var ordenDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IOrdenService));
-            if (ordenDescriptor != null)
-                services.Remove(ordenDescriptor);
+            // Reemplazar el servicio real con el mock
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(I[Modulo]Service));
+            if (descriptor != null) services.Remove(descriptor);
 
-            services.AddScoped<IOrdenService>(_ =>
-            {
-                var mock = new Mock<IOrdenService>();
-                mock.Setup(s => s.GetAllAsync(It.IsAny<Guid>()))
-                    .ReturnsAsync(new List<OrdenResponseDto>
-                    {
-                        new() { Id = Guid.NewGuid(), NumeroOrden = "ORD-TEST-001", NombreCliente = "Test Corp" }
-                    });
-                return mock.Object;
-            });
+            services.AddScoped<I[Modulo]Service>(_ => [Modulo]ServiceMock.Object);
         });
+        builder.UseEnvironment("Testing");
     }
 }
 ```
 
-#### Controller Integration Tests
-```csharp
-// ── tests/Freiroute.API.Tests/OrdenControllerTests.cs ─────────────────
-namespace Freiroute.API.Tests;
-
-using Freiroute.DTO.Orden;
-using Freiroute.Utility.ApiResponse;
-using Microsoft.AspNetCore.Mvc.Testing;
-using FluentAssertions;
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using Xunit;
-
-public class OrdenControllerTests : IClassFixture<TestWebApplicationFactory>
-{
-    private readonly HttpClient _client;
-    private readonly string _validJwt;
-
-    public OrdenControllerTests(TestWebApplicationFactory factory)
-    {
-        _client = factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-
-        _validJwt = JwtTestHelper.GenerateTestToken(
-            userId: Guid.NewGuid(),
-            empresaId: Guid.NewGuid(),
-            perfilId: Guid.NewGuid(),
-            permisos: new[] { "ordenes:read", "ordenes:create", "ordenes:update" });
-
-        _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _validJwt);
-    }
-
-    // ── GET /api/ordenes ───────────────────────────────────────────────
-
-    [Fact]
-    public async Task GetAll_CuandoUsuarioAutenticado_Retorna200ConLista()
-    {
-        // ACT
-        var response = await _client.GetAsync("/api/ordenes");
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<List<OrdenResponseDto>>>();
-        content.Should().NotBeNull();
-        content!.Success.Should().BeTrue();
-        content.Data.Should().NotBeNull().And.HaveCountGreaterThanOrEqualTo(0);
-    }
-
-    [Fact]
-    public async Task GetAll_SinToken_Retorna401()
-    {
-        // ARRANGE
-        var clientSinAuth = new HttpClient { BaseAddress = _client.BaseAddress };
-
-        // ACT
-        var response = await clientSinAuth.GetAsync("/api/ordenes");
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task GetAll_ConTokenSinPermiso_Retorna403()
-    {
-        // ARRANGE
-        var tokenSinPermiso = JwtTestHelper.GenerateTokenSinPermisos();
-        var clientSinPermiso = new HttpClient { BaseAddress = _client.BaseAddress };
-        clientSinPermiso.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", tokenSinPermiso);
-
-        // ACT
-        var response = await clientSinPermiso.GetAsync("/api/ordenes");
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-    }
-
-    // ── POST /api/ordenes ──────────────────────────────────────────────
-
-    [Fact]
-    public async Task Create_CuandoDtoValido_Retorna201()
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Transportes Modernos",
-            MontoFlete = 750.00m,
-            Estado = OrdenStatus.Draft
-        };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/ordenes", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
-    [Fact]
-    public async Task Create_CuandoDtoInvalido_MensajeVacio_Retorna400()
-    {
-        // ARRANGE
-        var dto = new OrdenRequestDto { NombreCliente = "", MontoFlete = 100 };
-
-        // ACT
-        var response = await _client.PostAsJsonAsync("/api/ordenes", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-
-        var content = await response.Content.ReadFromJsonAsync<ApiResponse<List<string>>>();
-        content.Should().NotBeNull();
-        content!.Success.Should().BeFalse();
-        content.Errors.Should().NotBeNullOrEmpty();
-    }
-
-    [Fact]
-    public async Task Create_SinToken_Retorna401()
-    {
-        // ARRANGE
-        var sinAuth = new HttpClient { BaseAddress = _client.BaseAddress };
-        var dto = new OrdenRequestDto { NombreCliente = "Test" };
-
-        // ACT
-        var response = await sinAuth.PostAsJsonAsync("/api/ordenes", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    // ── PUT /api/ordenes/{id} ──────────────────────────────────────────
-
-    [Fact]
-    public async Task Update_CuandoDtoValido_Retorna200()
-    {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var dto = new OrdenRequestDto
-        {
-            NombreCliente = "Cliente Actualizado",
-            MontoFlete = 1200.50m
-        };
-
-        // ACT
-        var response = await _client.PutAsJsonAsync($"/api/ordenes/{id}", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Update_CuandoIdInexistente_Retorna404()
-    {
-        // ARRANGE
-        var id = Guid.NewGuid();
-        var dto = new OrdenRequestDto { NombreCliente = "Nuevo nombre" };
-
-        // ACT
-        var response = await _client.PutAsJsonAsync($"/api/ordenes/{id}", dto);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    // ── POST /api/ordenes/{id}/deactivate ──────────────────────────────
-
-    [Fact]
-    public async Task Deactivate_CuandoRegistroExiste_Retorna200()
-    {
-        // ACT
-        var response = await _client.PostAsync("/api/ordenes/" + Guid.NewGuid() + "/deactivate", null);
-
-        // ASSERT
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-}
-```
-
-### 7. JwtTestHelper — Token Generator para Tests
+### JwtTestHelper
 
 ```csharp
-// ── tests/Freiroute.API.Tests/JwtTestHelper.cs ────────────────────────
-namespace Freiroute.API.Tests;
-
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
+// tests/Freiroute.API.Tests/Helpers/JwtTestHelper.cs
+namespace Freiroute.API.Tests.Helpers;
 
 public static class JwtTestHelper
 {
-    public static string GenerateTestToken(
-        Guid userId,
-        Guid empresaId,
-        Guid perfilId,
-        string[] permisos)
+    public const string SecretKey = "freiroute-test-secret-key-256bits-min";
+
+    public static string GenerarToken(
+        Guid? userId     = null,
+        Guid? empresaId  = null,
+        Guid? perfilId   = null,
+        string[]? permisos = null,
+        string rol       = "OPERADOR")
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim("user_id", userId.ToString()),
-            new Claim("empresa_id", empresaId.ToString()),
-            new Claim("perfil_id", perfilId.ToString()),
-            new Claim("tipo_usuario", "ADMIN"),
-            new Claim("permisos", string.Join(",", permisos))
+            new("user_id",       (userId    ?? Guid.NewGuid()).ToString()),
+            new("empresa_id",    (empresaId ?? Guid.NewGuid()).ToString()),
+            new("perfil_id",     (perfilId  ?? Guid.NewGuid()).ToString()),
+            new("tipo_usuario",  rol),
+            new("nombre",        "Usuario Test"),
+            new(ClaimTypes.Role, rol)
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("jwt-secret-key-for-testing-only"));
+        foreach (var p in permisos ?? [])
+            claims.Add(new Claim("permisos", p));
+
+        var key   = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
-            issuer: "freiroute-api",
-            audience: "freiroute-client",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            issuer:             "freiroute-api",
+            audience:           "freiroute-client",
+            claims:             claims,
+            expires:            DateTime.UtcNow.AddHours(8),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public static string GenerateTokenSinPermisos() =>
-        GenerateTestToken(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Array.Empty<string>());
+    // Tokens predefinidos para escenarios comunes
+    public static string TokenSuperAdmin => GenerarToken(rol: "SUPER_ADMIN",
+        permisos: ["*:read", "*:create", "*:update"]);
 
-    public static string GenerateTokenSoloLectura(Guid empresaId) =>
-        GenerateTestToken(Guid.NewGuid(), empresaId, Guid.NewGuid(), new[] { "ordenes:read" });
+    public static string TokenAdmin => GenerarToken(rol: "ADMIN",
+        permisos: ["[modulo]:read", "[modulo]:create", "[modulo]:update"]);
+
+    public static string TokenSoloLectura => GenerarToken(rol: "OPERADOR",
+        permisos: ["[modulo]:read"]);
 }
 ```
 
-### 8. Checklist de Tests por Módulo
+### Tests de Controller
 
-#### BLL Tests (Unit) — Mínimo 80% cobertura
-- [ ] `GetAllAsync_CuandoExistenRegistros_RetornaLista`
-- [ ] `GetAllAsync_CuandoNoExistenRegistros_RetornaListaVacia`
-- [ ] `GetByIdAsync_CuandoIdValido_RetornaRegistro`
-- [ ] `GetByIdAsync_CuandoIdInexistente_RetornaNull`
-- [ ] `CreateAsync_CuandoDtoValido_RetornaId`
-- [ ] `CreateAsync_CuandoCampoObligatorioVacio_LanzaValidationException`
-- [ ] `UpdateAsync_CuandoDtoValido_RetornaActualizado`
-- [ ] `UpdateAsync_CuandoRegistroInexistente_LanzaKeyNotFoundException`
-- [ ] `DeactivateAsync_CuandoRegistroExiste_RetornaTrue`
-- [ ] `DeactivateAsync_CuandoRegistroInexistente_RetornaFalse`
-- [ ] `DeactivateAsync_NuncaLlamaDeleteAsync` (ADR-005 verification)
-- [ ] `empresa_id_siempre_del_jwt` (multi-tenant isolation)
+```csharp
+// tests/Freiroute.API.Tests/Controllers/[Modulo]ControllerTests.cs
+namespace Freiroute.API.Tests.Controllers;
 
-#### Validator Tests (Unit)
-- [ ] `Validate_CuandoTodosLosCamposValidos_NoHayErrores`
-- [ ] `Validate_CuandoCampoObligatorioVacio_TieneError`
-- [ ] `Validate_CuandoCampoExcedeLongitudMaxima_TieneError`
-- [ ] `Validate_CuandoValorNumericosInválido_TieneError`
-- [ ] `Validate_CuandoEstadoInvalido_TieneError`
-- [ ] `[Theory]` con valores válidos de enums/constraints
+public class [Modulo]ControllerTests : IClassFixture<TestWebApplicationFactory>
+{
+    private readonly TestWebApplicationFactory _factory;
+    private HttpClient CrearCliente(string? token = null)
+    {
+        var client = _factory.CreateClient();
+        if (token != null)
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
 
-#### API Tests (Integration) — Mínimo 60% cobertura
-- [ ] `GET_All_CuandoAutenticado_Retorna200`
-- [ ] `GET_All_SinToken_Retorna401`
-- [ ] `GET_All_ConTokenSinPermiso_Retorna403`
-- [ ] `GET_By_Id_CuandoExiste_Retorna200`
-- [ ] `GET_By_Id_CuandoNoExiste_Retorna404`
-- [ ] `POST_Create_CuandoDtoValido_Retorna201`
-- [ ] `POST_Create_CuandoDtoInvalido_Retorna400`
-- [ ] `POST_Create_SinToken_Retorna401`
-- [ ] `PUT_Update_CuandoDtoValido_Retorna200`
-- [ ] `PUT_Update_CuandoIdInexistente_Retorna404`
-- [ ] `POST_Deactivate_CuandoExiste_Retorna200`
+    public [Modulo]ControllerTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
 
-### 9. Métricas y Reportes
+    // ── Autenticación y autorización ─────────────────────────────
+    [Fact]
+    public async Task GetAll_SinToken_Retorna401()
+    {
+        var client = CrearCliente();
+        var resp   = await client.GetAsync("/api/[modulo]");
+        resp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 
-| Métrica | Objetivo | Herramienta |
-|---|---|---|
-| Cobertura tests BLL | ≥ 80% | Coverlet + reportgenerator |
-| Cobertura tests API | ≥ 60% | Coverlet + reportgenerator |
-| Tests críticos fallidos | 0 | CI Pipeline GitHub Actions |
-| Tiempo ejecución tests BLL | < 30 segundos | Local |
-| Tiempo ejecución tests API | < 60 segundos | Local |
-| Violaciones de naming convention | 0 | Regex en analyzer |
+    [Fact]
+    public async Task GetAll_SinPermiso_Retorna403()
+    {
+        var client = CrearCliente(JwtTestHelper.GenerarToken(permisos: []));
+        var resp   = await client.GetAsync("/api/[modulo]");
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 
-#### Comandos de Ejecución
-```bash
-# Ejecutar TODOS los tests
-dotnet test
+    // ── GET ALL ───────────────────────────────────────────────────
+    [Fact]
+    public async Task GetAll_ConPermiso_Retorna200ConLista()
+    {
+        // Arrange
+        var items = new List<[Modulo]ResponseDto>
+        {
+            new() { Id = Guid.NewGuid(), Nombre = "Item A", Activo = true },
+            new() { Id = Guid.NewGuid(), Nombre = "Item B", Activo = true }
+        };
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.GetAllAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(items);
 
-# Solo BLL
-dotnet test tests/Freiroute.BLL.Tests
+        var client = CrearCliente(JwtTestHelper.TokenAdmin);
 
-# Solo API
-dotnet test tests/Freiroute.API.Tests
+        // Act
+        var resp = await client.GetAsync("/api/[modulo]");
 
-# Con cobertura
-dotnet test --collect:"XPlat Code Coverage"
+        // Assert
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<ApiResponse<List<[Modulo]ResponseDto>>>();
+        body!.Success.Should().BeTrue();
+        body.Data.Should().HaveCount(2);
+    }
 
-# Generar reporte HTML
-reportgenerator -reports:**/coverage.cobertura.xml \
-                -targetdir:coverage \
-                -reporttypes:Html
+    // ── GET BY ID ─────────────────────────────────────────────────
+    [Fact]
+    public async Task GetById_CuandoExiste_Retorna200()
+    {
+        var id   = Guid.NewGuid();
+        var item = new [Modulo]ResponseDto { Id = id, Nombre = "Test", Activo = true };
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.GetByIdAsync(id, It.IsAny<Guid>()))
+            .ReturnsAsync(item);
 
-# Ejecutar un test específico
-dotnet test --filter "DisplayName~CreateAsync_CuandoMontoNegativo"
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .GetAsync($"/api/[modulo]/{id}");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetById_CuandoNoExiste_Retorna404()
+    {
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(([Modulo]ResponseDto?)null);
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .GetAsync($"/api/[modulo]/{Guid.NewGuid()}");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── POST CREATE ───────────────────────────────────────────────
+    [Fact]
+    public async Task Create_CuandoDtoValido_Retorna201()
+    {
+        var nuevoId  = Guid.NewGuid();
+        var dto      = new [Modulo]RequestDto { Nombre = "Nuevo" };
+        var creado   = new [Modulo]ResponseDto { Id = nuevoId, Nombre = "Nuevo", Activo = true };
+
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.CreateAsync(It.IsAny<[Modulo]RequestDto>(), It.IsAny<Guid>()))
+            .ReturnsAsync(creado);
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .PostAsJsonAsync("/api/[modulo]", dto);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await resp.Content.ReadFromJsonAsync<ApiResponse<[Modulo]ResponseDto>>();
+        body!.Success.Should().BeTrue();
+        body.Data!.Id.Should().Be(nuevoId);
+    }
+
+    [Fact]
+    public async Task Create_SinPermisoCreate_Retorna403()
+    {
+        var dto  = new [Modulo]RequestDto { Nombre = "Test" };
+        var resp = await CrearCliente(JwtTestHelper.TokenSoloLectura)
+                         .PostAsJsonAsync("/api/[modulo]", dto);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Create_CuandoDtoInvalido_Retorna400()
+    {
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.CreateAsync(It.IsAny<[Modulo]RequestDto>(), It.IsAny<Guid>()))
+            .ThrowsAsync(new ValidationException("El nombre es obligatorio"));
+
+        var dto  = new [Modulo]RequestDto { Nombre = "" };
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .PostAsJsonAsync("/api/[modulo]", dto);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ── PUT UPDATE ────────────────────────────────────────────────
+    [Fact]
+    public async Task Update_CuandoExisteYDtoValido_Retorna200()
+    {
+        var id        = Guid.NewGuid();
+        var dto       = new [Modulo]RequestDto { Nombre = "Actualizado" };
+        var actualizado = new [Modulo]ResponseDto { Id = id, Nombre = "Actualizado", Activo = true };
+
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.UpdateAsync(id, It.IsAny<[Modulo]RequestDto>(), It.IsAny<Guid>()))
+            .ReturnsAsync(actualizado);
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .PutAsJsonAsync($"/api/[modulo]/{id}", dto);
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Update_CuandoNoExiste_Retorna404()
+    {
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.UpdateAsync(It.IsAny<Guid>(), It.IsAny<[Modulo]RequestDto>(), It.IsAny<Guid>()))
+            .ThrowsAsync(new KeyNotFoundException("No encontrado"));
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .PutAsJsonAsync($"/api/[modulo]/{Guid.NewGuid()}",
+                                         new [Modulo]RequestDto { Nombre = "X" });
+
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── DELETE (DEACTIVATE) ───────────────────────────────────────
+    [Fact]
+    public async Task Deactivate_CuandoExiste_Retorna200()
+    {
+        var id = Guid.NewGuid();
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.DeactivateAsync(id, It.IsAny<Guid>()))
+            .ReturnsAsync(true);
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .DeleteAsync($"/api/[modulo]/{id}/deactivate");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<ApiResponse<bool>>();
+        body!.Data.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Deactivate_CuandoNoExiste_Retorna404()
+    {
+        _factory.[Modulo]ServiceMock
+            .Setup(s => s.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(false);
+
+        var resp = await CrearCliente(JwtTestHelper.TokenAdmin)
+                         .DeleteAsync($"/api/[modulo]/{Guid.NewGuid()}/deactivate");
+
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+}
 ```
-
-### 10. Contexto Freiroute TMS — Testing de Dominio
-
-@QA asegura la calidad del sistema de gestión de transporte verificando específicamente:
-
-**Multi-tenancy:**
-- Cada test usa un `empresaId` único — nunca compartir datos entre tenants simulados
-- Mocks deben filtrar siempre por `empresa_id` igual a como lo hace DAL Repository
-
-**Permisos granulares:**
-- Probar 401 sin token, 403 con token sin permiso, 200 con permiso adecuado
-- Verificar que READ, CREATE, UPDATE funcionan correctamente
-
-**Soft delete:**
-- `DeactivateAsync` cambia `activo = false` y listados filtran `activo = true`
-- Nunca llamar `DeleteAsync` — verificar con `.Verify(..., Times.Never)`
-
-**Flujo de estados TMS:**
-- Órdenes: DRAFT → CONFIRMED → CLOSED
-- Embarques: DRAFT → CONFIRMED → ASSIGNED → IN_TRANSIT → DELIVERED
-- Transiciones inválidas deben ser rechazadas
-
-**Cálculos financieros:**
-- Costos de flete no negativos ni excedentes
-- Conversión de moneda correcta si aplica
-- Redondeo decimal consistente (4 decimales)
-
-**Archivos y Storage:**
-- Upload/download de archivos a Supabase Storage con tokens temporales (signed URLs)
-- POD digital y carta de porte válidos
-
-**Filosofía de Testing:**
-> "El test que falla es la especificación ejecutable. No escribimos código hasta tener un test que falle y que nos diga qué comportamiento esperar."
-
-**Regla 80-60:**
-- BLL Unit Tests: ≥ 80% cobertura
-- API Integration Tests: ≥ 60% cobertura
-- E2E/Playwright: Flujos críticos solamente (opcional)
-
-### 11. Criterios de Aceptación por HU
-
-Antes de aprobar cualquier HU, @QA valida:
-
-- [ ] Todos los tests del checklist de este módulo pasan
-- [ ] Cobertura BLL ≥ 80% y API ≥ 60%
-- [ ] Criterios de aceptación del spec.md verificados manualmente
-- [ ] No hay regresión en tests existentes
-- [ ] Mensajes de validación en español consistentes
-- [ ] Sin datos sensibles en logs de tests
 
 ---
 
-## Dependencias entre Agentes
+## Tests Específicos del Dominio TMS
 
-| Recibe de | Entrega a | Formato de handoff |
-|---|---|---|
-| @BackendDev | Código implementado listo para testear | PR con changes |
-| @QA | Resultado de tests (pass/fail) + métricas de cobertura | Comments en PR |
-| @PM | Specs y criterios de aceptación | docs/specs/HU-XXX |
+```csharp
+// tests/Freiroute.BLL.Tests/Services/EmbarqueServiceTests.cs
+public class EmbarqueServiceTests
+{
+    // ── State Machine ─────────────────────────────────────────────
+    [Theory]
+    [InlineData("DRAFT",       "CONFIRMED",   true)]
+    [InlineData("DRAFT",       "CANCELLED",   true)]
+    [InlineData("CONFIRMED",   "ASSIGNED",    true)]
+    [InlineData("IN_TRANSIT",  "DELIVERED",   true)]
+    [InlineData("DELIVERED",   "DRAFT",       false)]  // transición inválida
+    [InlineData("CLOSED",      "IN_TRANSIT",  false)]  // transición inválida
+    [InlineData("CANCELLED",   "CONFIRMED",   false)]  // transición inválida
+    public async Task CambiarEstado_ValidaTransicion(string desde, string hacia, bool debeSerValida)
+    {
+        // Arrange
+        var id        = Guid.NewGuid();
+        var empresaId = Guid.NewGuid();
+        var embarque  = new Embarque { Id = id, EmpresaId = empresaId, Estado = desde, Activo = true };
+
+        _repoMock.Setup(r => r.GetByIdAsync(id, empresaId)).ReturnsAsync(embarque);
+        _repoMock.Setup(r => r.UpdateAsync(It.IsAny<Embarque>())).ReturnsAsync(true);
+
+        // Act & Assert
+        if (debeSerValida)
+        {
+            var result = await _sut.CambiarEstadoAsync(id, hacia, empresaId);
+            result.Should().NotBeNull();
+        }
+        else
+        {
+            await FluentActions.Invoking(() => _sut.CambiarEstadoAsync(id, hacia, empresaId))
+                .Should().ThrowAsync<BusinessException>();
+        }
+    }
+
+    // ── Aislamiento multi-tenant ──────────────────────────────────
+    [Fact]
+    public async Task GetByIdAsync_NoRetornaDatosDeOtroTenant()
+    {
+        var id          = Guid.NewGuid();
+        var empresaA    = Guid.NewGuid();
+        var empresaB    = Guid.NewGuid();
+
+        // El repo solo retorna si empresa coincide
+        _repoMock.Setup(r => r.GetByIdAsync(id, empresaA))
+                 .ReturnsAsync(new Embarque { Id = id, EmpresaId = empresaA });
+        _repoMock.Setup(r => r.GetByIdAsync(id, empresaB))
+                 .ReturnsAsync((Embarque?)null);
+
+        var resultA = await _sut.GetByIdAsync(id, empresaA);
+        var resultB = await _sut.GetByIdAsync(id, empresaB);
+
+        resultA.Should().NotBeNull();
+        resultB.Should().BeNull();
+    }
+
+    // ── OTD Calculation ───────────────────────────────────────────
+    [Theory]
+    [InlineData("2026-01-10", "2026-01-10", true)]   // Entrega a tiempo
+    [InlineData("2026-01-10", "2026-01-09", true)]   // Entrega anticipada
+    [InlineData("2026-01-10", "2026-01-11", false)]  // Entrega tardía
+    public void CalcularOtd_SegunFechas(string requerida, string real, bool esperado)
+    {
+        var fechaRequerida = DateTime.Parse(requerida);
+        var fechaReal      = DateTime.Parse(real);
+
+        var otdCumplido = OtdCalculator.EsCumplido(fechaRequerida, fechaReal);
+
+        otdCumplido.Should().Be(esperado);
+    }
+}
+```
+
+---
+
+## Ejecutar Tests y Verificar Cobertura
+
+```bash
+# Ejecutar todos los tests
+dotnet test
+
+# Con cobertura (Coverlet)
+dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+# Reporte HTML (requiere reportgenerator)
+dotnet tool install -g dotnet-reportgenerator-globaltool
+reportgenerator -reports:"./coverage/**/coverage.cobertura.xml" \
+                -targetdir:"./coverage/report" -reporttypes:Html
+
+# Verificar umbrales mínimos
+dotnet test /p:CollectCoverage=true \
+            /p:CoverageDirectory=coverage \
+            /p:Threshold=80 \
+            /p:ThresholdType=line \
+            /p:ThresholdStat=minimum
+```
+
+---
+
+## Checklist de Entregable QA
+
+**Tests Unitarios BLL (≥ 80% cobertura):**
+- [ ] `GetAllAsync_CuandoExisten_RetornaLista`
+- [ ] `GetAllAsync_CuandoNoExisten_RetornaVacia`
+- [ ] `GetByIdAsync_CuandoExiste_RetornaDto`
+- [ ] `GetByIdAsync_CuandoNoExiste_RetornaNull`
+- [ ] `CreateAsync_CuandoValido_RetornaCreado`
+- [ ] `CreateAsync_CuandoInvalido_LanzaValidationException`
+- [ ] `UpdateAsync_CuandoExiste_RetornaActualizado`
+- [ ] `UpdateAsync_CuandoNoExiste_LanzaKeyNotFoundException`
+- [ ] `DeactivateAsync_CuandoExiste_RetornaTrue`
+- [ ] `DeactivateAsync_CuandoNoExiste_RetornaFalse`
+- [ ] Tests de Validator: campo obligatorio, max longitud, formato, reglas de dominio TMS
+- [ ] Tests de State Machine (si el módulo tiene estados)
+- [ ] Test de aislamiento multi-tenant
+
+**Tests de Integración API (≥ 60% cobertura):**
+- [ ] `GET /api/[modulo]` sin token → 401
+- [ ] `GET /api/[modulo]` sin permiso → 403
+- [ ] `GET /api/[modulo]` con permiso → 200 + lista
+- [ ] `GET /api/[modulo]/{id}` existente → 200
+- [ ] `GET /api/[modulo]/{id}` inexistente → 404
+- [ ] `POST /api/[modulo]` válido → 201
+- [ ] `POST /api/[modulo]` inválido → 400
+- [ ] `POST /api/[modulo]` sin permiso → 403
+- [ ] `PUT /api/[modulo]/{id}` existente → 200
+- [ ] `PUT /api/[modulo]/{id}` inexistente → 404
+- [ ] `DELETE /api/[modulo]/{id}/deactivate` existente → 200
+- [ ] `DELETE /api/[modulo]/{id}/deactivate` inexistente → 404
+
+**Calidad general:**
+- [ ] `dotnet build` — cero warnings
+- [ ] `dotnet test` — cero fallos
+- [ ] Cobertura BLL ≥ 80% verificada con Coverlet
+- [ ] Cobertura API ≥ 60% verificada con Coverlet
+- [ ] Criterios de aceptación del spec.md verificados uno a uno
+
+---
+
+## Contexto Freiroute TMS
+
+@QA valida que el TMS de transporte opera correctamente en escenarios críticos: aislamiento por `empresa_id`, transiciones de estado válidas en embarques, cálculo correcto de OTD, y seguridad de endpoints. Los módulos con mayor complejidad de tests son: Embarques (state machine), Carriers (score y contratos), Rutas (optimización), Track & Trace (GPS en tiempo real) y Freight Audit (conciliación financiera).

@@ -1,51 +1,87 @@
-# ADR-002: Arquitectura N-Tier con 8 proyectos independientes
+# ADR-002: Arquitectura N-Tier con 8 Proyectos
 
 ## Estado
-✅ **Aceptado**
+Aceptado
 
 ## Fecha
-2026-08-31
+2026
 
 ## Contexto
-El sistema SaaS Freiroute TMS requiere una estructura de código que permita: separación clara de responsabilidades, testabilidad unitaria independiente por capa, evolución evolutiva de cada módulo sin afectar otros, y escalabilidad del equipo de desarrollo donde diferentes agentes pueden trabajar en capas distintas simultáneamente. Las alternativas tradicionales incluyen soluciones monolíticas o arquitecturas CQRS/Event-Driven más complejas.
+El TMS necesita una arquitectura que permita separación de responsabilidades clara, testabilidad de la lógica de negocio de forma independiente a la base de datos, y que los agentes de IA puedan trabajar en capas sin interferir entre sí. También necesita soporte para dos superficies de presentación: una API REST (para integración y mobile) y una UI MVC (para el sistema web).
 
 ## Decisión
-El sistema ORGANIZARÁ el código en exactamente **8 proyectos .NET** independientes:
+El sistema se organiza en **8 proyectos .NET** en una solución única (`Freiroute.sln`), siguiendo arquitectura N-Tier estricta.
+
+## Estructura de Proyectos
 
 ```
-src/Freiroute.Entity/      → Entidades de dominio (models POCO)
-src/Freiroute.DTO/         → Data Transfer Objects (Request + Response)
-src/Freiroute.DAL/         → Data Access Layer (Dapper repositorios + interfaces)
-src/Freiroute.BLL/         → Business Logic Layer (Services + FluentValidators)
-src/Freiroute.IOC/         → Inversion of Control (registro DI centralizado)
-src/Freiroute.Utility/     → Helpers, extensiones, ApiResponse\<T\>, constantes
-src/Freiroute.API/         → Web API (.NET 8 REST endpoints)
-src/Freiroute.Aplicacion/  → MVC (.NET 8 Razor Views & Areas)
+Freiroute.sln
+├── src/
+│   ├── Freiroute.Entity/       # Entidades de dominio (POCOs puros)
+│   ├── Freiroute.DTO/          # DTOs de entrada (Request) y salida (Response)
+│   ├── Freiroute.DAL/          # Interfaces + Repositorios con Dapper
+│   ├── Freiroute.BLL/          # Interfaces + Services + Validators (FluentValidation)
+│   ├── Freiroute.IOC/          # Contenedor de inyección de dependencias
+│   ├── Freiroute.Utility/      # Helpers, constantes, ApiResponse<T>, excepciones
+│   ├── Freiroute.API/          # Web API: Controllers, Middleware, JWT, Swagger
+│   └── Freiroute.Aplicacion/   # MVC: Areas, Controllers, Views, wwwroot
+├── tests/
+│   ├── Freiroute.BLL.Tests/    # Tests unitarios de BLL (≥80% cobertura)
+│   └── Freiroute.API.Tests/    # Tests de integración de API (≥60% cobertura)
+├── supabase/
+│   └── migrations/             # Migraciones SQL versionadas con Supabase CLI
+└── docs/
+    ├── adr/                    # Architecture Decision Records
+    ├── specs/                  # Spec por Historia de Usuario
+    └── framework/              # Backlog, roadmap, design system
 ```
 
-Reglas fundamentales:
-- **Ninguna capa PODRÁ saltarse otra.** El Controller no llama al DAL. La Vista no llama al BLL.
-- **El flujo de datos SIEMPRE SERÁ:** Vista → Controller MVC → API Controller → BLL Service → DAL Repository → Supabase/PostgreSQL.
-- Cuando se genere un módulo nuevo, la creación seguirá este orden estricto: Entity → DTO → DAL Interface → DAL Repository → BLL Interface → BLL Service → API Controller → Vistas Razor.
+## Flujo de Datos (inamovible)
+
+```
+Vista Razor
+    ↓
+Controller MVC (Freiroute.Aplicacion)
+    ↓  [HttpClient interno]
+API Controller (Freiroute.API)
+    ↓  [Inyección de dependencias]
+BLL Service (Freiroute.BLL)
+    ↓  [Inyección de dependencias]
+DAL Repository (Freiroute.DAL)
+    ↓  [Dapper + NpgsqlConnection]
+Supabase / PostgreSQL 15
+```
+
+## Reglas de Dependencia entre Proyectos
+
+| Proyecto | Puede referenciar | No puede referenciar |
+|---|---|---|
+| Entity | Ninguno | Todos los demás |
+| DTO | Entity | DAL, BLL, API, Aplicacion |
+| DAL | Entity, Utility | BLL, API, Aplicacion, DTO |
+| BLL | Entity, DTO, DAL (interfaces), Utility | API, Aplicacion |
+| IOC | Entity, DTO, DAL, BLL, Utility | API, Aplicacion |
+| Utility | Ninguno | Todos los demás |
+| API | BLL (interfaces), DTO, Utility, IOC | Aplicacion, DAL directo |
+| Aplicacion | BLL (interfaces), DTO, Utility, IOC | DAL directo, Entity directo |
 
 ## Alternativas Consideradas
-1. **Monolito único (single assembly)** — Descartado porque impide testeo unitario aislado, complica dependencias circulares y hace imposible que múltiples agentes trabajen en paralelo sin conflictos de merge.
-2. **Clean Architecture / Onion** — Demasiada complejidad adicional para MVP. No requiere use-cases intermedios ni ports/interfaces externos hasta fase avanzada.
-3. **CQRS completo** — Overkill para CRUD standard del MVP. Se reserva para módulos avanzados (Track & Trace, Analytics BI) cuando sea estrictamente necesario.
+
+1. **Clean Architecture (Onion)** — Descartada por complejidad excesiva para el equipo actual. N-Tier es más directo y los agentes de IA la implementan con menos ambigüedad.
+2. **Proyecto monolítico único** — Descartada porque imposibilita la testabilidad independiente de BLL y mezcla responsabilidades que los agentes deben manejar por separado.
+3. **Microservicios** — Descartada para la fase inicial. El sistema puede evolucionar a microservicios en v3.0 una vez que los límites de dominio estén bien definidos.
 
 ## Consecuencias
+
 **Positivas:**
-- Cada capa es compilable y testeable de forma independiente
-- Cambio en la capa de acceso a datos no afecta las vistas MVC
-- Testing unitario focalizado en BLL sin infraestructura
-- Fácil asignación de agentes IA a capas específicas
+- Cada agente de IA trabaja en su capa sin riesgo de romper otras
+- BLL es 100% testeable sin base de datos (Moq del repositorio)
+- La API y la UI web pueden evolucionar independientemente
+- El IOC centraliza toda la configuración de DI
 
 **Negativas / Trade-offs:**
-- Más archivos de configuración (.csproj) y referencias cruzadas
-- Requiere disciplina estricta de no violar jerarquía de capas
-- Incremento inicial de tiempo de build (mitigable con builds incrementales)
+- Más archivos y proyectos que un monolito simple
+- Requiere disciplina para no saltarse capas (controlada por AGENTS.md)
 
 ## Módulos Afectados
-Todos. Este ADR define la organización estructural permanente del proyecto.
-
----
+Todos los módulos del sistema (EP-01 al EP-20).

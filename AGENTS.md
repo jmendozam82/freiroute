@@ -39,12 +39,12 @@ El sistema USARÁ **xUnit + Moq + FluentAssertions** para testing.
 
 | Agente | Skill | Responsabilidad Principal |
 |---|---|---|
-| **@PM** | skill-pm.md | Orquestación, sprint planning, coordinación de capas |
-| **@Arquitecto** | skill-arquitecto.md | Entidades, DTOs, interfaces, ADRs, estructura de módulo |
-| **@IngenieroDatos** | skill-dal.md | Migraciones SQL, RLS, repositorios Dapper |
-| **@BackendDev** | skill-bll.md | BLL Services, API Controllers, Tests |
-| **@FrontendDev** | skill-view.md | Vistas Razor, UI Freiroute, validación cliente |
-| **@QA** | skill-testing.md | Tests unitarios, integración, cobertura, criterios de aceptación |
+| **@PM** | .opencode/skills/skill-pm.md | Orquestación, sprint planning, coordinación de capas |
+| **@Arquitecto** | .opencode/skills/skill-arquitecto.md | Entidades, DTOs, interfaces, ADRs, estructura de módulo |
+| **@IngenieroDatos** | .opencode/skills/skill-dal.md | Migraciones SQL, RLS, repositorios Dapper |
+| **@BackendDev** | .opencode/skills/skill-bll.md | BLL Services, API Controllers, Tests |
+| **@FrontendDev** | .opencode/skills/skill-view.md | Vistas Razor, UI Freiroute, validación cliente |
+| **@QA** | .opencode/skills/skill-testing.md | Tests unitarios, integración, cobertura, criterios de aceptación |
 
 ### Flujo de Trabajo de Agentes
 

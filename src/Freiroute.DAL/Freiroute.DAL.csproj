@@ -3,11 +3,13 @@
   <ItemGroup>
     <ProjectReference Include="..\Freiroute.Entity\Freiroute.Entity.csproj" />
     <ProjectReference Include="..\Freiroute.DTO\Freiroute.DTO.csproj" />
+    <ProjectReference Include="..\Freiroute.Utility\Freiroute.Utility.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.79" />
-    <PackageReference Include="Npgsql" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
   </ItemGroup>
 
   <PropertyGroup>

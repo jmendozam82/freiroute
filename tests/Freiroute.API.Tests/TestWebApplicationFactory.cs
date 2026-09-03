@@ -1,122 +1,71 @@
-namespace Freiroute.API.Tests;
-
-using Freiroute.BLL.Services;
-using Freiroute.DTO.Empresa;
-using Microsoft.AspNetCore.Authorization;
+using Freiroute.BLL.Interfaces;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
 using Moq;
 
+namespace Freiroute.API.Tests;
+
 /// <summary>
-/// Factory personalizada para pruebas de integración del API de Freiroute TMS.
-/// Configura JWT con clave de testing, registra mock de servicios y provee
-/// authorization policy provider para que todas las políticas existan en tests.
+/// WebApplicationFactory de pruebas de integración (tests/Freiroute.API.Tests).
+/// Arranca la API real (Program.cs) pero sustituye los 6 servicios BLL por
+/// mocks Moq, para poder testear los controllers sin tocar la base de datos.
+///
+/// NOTA: los repositorios DAL y stubs (Email/Supabase) se mantienen registrados,
+/// pero al sustituir las interfaces IBLL los controllers no los usan.
+/// Cada instancia del factory crea mocks frescos → aislamiento entre tests.
 /// </summary>
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly Lazy<Mock<IEmpresaService>> _mockService;
+    public Mock<IAuthService> AuthService { get; }
+    public Mock<IEmpresaService> EmpresaService { get; }
+    public Mock<IPerfilService> PerfilService { get; }
+    public Mock<IPermisoService> PermisoService { get; }
+    public Mock<IUsuarioService> UsuarioService { get; }
+    public Mock<IAuditoriaService> AuditoriaService { get; }
 
     public TestWebApplicationFactory()
     {
-        _mockService = new Lazy<Mock<IEmpresaService>>(CreateDefaultMockService);
+        AuthService = new Mock<IAuthService>();
+        EmpresaService = new Mock<IEmpresaService>();
+        PerfilService = new Mock<IPerfilService>();
+        PermisoService = new Mock<IPermisoService>();
+        UsuarioService = new Mock<IUsuarioService>();
+        AuditoriaService = new Mock<IAuditoriaService>();
     }
 
-    protected override IHost CreateHost(IHostBuilder builder)
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Inyectar configuraciones de JWT para testing (misma clave que JwtTestHelper)
-        builder.ConfigureAppConfiguration((context, configBuilder) =>
-        {
-            configBuilder.AddInMemoryCollection(new Dictionary<string, string>
-            {
-                ["Jwt:Key"] = "EstaEsUnaClaveSecretaParaTesting2026SoloDevLocal",
-                ["Jwt:Issuer"] = "freiroute-api",
-                ["Jwt:Audience"] = "freiroute-client"
-            });
-        });
-
         builder.ConfigureServices(services =>
         {
-            var descriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IEmpresaService));
-            if (descriptor != null)
-                services.Remove(descriptor);
+            // Reemplazar las implementaciones reales por los mocks (los controllers
+            // dependen de las interfaces IBLL, así que inyectamos mocks singleton).
+            services.RemoveAll<IAuthService>();
+            services.RemoveAll<IEmpresaService>();
+            services.RemoveAll<IPerfilService>();
+            services.RemoveAll<IPermisoService>();
+            services.RemoveAll<IUsuarioService>();
+            services.RemoveAll<IAuditoriaService>();
 
-            services.AddScoped(_ => _mockService.Value.Object);
-
-            // Reemplazar policy provider — todas las políticas existen pero requieren user autenticado
-            services.Replace(ServiceDescriptor.Singleton<IAuthorizationPolicyProvider, TestPolicyProvider>());
+            services.AddSingleton(AuthService.Object);
+            services.AddSingleton(EmpresaService.Object);
+            services.AddSingleton(PerfilService.Object);
+            services.AddSingleton(PermisoService.Object);
+            services.AddSingleton(UsuarioService.Object);
+            services.AddSingleton(AuditoriaService.Object);
         });
-
-        return base.CreateHost(builder);
     }
 
-    private static Mock<IEmpresaService> CreateDefaultMockService()
+    /// <summary>Crea un client HTTP anónimo (sin token).</summary>
+    public HttpClient CrearClientSinToken() => CreateClient();
+
+    /// <summary>Crea un client HTTP con el bearer token indicado.</summary>
+    public HttpClient CrearClientConToken(string token)
     {
-        var mock = new Mock<IEmpresaService>();
-        var responseDto = new EmpresaResponseDto
-        {
-            Id = Guid.NewGuid(),
-            Nombre = "Transportes del Pacifico SA",
-            Slug = "transportes-del-pacifico",
-            Plan = "professional",
-            Activo = true,
-            FechaCreacion = DateTime.UtcNow
-        };
-        mock.Setup(s => s.CrearAsync(It.IsAny<EmpresaRequestDto>())).ReturnsAsync(responseDto);
-        return mock;
-    }
-
-    public Mock<IEmpresaService> GetMockService() => _mockService.Value;
-
-    /// <summary>
-    /// Crea un HttpClient autenticado con token Bearer de super admin.
-    /// </summary>
-    public HttpClient CreateClientWithToken(string? token = null)
-    {
-        var client = base.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-
-        var actualToken = token ?? JwtTestHelper.GenerateSuperAdminToken();
+        var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", actualToken);
-
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         return client;
-    }
-
-    /// <summary>
-    /// Crea un HttpClient sin autorización para probar endpoints que requieren auth.
-    /// </summary>
-    public HttpClient CreateUnauthenticatedClient() =>
-        base.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-
-    /// <summary>
-    /// Policy provider que siempre retorna una política válida con RequireAuthenticatedUser.
-    /// Sin handler propio: la validación real la hace el middleware JWT.
-    /// Sin token -> 401 (por RequireAuthenticatedUser). Con token válido -> continúa al controller.
-    /// </summary>
-    private class TestPolicyProvider : IAuthorizationPolicyProvider
-    {
-        public Task<AuthorizationPolicy?> GetFallbackPolicyAsync() =>
-            Task.FromResult<AuthorizationPolicy?>(null);
-
-        public Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
-        {
-            return Task.FromResult<AuthorizationPolicy?>(new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build());
-        }
-
-        public Task<AuthorizationPolicy> GetDefaultPolicyAsync() =>
-            Task.FromResult(new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build());
     }
 }
