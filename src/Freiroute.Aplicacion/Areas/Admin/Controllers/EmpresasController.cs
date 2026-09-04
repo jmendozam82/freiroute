@@ -20,7 +20,7 @@ public class EmpresasController : BaseAdminController
         _empresaService = empresaService;
     }
 
-    public async Task<IActionResult> Index(int page = 1, string? q = null, string? estado = null)
+    public async Task<IActionResult> Index(int page = 1, string? q = null, string? estado = null, string? plan = null)
     {
         if (!EsSuperAdmin)
         {
@@ -31,6 +31,7 @@ public class EmpresasController : BaseAdminController
         ViewData["ActiveMenu"] = "empresas";
         ViewData["Q"] = q;
         ViewData["Estado"] = estado;
+        ViewData["Plan"] = plan;
 
         var todas = await _empresaService.GetAllAsync();
 
@@ -46,6 +47,11 @@ public class EmpresasController : BaseAdminController
         if (!string.IsNullOrWhiteSpace(estado))
         {
             todas = todas.Where(e => string.Equals(e.Estado, estado, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(plan))
+        {
+            todas = todas.Where(e => string.Equals(e.PlanSuscripcion, plan, StringComparison.OrdinalIgnoreCase));
         }
 
         var items = todas.ToList();

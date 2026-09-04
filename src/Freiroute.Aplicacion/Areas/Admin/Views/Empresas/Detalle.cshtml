@@ -1,0 +1,114 @@
+@model Freiroute.DTO.Admin.EmpresaResponseDto
+@{
+    ViewData["Title"] = "Detalle de Empresa";
+}
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">@Model.Nombre</h1>
+        <a asp-area="Admin" asp-controller="Empresas" asp-action="Index" class="fr-btn fr-btn-ghost fr-btn-sm"><i class="ti ti-arrow-left"></i> Volver</a>
+    </div>
+    <div class="fr-page-actions">
+        <span class="fr-badge @FrHelper.PlanBadgeClase(Model.PlanSuscripcion)">@Model.PlanSuscripcion</span>
+        <span class="fr-badge @FrHelper.BadgeClase(Model.Estado)">@FrHelper.EstadoLabel(Model.Estado)</span>
+    </div>
+</div>
+
+<!-- 3 cards en fila -->
+<div class="row g-4 mt-4">
+
+    <!-- Card: Información general -->
+    <div class="col-lg-4">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Información general</span>
+            </div>
+            <div class="fr-card-body">
+                <p><strong>RUC/NIT:</strong> @Model.RucNit</p>
+                <p><strong>Email Admin:</strong> @Model.EmailAdmin</p>
+                <p><strong>Teléfono:</strong> @Model.Telefono</p>
+                <p><strong>País:</strong> @Model.Pais</p>
+                <p><strong>Ciudad:</strong> @Model.Ciudad</p>
+                <p><strong>Fecha de registro:</strong> @Model.FechaCreacion.ToString("dd/MM/yyyy")</p>
+                <p><strong>Onboarding completado:</strong> <span class="fr-badge @(Model.OnboardingCompletado ? "fr-badge-success" : "fr-badge-neutral")">@(Model.OnboardingCompletado ? "Sí" : "No")</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Suscripción activa -->
+    <div class="col-lg-4">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Suscripción activa</span>
+            </div>
+            <div class="fr-card-body">
+                <p><strong>Plan:</strong> <span class="fr-badge @FrHelper.PlanBadgeClase(Model.PlanSuscripcion)">@Model.PlanSuscripcion</span></p>
+                <p><strong>Estado:</strong> <span class="fr-badge @FrHelper.BadgeClase(Model.Estado)">@FrHelper.EstadoLabel(Model.Estado)</span></p>
+                <p><strong>Desde:</strong> @Model.FechaCreacion.ToString("dd/MM/yyyy")</p>
+                <button class="fr-btn fr-btn-sm fr-btn-ghost mt-2" style="width:100%">
+                    <i class="ti ti-wallet"></i> Registrar pago
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card: Métricas -->
+    <div class="col-lg-4">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Métricas</span>
+            </div>
+            <div class="fr-card-body">
+                <p><strong>Usuarios activos:</strong> <span id="usuarios-activos">0</span></p>
+                <p><strong>Embarques del mes:</strong> <span id="embarques-mes">0</span> (placeholder)</p>
+                <p><strong>Storage usado:</strong> <span id="storage-usado">0</span> GB</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card: Historial de pagos -->
+<div class="fr-card mt-4">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Historial de pagos</span>
+    </div>
+    <div class="fr-card-body">
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>Período</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @* Máx 10 registros + link "Ver todos" *@
+                <tr>
+                    <td colspan="5">
+                        <span style="color:var(--fr-text-muted)">Cargando historial...</span>
+                        <br /><br />
+                        <a href="javascript:void(0)" class="fr-link" style="color:var(--fr-action-blue)">Ver todos los pagos</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Card: Usuarios del tenant -->
+<div class="fr-card mt-4">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Usuarios del tenant</span>
+    </div>
+    <div class="fr-card-body">
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-user"></i></div>
+            <div class="fr-empty-title">No hay usuarios registrados</div>
+            <div class="fr-empty-text">Invita al primer usuario</div>
+        </div>
+        <span class="fr-link text-primary small" style="margin-top:8px">Ver todos</span>
+    </div>
+</div>

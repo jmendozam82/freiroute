@@ -28,6 +28,7 @@ public class UsuarioService : IUsuarioService
     private readonly ISupabaseAuthService _supabaseAuth;
     private readonly IAuditoriaService _auditoria;
     private readonly IEmailService _emailService;
+    private readonly IPlanLimiteService _planLimiteService;
     private readonly AppSettings _appSettings;
     private readonly ILogger<UsuarioService> _logger;
 
@@ -42,6 +43,7 @@ public class UsuarioService : IUsuarioService
         ISupabaseAuthService supabaseAuth,
         IAuditoriaService auditoria,
         IEmailService emailService,
+        IPlanLimiteService planLimiteService,
         IOptions<AppSettings> appSettings,
         ILogger<UsuarioService> logger)
     {
@@ -52,6 +54,7 @@ public class UsuarioService : IUsuarioService
         _supabaseAuth = supabaseAuth;
         _auditoria = auditoria;
         _emailService = emailService;
+        _planLimiteService = planLimiteService;
         _appSettings = appSettings.Value;
         _logger = logger;
     }
@@ -171,6 +174,56 @@ public class UsuarioService : IUsuarioService
             nameof(Usuario), id, new { email = existente.Email });
 
         return true;
+    }
+
+    /// <summary>
+    /// Reactiva un usuario previamente desactivado (HU-013 CA-07).
+    /// Verifica el límite de usuarios del plan (CA-08) antes de reactivar
+    /// y retorna el UsuarioResponseDto actualizado.
+    /// </summary>
+    public async Task<UsuarioResponseDto> ReactivarAsync(
+        Guid id, Guid empresaId, Guid reactivadoPorId)
+    {
+        // 1. Verificar que existe (activo o inactivo) — GetByIdIncluyendoInactivosAsync.
+        var usuario = await _usuarioRepository
+            .GetByIdIncluyendoInactivosAsync(id, empresaId);
+
+        if (usuario is null)
+        {
+            throw new NotFoundException(nameof(Usuario), id);
+        }
+
+        if (usuario.Activo && usuario.Estado == EstadoUsuario.ACTIVE)
+        {
+            throw new BusinessException("El usuario ya está activo.");
+        }
+
+        // 2. Verificar límite del plan ANTES de reactivar (CA-08).
+        await _planLimiteService.VerificarLimiteUsuariosAsync(empresaId);
+
+        // 3. Reactivar.
+        usuario.Activo = true;
+        usuario.Estado = EstadoUsuario.ACTIVE;
+        usuario.IntentosFallidos = 0;
+        usuario.BloqueadoHasta = null;
+        usuario.FechaModificacion = DateTime.UtcNow;
+        var ok = await _usuarioRepository.UpdateAsync(usuario);
+        if (!ok)
+        {
+            // UpdateAsync filtra activo=true; para un usuario inactivo se usa
+            // ReactivarAsync del repositorio si el UPDATE no afectó filas.
+            await _usuarioRepository.ReactivarAsync(id, empresaId);
+        }
+
+        // 4. Auditoría.
+        await _auditoria.RegistrarAsync(
+            "usuarios", AccionAuditoria.REACTIVAR, empresaId, reactivadoPorId,
+            nameof(Usuario), id, new { reactivado = true });
+
+        // 5. Retornar UsuarioResponseDto actualizado.
+        var actualizado = await _usuarioRepository.GetByIdAsync(id, empresaId)
+            ?? await _usuarioRepository.GetByIdIncluyendoInactivosAsync(id, empresaId);
+        return await MapUsuarioAsync(empresaId, actualizado!);
     }
 
     // ── Invitación por email (HU-003 CA-03) ────────────────────────

@@ -79,9 +79,8 @@ public class EmpresasControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Create_DatosValidos_Retorna200()
+    public async Task Create_DatosValidos_Retorna201()
     {
-        // NOTA: el controller responde Ok() = 200 (no 201). Desviación documentada.
         _factory.EmpresaService
             .Setup(s => s.CreateAsync(It.IsAny<EmpresaRequestDto>()))
             .ReturnsAsync(EmpresaDto());
@@ -96,7 +95,7 @@ public class EmpresasControllerTests : IDisposable
             PlanSuscripcion = "PROFESSIONAL"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]

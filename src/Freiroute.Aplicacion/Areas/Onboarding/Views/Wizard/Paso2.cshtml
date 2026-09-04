@@ -1,0 +1,187 @@
+@{
+    ViewData["Paso"] = 2;
+    ViewData["Porcentaje"] = 40;
+    Layout = "~/Areas/Onboarding/Views/_LayoutOnboarding.cshtml";
+}
+
+<div class="fr-card">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Identidad visual</span>
+        <p style="margin-top:4px; font-size:13px; color:var(--fr-text-secondary)">
+            Personaliza la apariencia de tu portal
+        </p>
+    </div>
+    <div class="fr-card-body">
+        <!-- Sección: Logo -->
+        <div class="mb-4">
+            <label class="fr-form-label">Logo de tu empresa</label>
+            <div style="width:100%; padding:24px; text-align:center;
+                        background:var(--fr-surface-card);
+                        border:2px dashed var(--fr-border);
+                        border-radius:10px; cursor:pointer"
+                 id="logoDropZone">
+                <i class="ti ti-photo" style="font-size:32px; color:var(--fr-text-muted)"></i>
+                <p style="margin:8px 0 0; font-size:13px; color:var(--fr-text-secondary)">
+                    Arrastra un archivo o haz clic para seleccionar
+                </p>
+                <p style="font-size:11px; color:var(--fr-text-muted)">
+                    PNG o SVG, máximo 2 MB
+                </p>
+                <img id="logoPreview" src="" alt="Preview logo"
+                     style="max-width:150px; margin-top:8px; display:none" />
+            </div>
+            <input type="file" id="logoInput" accept="image/png,image/svg+xml"
+                   style="display:none" />
+        </div>
+
+        <!-- Sección: Colores -->
+        <div>
+            <label class="fr-form-label">Colores de marca</label>
+            <div class="row g-3">
+                <div class="col-6">
+                    <label style="font-size:11px; color:var(--fr-text-secondary)">
+                        Color primario
+                    </label>
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <input type="color" id="colorPrimario" value="#1A73E8"
+                               style="width:40px; height:32px; padding:0; border:none;
+                                      cursor:pointer; border-radius:4px" />
+                        <input type="text" id="colorPrimarioHex" value="#1A73E8"
+                               class="fr-form-control"
+                               style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px" />
+                    </div>
+                    <div id="previewPrimario"
+                         style="width:100%; height:12px; border-radius:4px;
+                                background:var(--fr-action-blue); margin-top:6px"></div>
+                </div>
+                <div class="col-6">
+                    <label style="font-size:11px; color:var(--fr-text-secondary)">
+                        Color secundario
+                    </label>
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <input type="color" id="colorSecundario" value="#0B2545"
+                               style="width:40px; height:32px; padding:0; border:none;
+                                      cursor:pointer; border-radius:4px" />
+                        <input type="text" id="colorSecundarioHex" value="#0B2545"
+                               class="fr-form-control"
+                               style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px" />
+                    </div>
+                    <div id="previewSecundario"
+                         style="width:100%; height:12px; border-radius:4px;
+                                background:var(--fr-navy-primary); margin-top:6px"></div>
+                </div>
+            </div>
+
+            <!-- Preview del sidebar -->
+            <div style="margin-top:16px; font-size:12px; color:var(--fr-text-secondary)">
+                Preview en tiempo real del sidebar:
+            </div>
+            <div id="previewSidebar"
+                 style="background:var(--fr-surface-card); padding:12px;
+                        border-radius:8px; margin-top:8px;
+                        border:1px solid var(--fr-border)">
+                <div style="display:flex; height:36px; align-items:center;">
+                    <div id="previewMarkLeft"
+                         style="width:6px; height:36px; border-radius:2px 0 0 2px;
+                                background:var(--fr-action-blue); flex-shrink:0"></div>
+                    <div id="previewLogoBox"
+                         style="width:28px; height:28px; border-radius:6px;
+                                background:var(--fr-navy-primary); display:flex; align-items:center;
+                                justify-content:center; margin:0 10px; flex-shrink:0">
+                        <span style="color:#fff; font-size:10px; font-weight:700">FR</span>
+                    </div>
+                    <span style="color:var(--fr-text-primary); font-weight:700;
+                                 font-size:13px">Freiroute</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+            <button type="button" class="fr-btn fr-btn-ghost" id="btnAnterior">
+                <i class="ti ti-arrow-left"></i> Anterior
+            </button>
+            <button type="button" class="fr-btn fr-btn-primary" id="btnContinuar">
+                Continuar <i class="ti ti-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Sincronizar color pickers con text inputs y preview
+    ['colorPrimario', 'colorSecundario'].forEach(id => {
+        const picker = document.getElementById(id);
+        const hex = document.getElementById(id + 'Hex');
+        const preview = document.getElementById('preview' + id.replace('color', ''));
+
+        picker.addEventListener('input', (e) => {
+            hex.value = e.target.value;
+            if (preview) preview.style.background = e.target.value;
+            // Actualizar sidebar preview
+            if (id === 'colorPrimario') {
+                document.getElementById('previewMarkLeft').style.background = e.target.value;
+            } else {
+                document.getElementById('previewLogoBox').style.background = e.target.value;
+            }
+        });
+
+        hex.addEventListener('input', (e) => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                picker.value = e.target.value;
+                if (preview) preview.style.background = e.target.value;
+                if (id === 'colorPrimario') {
+                    document.getElementById('previewMarkLeft').style.background = e.target.value;
+                } else {
+                    document.getElementById('previewLogoBox').style.background = e.target.value;
+                }
+            }
+        });
+    });
+
+    // Logo upload preview
+    const dropZone = document.getElementById('logoDropZone');
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+
+    dropZone.addEventListener('click', () => logoInput.click());
+    logoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                FrToast.error('El archivo excede 2 MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                logoPreview.src = ev.target.result;
+                logoPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Navegación
+    document.getElementById('btnAnterior')
+        .addEventListener('click', () => window.location.href = '/onboarding/paso/1');
+
+    document.getElementById('btnContinuar').addEventListener('click', async () => {
+        const resp = await FrApi.put('/api/onboarding/paso/2', {
+            colorPrimario:   document.getElementById('colorPrimario').value,
+            colorSecundario: document.getElementById('colorSecundario').value
+        });
+        if (resp?.success) {
+            // Subir logo si existe
+            const file = logoInput.files[0];
+            if (file) {
+                const fd = new FormData();
+                fd.append('logo', file);
+                await FrApi.upload('/api/onboarding/paso/2/logo', fd);
+            }
+            window.location.href = '/onboarding/paso/3';
+        } else {
+            FrToast.error(resp?.message || 'Error al guardar');
+        }
+    });
+</script>
+}

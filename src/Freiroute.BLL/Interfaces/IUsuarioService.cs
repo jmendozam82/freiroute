@@ -26,6 +26,12 @@ public interface IUsuarioService
     /// <summary>Soft delete de un usuario. Nunca elimina físicamente.</summary>
     Task<bool> DeactivateAsync(Guid id, Guid empresaId);
 
+    /// <summary>
+    /// Reactiva un usuario previamente desactivado (HU-013 CA-07). Verifica el límite
+    /// de usuarios del plan (CA-08) antes de reactivar y retorna el DTO actualizado.
+    /// </summary>
+    Task<UsuarioResponseDto> ReactivarAsync(Guid id, Guid empresaId, Guid reactivadoPorId);
+
     /// <summary>Invita a un usuario por email con token de expiración de 48 horas.</summary>
     Task InvitarAsync(InvitacionRequestDto dto, Guid empresaId, Guid creadoPorId);
 

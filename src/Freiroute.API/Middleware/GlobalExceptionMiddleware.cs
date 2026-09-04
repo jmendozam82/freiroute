@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using Freiroute.DTO.Auth;
 using Freiroute.Utility.ApiResponse;
 using Freiroute.Utility.Exceptions;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,26 @@ public class GlobalExceptionMiddleware
 
             await EscribirErrorAsync(context, HttpStatusCode.BadRequest,
                 "Error de validación", errores);
+        }
+        catch (Requires2faException ex)
+        {
+            // HTTP 202 Accepted: credenciales correctas pero se requiere verificación 2FA (HU-005).
+            if (!context.Response.HasStarted)
+            {
+                context.Response.Clear();
+                context.Response.StatusCode = (int)HttpStatusCode.Accepted;
+                context.Response.ContentType = "application/json";
+
+                var body = JsonSerializer.Serialize(
+                    new Requires2faResponseDto
+                    {
+                        Requires2fa = true,
+                        TempToken = ex.TempToken
+                    },
+                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+                await context.Response.WriteAsync(body);
+            }
         }
         catch (UnauthorizedAccessException ex)
         {

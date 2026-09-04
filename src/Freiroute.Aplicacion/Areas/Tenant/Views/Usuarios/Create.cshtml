@@ -1,0 +1,123 @@
+@model Freiroute.DTO.Usuario.UsuarioRequestDto
+@{
+    ViewData["Title"] = "Crear usuario";
+    ViewData["ActiveMenu"] = "usuarios";
+}
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Crear usuario</h1>
+    </div>
+</div>
+
+<div class="fr-card" style="max-width:680px">
+    <div class="fr-card-body">
+        <form id="frUsuarioForm" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            <div class="row g-3">
+                <div class="col-8">
+                    <label class="fr-form-label">Nombre completo *</label>
+                    <input type="text" name="Nombre" class="fr-form-control"
+                           placeholder="Nombre completo"
+                           data-val="true"
+                           data-val-required="El nombre es obligatorio" required />
+                    <span class="fr-form-error"></span>
+                </div>
+                <div class="col-4">
+                    <label class="fr-form-label">Tipo identidad</label>
+                    <select name="TipoIdentidad" class="fr-form-control">
+                        <option value="">-- Seleccionar --</option>
+                        <option value="NIT">NIT</option>
+                        <option value="CEDULA">Cédula</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="fr-form-label">Email *</label>
+                    <input type="email" name="Email" class="fr-form-control"
+                           placeholder="usuario@empresa.com"
+                           data-val="true"
+                           data-val-required="El email es obligatorio"
+                           data-val-email="Ingrese un email válido" />
+                    <span asp-validation-for="Email" class="fr-form-error"></span>
+                </div>
+                <div class="col-6">
+                    <label class="fr-form-label">Número identidad</label>
+                    <input type="text" name="NumeroIdentidad" class="fr-form-control"
+                           placeholder="901234567-0" />
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <label class="fr-form-label">Teléfono</label>
+                    <input type="tel" name="Telefono" class="fr-form-control"
+                           placeholder="+505 0000 0000" />
+                </div>
+                <div class="col-6">
+                    <label class="fr-form-label">Perfil asignado *</label>
+                    <select name="Perfil" class="fr-form-control" required>
+                        <option value="">-- Seleccionar --</option>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="OPERADOR">OPERADOR</option>
+                        <option value="CONDUCTOR">CONDUCTOR</option>
+                    </select>
+                    <span class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="fr-form-label">Tipo de usuario *</label>
+                    <select name="TipoUsuario" class="fr-form-control" required>
+                        <option value="">-- Seleccionar --</option>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="OPERADOR">OPERADOR</option>
+                        <option value="CONDUCTOR">CONDUCTOR</option>
+                    </select>
+                    <span class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarUsuario">
+                    <i class="ti ti-device-floppy"></i> Guardar
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('frUsuarioForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnGuardarUsuario');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        const form = e.target;
+        const resp = await FrApi.post('/api/usuarios', {
+            Nombre: form.querySelector('[name="Nombre"]').value.trim(),
+            Email: form.querySelector('[name="Email"]').value.trim(),
+            TipoIdentidad: form.querySelector('[name="TipoIdentidad"]').value,
+            NumeroIdentidad: form.querySelector('[name="NumeroIdentidad"]').value.trim(),
+            Telefono: form.querySelector('[name="Telefono"]').value.trim(),
+            Perfil: form.querySelector('[name="Perfil"]').value,
+            TipoUsuario: form.querySelector('[name="TipoUsuario"]').value
+        });
+
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Usuario creado exitosamente');
+            setTimeout(() => window.location.href = '/tenant/usuarios', 1000);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-device-floppy"></i> Guardar';
+    });
+</script>
+}

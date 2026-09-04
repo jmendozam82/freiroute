@@ -1,0 +1,312 @@
+@model Freiroute.DTO.Plan.PlanRequestDto
+@{
+    ViewData["Title"] = "Editar Plan";
+    ViewData["ActiveMenu"] = "admin-planes";
+}
+
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Editar Plan</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Editar Plan</h1>
+        <p class="fr-page-subtitle">Modifica la configuración del plan de suscripción</p>
+    </div>
+</div>
+
+<div class="fr-card" style="max-width:900px">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Editar Plan</span>
+    </div>
+    <div class="fr-card-body">
+        <form id="frPlanForm" method="post" novalidate>
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" id="planId" value="@ViewData["PlanId"]" />
+
+            <div class="row g-3 mb-4">
+                <div class="col-12">
+                    <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Nombre" class="fr-form-control"
+                           placeholder="Nombre del plan (ej: Professional)"
+                           data-val="true"
+                           data-val-required="El nombre es obligatorio" />
+                    <span asp-validation-for="Nombre" class="fr-form-error"></span>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label asp-for="Codigo" class="fr-form-label"></label>
+                        <input asp-for="Codigo" class="fr-form-control"
+                               placeholder="Código"
+                               pattern="[A-Z]{2,10}"
+                               title="Solo letras mayúsculas, 2-10 caracteres" />
+                        <small class="text-muted">Ej: STARTER, PROFESSIONAL, ENTERPRISE</small>
+                    </div>
+                    <div class="col-4">
+                        <label asp-for="Moneda" class="fr-form-label"></label>
+                        <select asp-for="Moneda" class="fr-form-control">
+                            <option value="USD">USD — Dólar</option>
+                            <option value="EUR">EUR — Euro</option>
+                            <option value="GTQ">GTQ — Quetzal</option>
+                            <option value="NIO">NIO — Córdoba</option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <label asp-for="EsPublico" class="fr-form-label"></label>
+                        <input asp-for="EsPublico" type="checkbox" class="fr-check" />
+                        <small class="text-muted">Visible en portal de signup público</small>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <label asp-for="Descripcion" class="fr-form-label"></label>
+                        <textarea asp-for="Descripcion" class="fr-form-control"
+                                  rows="3" placeholder="Descripción detallada del plan"></textarea>
+                        <span asp-validation-for="Descripcion" class="fr-form-error"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Límites operativos -->
+            <div class="fr-card my-4">
+                <div class="fr-card-header">
+                    <span class="fr-card-title">Límites operativos</span>
+                </div>
+                <div class="fr-card-body">
+                    <div class="row g-3">
+                        <div class="col-4">
+                            <label class="fr-form-label">Límite usuarios</label>
+                            <input type="number" asp-for="LimiteUsuarios" class="fr-form-control"
+                                   min="-1" max="999"
+                                   placeholder="-1 = Ilimitado"
+                                   data-val="true"
+                                   data-val-range="El límite debe estar entre -1 y 999"
+                                   data-val-range-max="999"
+                                   data-val-range-min="-1" />
+                            <small class="text-muted">-1 para ilimitado</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Embarques/mes</label>
+                            <input type="number" asp-for="LimiteEmbarquesMes" class="fr-form-control"
+                                   min="-1" max="9999"
+                                   placeholder="-1 = Ilimitado"
+                                   data-val="true"
+                                   data-val-range="El límite debe estar entre -1 y 9999"
+                                   data-val-range-max="9999"
+                                   data-val-range-min="-1" />
+                            <small class="text-muted">-1 para ilimitado</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Storage (GB)</label>
+                            <input type="number" asp-for="LimiteStorageGb" class="fr-form-control"
+                                   min="0" max="9999"
+                                   placeholder="0 = Sin límite"
+                                   data-val="true"
+                                   data-val-range="El límite debe estar entre 0 y 9999"
+                                   data-val-range-max="9999"
+                                   data-val-range-min="0" />
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="chkIlimitadoEdit"
+                                   onchange="toggleLimiteUsuariosEdit(this)" />
+                            <label class="form-check-label" for="chkIlimitadoEdit">
+                                Marcar "Ilimitado" → poner -1 y deshabilitar inputs
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Precios -->
+            <div class="fr-card my-4">
+                <div class="fr-card-header">
+                    <span class="fr-card-title">Precios</span>
+                </div>
+                <div class="fr-card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="fr-form-label">Precio mensual</label>
+                            <input type="number" asp-for="PrecioMensual" class="fr-form-control"
+                                   min="0" step="0.01"
+                                   placeholder="0.00" />
+                            <small class="text-muted">Precio base</small>
+                        </div>
+                        <div class="col-6">
+                            <label class="fr-form-label">Precio anual</label>
+                            <input type="number" asp-for="PrecioAnual" class="fr-form-control"
+                                   min="0" step="0.01"
+                                   placeholder="0.00" />
+                            <small class="text-muted">Sugerido: precio mensual × 10</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección: Módulos disponibles -->
+            <div class="fr-card my-4">
+                <div class="fr-card-header">
+                    <span class="fr-card-title">Módulos disponibles</span>
+                </div>
+                <div class="fr-card-body">
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Órdenes" id="modOrdenes" @((ViewData["ModOrdenes"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modOrdenes">
+                                    Órdenes
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Embarques" id="modEmbarques" @((ViewData["ModEmbarques"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modEmbarques">
+                                    Embarques
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Carriers" id="modCarriers" @((ViewData["ModCarriers"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modCarriers">
+                                    Carriers
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Rutas" id="modRutas" @((ViewData["ModRutas"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modRutas">
+                                    Rutas
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Track&Trace" id="modTrackTrace" @((ViewData["ModTrackTrace"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modTrackTrace">
+                                    Track&Trace
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Documentos" id="modDocumentos" @((ViewData["ModDocumentos"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modDocumentos">
+                                    Documentos
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Flota" id="modFlota" @((ViewData["ModFlota"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modFlota">
+                                    Flota
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Analytics" id="modAnalytics" @((ViewData["ModAnalytics"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modAnalytics">
+                                    Analytics
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Facturación" id="modFacturacion" @((ViewData["ModFacturacion"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modFacturacion">
+                                    Facturación
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Clientes" id="modClientes" @((ViewData["ModClientes"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modClientes">
+                                    Clientes
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Usuarios" id="modUsuarios" @((ViewData["ModUsuarios"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modUsuarios">
+                                    Usuarios
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Configuración" id="modConfiguracion" @((ViewData["ModConfiguracion"] as bool?) == true ? "checked" : "") />
+                                <label class="form-check-label" for="modConfiguracion">
+                                    Configuración
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-top" style="border-color: var(--fr-border)">
+                        <small>
+                            <strong>Validación:</strong> Al menos 1 módulo debe estar marcado.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarPlan">
+                    <i class="ti ti-device-floppy"></i> Guardar Cambios
+                </button>
+                <a asp-area="Admin" asp-controller="Planes" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function toggleLimiteUsuariosEdit(checkbox) {
+    const inputs = [
+        document.querySelector('input[name="LimiteUsuarios"]'),
+        document.querySelector('input[name="LimiteEmbarquesMes"]')
+    ];
+    const isChecked = checkbox.checked;
+    
+    if (isChecked) {
+        inputs[0].value = -1;
+        inputs[0].disabled = true;
+        inputs[1].value = -1;
+        inputs[1].disabled = true;
+    } else {
+        inputs[0].disabled = false;
+        inputs[1].disabled = false;
+    }
+}
+
+// Validación: al menos 1 módulo debe estar marcado
+$('#frPlanForm').on('submit', function(e) {
+    const checked = $('input[name="ModulosDisponibles"]:checked').length;
+    if (checked < 1) {
+        e.preventDefault();
+        FrToast.warning('Debe marcar al menos 1 módulo disponible');
+        return false;
+    }
+});
+</script>
+}

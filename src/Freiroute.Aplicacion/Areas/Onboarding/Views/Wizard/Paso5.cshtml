@@ -1,0 +1,151 @@
+@{
+    ViewData["Paso"] = 5;
+    ViewData["Porcentaje"] = 100;
+    Layout = "~/Areas/Onboarding/Views/_LayoutOnboarding.cshtml";
+}
+
+<div class="fr-card">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Invita a tu equipo</span>
+        <p style="margin-top:4px; font-size:13px; color:var(--fr-text-secondary)">
+            Puedes invitar hasta 5 personas a unirse ahora
+        </p>
+    </div>
+    <div class="fr-card-body">
+        <div id="invitacionesArea">
+            @for (int i = 0; i < 5; i++)
+            {
+                <div class="row g-2 mb-2 fila-invitacion"
+                     style="@(i > 0 ? "display:none" : "")">
+                    <div class="col-md-7">
+                        <input type="email"
+                               name="invitaciones[@i].email"
+                               class="fr-form-control"
+                               placeholder="email@empresa.com" />
+                    </div>
+                    <div class="col-md-4">
+                        <select name="invitaciones[@i].perfilId"
+                                class="fr-form-control">
+                            <option value="">-- Perfil --</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="OPERADOR">OPERADOR</option>
+                            <option value="CONDUCTOR">CONDUCTOR</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 d-flex align-items-center">
+                        @if (i > 0)
+                        {
+                            <button type="button"
+                                    class="fr-btn fr-btn-ghost fr-btn-icon btn-eliminar-fila"
+                                    title="Eliminar" aria-label="Eliminar invitación">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm mt-2"
+                id="btnAgregarFila">
+            <i class="ti ti-plus"></i> Agregar persona
+        </button>
+
+        <p class="mt-3" style="font-size:12px; color:var(--fr-text-muted)">
+            <a href="javascript:void(0)" id="btnSaltar" style="color:var(--fr-action-blue)">
+                Saltar este paso
+            </a> — continuar sin invitar
+        </p>
+
+        <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+            <button type="button" class="fr-btn fr-btn-ghost" id="btnAnterior">
+                <i class="ti ti-arrow-left"></i> Anterior
+            </button>
+            <button type="button" class="fr-btn fr-btn-primary" id="btnFinalizar">
+                Finalizar configuración <i class="ti ti-check"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let filasVisibles = 1; // Primera fila visible por defecto
+    const maxFilas = 5;
+
+    // Mostrar siguiente fila al agregar
+    document.getElementById('btnAgregarFila').addEventListener('click', () => {
+        const filas = document.querySelectorAll('.fila-invitacion');
+        if (filasVisibles < maxFilas) {
+            filas[filasVisibles].style.display = '';
+            filasVisibles++;
+            if (filasVisibles >= maxFilas) {
+                document.getElementById('btnAgregarFila').disabled = true;
+                document.getElementById('btnAgregarFila').style.opacity = '0.5';
+            }
+        }
+    });
+
+    // Eliminar fila
+    document.querySelectorAll('.btn-eliminar-fila').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const fila = e.target.closest('.fila-invitacion');
+            if (fila) {
+                // Limpiar valores
+                fila.querySelectorAll('input, select').forEach(el => {
+                    if (el.tagName === 'SELECT') el.selectedIndex = 0;
+                    else el.value = '';
+                });
+                fila.style.display = 'none';
+                filasVisibles--;
+                // Habilitar botón agregar
+                document.getElementById('btnAgregarFila').disabled = false;
+                document.getElementById('btnAgregarFila').style.opacity = '1';
+            }
+        });
+    });
+
+    // Navegación
+    document.getElementById('btnAnterior')
+        .addEventListener('click', () => window.location.href = '/onboarding/paso/4');
+
+    document.getElementById('btnSaltar')
+        .addEventListener('click', async () => {
+            const resp = await FrApi.post('/api/onboarding/completar', {});
+            if (resp?.success) {
+                FrToast.success('¡Configuración completada! Bienvenido a Freiroute');
+                setTimeout(() => window.location.href = '/dashboard', 1500);
+            } else {
+                window.location.href = '/dashboard';
+            }
+        });
+
+    document.getElementById('btnFinalizar').addEventListener('click', async () => {
+        const btn = document.getElementById('btnFinalizar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        const invitaciones = [];
+        document.querySelectorAll('.fila-invitacion').forEach(fila => {
+            const email = fila.querySelector('input[type="email"]')?.value?.trim();
+            const perfil = fila.querySelector('select')?.value;
+            if (email && perfil) {
+                invitaciones.push({ Email: email, PerfilId: perfil });
+            }
+        });
+
+        const resp = await FrApi.post('/api/onboarding/paso/5', {
+            invitaciones: invitaciones
+        });
+
+        if (resp?.success) {
+            FrToast.success('¡Configuración completada! Bienvenido a Freiroute');
+            setTimeout(() => window.location.href = '/dashboard', 1500);
+        } else {
+            FrToast.error(resp?.message || 'Error al guardar');
+            btn.disabled = false;
+            btn.innerHTML = 'Finalizar configuración <i class="ti ti-check"></i>';
+        }
+    });
+</script>
+}

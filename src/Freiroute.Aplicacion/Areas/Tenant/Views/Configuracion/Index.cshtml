@@ -1,0 +1,529 @@
+@model Freiroute.DTO.Configuracion.ConfiguracionResponseDto
+@{
+    ViewData["Title"] = "Configuración";
+    ViewData["ActiveMenu"] = "config";
+    var NombreEmpresa = Model?.Nombre ?? "tu empresa";
+}
+
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/dashboard">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Configuración</span>
+</nav>
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Configuración de la empresa</h1>
+        <p class="fr-page-subtitle">Personaliza cómo Freiroute opera para <strong>@NombreEmpresa</strong></p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs fr-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-datos-generales" data-bs-toggle="tab" data-bs-target="#tab-datos" type="button" role="tab">Datos generales</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-visual" data-bs-toggle="tab" data-bs-target="#tab-visual-content" type="button" role="tab">Identidad visual</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-operacion" data-bs-toggle="tab" data-bs-target="#tab-operacion-content" type="button" role="tab">Operación</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-numeracion" data-bs-toggle="tab" data-bs-target="#tab-numeracion-content" type="button" role="tab">Numeración</button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content mt-4">
+
+    <!-- Tab: Datos generales -->
+    <div class="tab-pane fade show active" id="tab-datos" role="tabpanel">
+        <div class="fr-card">
+            <div class="fr-card-body">
+                <form id="frConfigForm">
+                    <div class="row g-3">
+                        <div class="col-8">
+                            <label class="fr-form-label">Nombre *</label>
+                            <input type="text" name="Nombre" class="fr-form-control"
+                                   value="@(Model?.Nombre ?? "")"
+                                   data-val="true" data-val-required="El nombre es obligatorio" required />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">RUC/NIT</label>
+                            <input type="text" name="RucNit" class="fr-form-control"
+                                   value="@(Model?.RucNit ?? "")" />
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-4">
+                            <label class="fr-form-label">Teléfono</label>
+                            <input type="tel" name="Telefono" class="fr-form-control"
+                                   value="@(Model?.Telefono ?? "")" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Industria</label>
+                            <select name="Industria" class="fr-form-control">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="Transporte de carga" @((Model?.Industria ?? "") == "Transporte de carga" ? "selected" : "")>Transporte de carga</option>
+                                <option value="Transporte de personas" @((Model?.Industria ?? "") == "Transporte de personas" ? "selected" : "")>Transporte de personas</option>
+                                <option value="Logística" @((Model?.Industria ?? "") == "Logística" ? "selected" : "")>Logística</option>
+                                <option value="Courier" @(Model?.Industria == "Courier" ? "selected" : "")>Courier</option>
+                                <option value="Distribución" @(Model?.Industria == "Distribución" ? "selected" : "")>Distribución</option>
+                                <option value="Otro" @(Model?.Industria == "Otro" ? "selected" : "")>Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Sitio web</label>
+                            <input type="url" name="SitioWeb" class="fr-form-control"
+                                   value="@(Model?.SitioWeb ?? "")" />
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="fr-form-label">Dirección fiscal</label>
+                            <textarea name="Direccion" class="fr-form-control"
+                                      rows="2" placeholder="Dirección fiscal completa">@(Model?.Direccion ?? "")</textarea>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="fr-form-label">Email remitente</label>
+                            <input type="email" name="EmailRemitente" class="fr-form-control"
+                                   value="@(Model?.EmailRemitente ?? "")" />
+                        </div>
+                        <div class="col-6">
+                            <label class="fr-form-label">Nombre remitente</label>
+                            <input type="text" name="NombreRemitente" class="fr-form-control"
+                                   value="@(Model?.NombreRemitente ?? "")" />
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                        <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarDatos">
+                            <i class="ti ti-save"></i> Guardar cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Identidad visual -->
+    <div class="tab-pane fade" id="tab-visual-content" role="tabpanel">
+        <div class="fr-card">
+            <div class="fr-card-body">
+                <!-- Sección: Logo -->
+                <div class="mb-4">
+                    <label class="fr-form-label">Logo de la empresa</label>
+                    <div style="text-align:center; padding:16px; border:2px dashed var(--fr-border); border-radius:10px">
+                        @if (!string.IsNullOrEmpty(Model?.LogoUrl))
+                        {
+                            <img src="@(Model?.LogoUrl ?? "")" alt="Logo empresa"
+                                 style="max-width:150px; max-height:150px; object-fit:cover;" />
+                            <div class="mt-2">
+                                <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnCambiarLogo">
+                                    <i class="ti ti-upload"></i> Cambiar logo
+                                </button>
+                                <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnEliminarLogo"
+                                        style="color:var(--fr-danger)">
+                                    <i class="ti ti-trash"></i> Eliminar logo
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="ti ti-photo" style="font-size:32px; color:var(--fr-text-muted)"></i>
+                            <p class="small" style="color:var(--fr-text-muted); margin:8px 0 0">No hay logo configurado</p>
+                            <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm mt-2" id="btnCambiarLogo">
+                                <i class="ti ti-upload"></i> Subir logo
+                            </button>
+                        }
+                    </div>
+                    <input type="file" id="logoInput" accept="image/png,image/svg+xml" style="display:none" />
+                </div>
+
+                <!-- Sección: Colores -->
+                <div>
+                    <label class="fr-form-label">Colores de marca</label>
+                    <p style="font-size:12px; color:var(--fr-text-muted)">
+                        Los cambios se aplican en la página actual sin recargar.
+                    </p>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label style="font-size:11px; color:var(--fr-text-secondary)">Color primario</label>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <input type="color" id="colorPrimario" value="@(Model?.ColorPrimario ?? "#1A73E8")"
+                                       class="fr-color-input"
+                                       style="width:40px; height:32px; padding:0; border:none; cursor:pointer; border-radius:4px" />
+                                <input type="text" id="colorPrimarioHex" value="@(Model?.ColorPrimario ?? "#1A73E8")"
+                                       class="fr-form-control"
+                                       style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px" />
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label style="font-size:11px; color:var(--fr-text-secondary)">Color secundario</label>
+                            <div style="display:flex; align-items:center; gap:8px">
+                                <input type="color" id="colorSecundario" value="@(Model?.ColorSecundario ?? "#0B2545")"
+                                       class="fr-color-input"
+                                       style="width:40px; height:32px; padding:0; border:none; cursor:pointer; border-radius:4px" />
+                                <input type="text" id="colorSecundarioHex" value="@(Model?.ColorSecundario ?? "#0B2545")"
+                                       class="fr-form-control"
+                                       style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview del sidebar -->
+                    <p class="mt-3 small" style="color:var(--fr-text-muted)">Preview en tiempo real:</p>
+                    <div id="previewSidebar"
+                         style="background:var(--fr-surface-card); padding:12px;
+                                border-radius:8px; margin-top:8px;
+                                border:1px solid var(--fr-border)">
+                        <div style="display:flex; height:36px; align-items:center;">
+                            <div id="previewMarkLeft"
+                                 style="width:6px; height:36px; border-radius:2px 0 0 2px;
+                                        background:@(Model?.ColorPrimario ?? "#1A73E8"); flex-shrink:0"></div>
+                            <div id="previewLogoBox"
+                                 style="width:28px; height:28px; border-radius:6px;
+                                        background:@(Model?.ColorSecundario ?? "#0B2545");
+                                        display:flex; align-items:center; justify-content:center;
+                                        margin:0 10px; flex-shrink:0">
+                                <span style="color:#fff; font-size:10px; font-weight:700">FR</span>
+                            </div>
+                            <span style="color:var(--fr-text-primary); font-weight:700; font-size:13px">Freiroute</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="fr-btn fr-btn-primary mt-3" id="btnGuardarColores" style="width:100%">
+                        <i class="ti ti-save"></i> Guardar colores
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Operación -->
+    <div class="tab-pane fade" id="tab-operacion-content" role="tabpanel">
+        <div class="fr-card">
+            <div class="fr-card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="fr-form-label">Moneda *</label>
+                        <select name="Moneda" class="fr-form-control" required>
+                            <option value="USD" @(Model?.Moneda == "USD" ? "selected" : "")>USD — Dólar</option>
+                            <option value="EUR" @(Model?.Moneda == "EUR" ? "selected" : "")>EUR — Euro</option>
+                            <option value="GTQ" @(Model?.Moneda == "GTQ" ? "selected" : "")>GTQ — Quetzal</option>
+                            <option value="NIO" @(Model?.Moneda == "NIO" ? "selected" : "")>NIO — Córdoba</option>
+                            <option value="HNL" @(Model?.Moneda == "HNL" ? "selected" : "")>HNL — Lempira</option>
+                            <option value="CRC" @(Model?.Moneda == "CRC" ? "selected" : "")>CRC — Colón</option>
+                            <option value="MXN" @(Model?.Moneda == "MXN" ? "selected" : "")>MXN — Peso Mexicano</option>
+                            <option value="COP" @(Model?.Moneda == "COP" ? "selected" : "")>COP — Peso Colombiano</option>
+                            <option value="PEN" @(Model?.Moneda == "PEN" ? "selected" : "")>PEN — Sol Peruano</option>
+                            <option value="CLP" @(Model?.Moneda == "CLP" ? "selected" : "")>CLP — Peso Chileno</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="fr-form-label">Zona horaria *</label>
+                        <select name="ZonaHoraria" class="fr-form-control" required>
+                            <option value="America/Managua" @(Model?.ZonaHoraria == "America/Managua" ? "selected" : "")>America/Managua</option>
+                            <option value="America/Mexico_City" @(Model?.ZonaHoraria == "America/Mexico_City" ? "selected" : "")>America/Mexico_City</option>
+                            <option value="America/Bogota" @(Model?.ZonaHoraria == "America/Bogota" ? "selected" : "")>America/Bogota</option>
+                            <option value="America/Lima" @(Model?.ZonaHoraria == "America/Lima" ? "selected" : "")>America/Lima</option>
+                            <option value="America/Santiago" @(Model?.ZonaHoraria == "America/Santiago" ? "selected" : "")>America/Santiago</option>
+                            <option value="America/Buenos_Aires" @(Model?.ZonaHoraria == "America/Buenos_Aires" ? "selected" : "")>America/Buenos_Aires</option>
+                            <option value="America/Sao_Paulo" @(Model?.ZonaHoraria == "America/Sao_Paulo" ? "selected" : "")>America/Sao_Paulo</option>
+                            <option value="UTC" @(Model?.ZonaHoraria == "UTC" ? "selected" : "")>UTC</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="fr-form-label">Formato de fecha *</label>
+                        <select name="FormatoFecha" class="fr-form-control" required>
+                            <option value="DD/MM/YYYY" @(Model?.FormatoFecha == "DD/MM/YYYY" ? "selected" : "")>DD/MM/YYYY</option>
+                            <option value="MM/DD/YYYY" @(Model?.FormatoFecha == "MM/DD/YYYY" ? "selected" : "")>MM/DD/YYYY</option>
+                            <option value="YYYY-MM-DD" @(Model?.FormatoFecha == "YYYY-MM-DD" ? "selected" : "")>YYYY-MM-DD</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                    <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarOperacion">
+                        <i class="ti ti-save"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Numeración -->
+    <div class="tab-pane fade" id="tab-numeracion-content" role="tabpanel">
+        <div class="fr-card">
+            <div class="fr-card-body">
+                <div id="numeracion-cargando" class="text-center py-4">
+                    <div class="spinner-border" style="color:var(--fr-action-blue)" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+
+                <table class="fr-table" id="numeracion-tabla" style="display:none">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Prefijo</th>
+                            <th>Consecutivo actual</th>
+                            <th>Próximo número</th>
+                        </tr>
+                    </thead>
+                    <tbody id="numeracionBody"></tbody>
+                </table>
+
+                <p class="mt-3 small" style="color:var(--fr-text-muted)">
+                    Los consecutivos avanzan automáticamente al generar documentos y no pueden editarse manualmente.
+                </p>
+
+                <form id="frNumeracionForm" class="mt-3">
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <label class="fr-form-label">Prefijo embarques</label>
+                            <input type="text" name="PrefijoEmbarque" class="fr-form-control prefijo-input"
+                                   value="FR" pattern="[A-Z0-9]{2,10}" maxlength="10" placeholder="FR" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Consecutivo embarques</label>
+                            <input type="number" name="ConsecutivoEmbarque" class="fr-form-control"
+                                   min="1" value="1" readonly style="background:var(--fr-surface-bg)" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Próximo número</label>
+                            <div id="previewEmbarque"
+                                 style="padding:8px 12px; background:var(--fr-surface-bg);
+                                        border:1px solid var(--fr-border); border-radius:6px;
+                                        font-family:'JetBrains Mono',monospace; font-size:12px;
+                                        font-weight:600">FR-@(DateTime.Now.Year)-00001</div>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <label class="fr-form-label">Prefijo órdenes</label>
+                            <input type="text" name="PrefijoOrden" class="fr-form-control prefijo-input"
+                                   value="ORD" pattern="[A-Z0-9]{2,10}" maxlength="10" placeholder="ORD" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Consecutivo órdenes</label>
+                            <input type="number" name="ConsecutivoOrden" class="fr-form-control"
+                                   min="1" value="1" readonly style="background:var(--fr-surface-bg)" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Próximo número</label>
+                            <div id="previewOrden"
+                                 style="padding:8px 12px; background:var(--fr-surface-bg);
+                                        border:1px solid var(--fr-border); border-radius:6px;
+                                        font-family:'JetBrains Mono',monospace; font-size:12px;
+                                        font-weight:600">ORD-@(DateTime.Now.Year)-00001</div>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-4">
+                            <label class="fr-form-label">Prefijo carta porte</label>
+                            <input type="text" name="PrefijoCartaPorte" class="fr-form-control prefijo-input"
+                                   value="CP" pattern="[A-Z0-9]{2,10}" maxlength="10" placeholder="CP" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Consecutivo carta porte</label>
+                            <input type="number" name="ConsecutivoCartaPorte" class="fr-form-control"
+                                   min="1" value="1" readonly style="background:var(--fr-surface-bg)" />
+                        </div>
+                        <div class="col-4">
+                            <label class="fr-form-label">Próximo número</label>
+                            <div id="previewCartaPorte"
+                                 style="padding:8px 12px; background:var(--fr-surface-bg);
+                                        border:1px solid var(--fr-border); border-radius:6px;
+                                        font-family:'JetBrains Mono',monospace; font-size:12px;
+                                        font-weight:600">CP-@(DateTime.Now.Year)-00001</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+                        <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarNumeracion">
+                            <i class="ti ti-save"></i> Guardar prefijos
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(document).ready(function() {
+    const anio = new Date().getFullYear();
+
+    // Cargar datos de numeración via AJAX
+    FrApi.get('/api/configuracion/numeracion').then(data => {
+        if (data?.success && data.data) {
+            const d = data.data;
+            const tbody = $('#numeracionBody');
+            tbody.empty();
+
+            tbody.append(`<tr>
+                <td>Embarques</td>
+                <td><span class="fr-badge fr-badge-neutral">${d.PrefijoEmbarque || 'FR'}</span></td>
+                <td>${d.ConsecutivoEmbarque || 0}</td>
+                <td><span style="font-family:'JetBrains Mono',monospace; font-weight:600">${d.PrefijoEmbarque || 'FR'}-${anio}-${String((d.ConsecutivoEmbarque || 0) + 1).padStart(5, '0')}</span></td>
+            </tr>`);
+            tbody.append(`<tr>
+                <td>Órdenes</td>
+                <td><span class="fr-badge fr-badge-neutral">${d.PrefijoOrden || 'ORD'}</span></td>
+                <td>${d.ConsecutivoOrden || 0}</td>
+                <td><span style="font-family:'JetBrains Mono',monospace; font-weight:600">${d.PrefijoOrden || 'ORD'}-${anio}-${String((d.ConsecutivoOrden || 0) + 1).padStart(5, '0')}</span></td>
+            </tr>`);
+            tbody.append(`<tr>
+                <td>Carta porte</td>
+                <td><span class="fr-badge fr-badge-neutral">${d.PrefijoCartaPorte || 'CP'}</span></td>
+                <td>${d.ConsecutivoCartaPorte || 0}</td>
+                <td><span style="font-family:'JetBrains Mono',monospace; font-weight:600">${d.PrefijoCartaPorte || 'CP'}-${anio}-${String((d.ConsecutivoCartaPorte || 0) + 1).padStart(5, '0')}</span></td>
+            </tr>`);
+
+            // Actualizar preview y campos del form
+            $('input[name="PrefijoEmbarque"]').val(d.PrefijoEmbarque || 'FR');
+            $('input[name="ConsecutivoEmbarque"]').val(d.ConsecutivoEmbarque || 1);
+            $('input[name="PrefijoOrden"]').val(d.PrefijoOrden || 'ORD');
+            $('input[name="ConsecutivoOrden"]').val(d.ConsecutivoOrden || 1);
+            $('input[name="PrefijoCartaPorte"]').val(d.PrefijoCartaPorte || 'CP');
+            $('input[name="ConsecutivoCartaPorte"]').val(d.ConsecutivoCartaPorte || 1);
+
+            $('#numeracion-cargando').hide();
+            $('#numeracion-tabla').show();
+        }
+    }).catch(() => {
+        $('#numeracion-cargando').html('<span style="color:var(--fr-danger)">Error al cargar numeración</span>');
+    });
+
+    // Preview de números al cambiar prefijos
+    document.querySelectorAll('.prefijo-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const val = e.target.value.toUpperCase();
+            e.target.value = val;
+            if (input.name === 'PrefijoEmbarque') {
+                const cons = parseInt($('input[name="ConsecutivoEmbarque"]').val()) || 1;
+                $('#previewEmbarque').text(`${val || 'FR'}-${anio}-${String(cons).padStart(5, '0')}`);
+            } else if (input.name === 'PrefijoOrden') {
+                const cons = parseInt($('input[name="ConsecutivoOrden"]').val()) || 1;
+                $('#previewOrden').text(`${val || 'ORD'}-${anio}-${String(cons).padStart(5, '0')}`);
+            } else if (input.name === 'PrefijoCartaPorte') {
+                const cons = parseInt($('input[name="ConsecutivoCartaPorte"]').val()) || 1;
+                $('#previewCartaPorte').text(`${val || 'CP'}-${anio}-${String(cons).padStart(5, '0')}`);
+            }
+        });
+    });
+
+    // Guardar colores (fuera de form - handler manual)
+    document.getElementById('btnGuardarColores').addEventListener('click', async () => {
+        const resp = await FrApi.put('/api/configuracion', {
+            ColorPrimario: document.getElementById('colorPrimario').value,
+            ColorSecundario: document.getElementById('colorSecundario').value
+        });
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Colores actualizados');
+        });
+    });
+
+    // Sincronizar color pickers
+    ['colorPrimario', 'colorSecundario'].forEach(id => {
+        const picker = document.getElementById(id);
+        const hex = document.getElementById(id + 'Hex');
+        picker.addEventListener('input', (e) => {
+            hex.value = e.target.value;
+            if (id === 'colorPrimario') {
+                document.getElementById('previewMarkLeft').style.background = e.target.value;
+            } else {
+                document.getElementById('previewLogoBox').style.background = e.target.value;
+            }
+        });
+        hex.addEventListener('input', (e) => {
+            if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                picker.value = e.target.value;
+                if (id === 'colorPrimario') {
+                    document.getElementById('previewMarkLeft').style.background = e.target.value;
+                } else {
+                    document.getElementById('previewLogoBox').style.background = e.target.value;
+                }
+            }
+        });
+    });
+
+    // Guardar numeración
+    $('#frNumeracionForm').on('submit', async function(e) {
+        e.preventDefault();
+        const resp = await FrApi.put('/api/configuracion/numeracion', {
+            PrefijoEmbarque:    $('input[name="PrefijoEmbarque"]').val(),
+            PrefijoOrden:       $('input[name="PrefijoOrden"]').val(),
+            PrefijoCartaPorte:  $('input[name="PrefijoCartaPorte"]').val()
+        });
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Numeración actualizada');
+            setTimeout(() => location.reload(), 1000);
+        });
+    });
+
+    // Guardar datos generales
+    $('#frConfigForm').on('submit', async function(e) {
+        e.preventDefault();
+        const resp = await FrApi.put('/api/configuracion', {
+            Nombre:            $('input[name="Nombre"]').val(),
+            RucNit:            $('input[name="RucNit"]').val(),
+            Telefono:          $('input[name="Telefono"]').val(),
+            Industria:         $('select[name="Industria"]').val(),
+            SitioWeb:          $('input[name="SitioWeb"]').val(),
+            Direccion:         $('textarea[name="Direccion"]').val(),
+            EmailRemitente:    $('input[name="EmailRemitente"]').val(),
+            NombreRemitente:   $('input[name="NombreRemitente"]').val()
+        });
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Configuración guardada');
+        });
+    });
+
+    // Guardar operación
+    $('#btnGuardarOperacion').on('click', async () => {
+        const resp = await FrApi.put('/api/configuracion', {
+            Moneda:       $('select[name="Moneda"]').val(),
+            ZonaHoraria:  $('select[name="ZonaHoraria"]').val(),
+            FormatoFecha: $('select[name="FormatoFecha"]').val()
+        });
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Operación actualizada');
+        });
+    });
+
+    // Logo upload
+    document.getElementById('btnCambiarLogo')?.addEventListener('click', () => {
+        document.getElementById('logoInput').click();
+    });
+
+    document.getElementById('logoInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('logo', file);
+        const resp = await FrApi.upload('/api/configuracion/logo', fd);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Logo actualizado');
+            setTimeout(() => location.reload(), 1000);
+        });
+    });
+
+    document.getElementById('btnEliminarLogo')?.addEventListener('click', async () => {
+        if (!confirm('¿Eliminar el logo actual?')) return;
+        const resp = await FrApi.delete('/api/configuracion/logo');
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Logo eliminado');
+            setTimeout(() => location.reload(), 1000);
+        });
+    });
+});
+</script>
+}

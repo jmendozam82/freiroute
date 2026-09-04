@@ -63,9 +63,9 @@ public class PerfilesControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Create_Valido_Retorna200()
+    public async Task Create_Valido_Retorna201()
     {
-        // Se requiere 'configuracion:create'. El controller responde Ok() = 200 (no 201).
+        // Se requiere 'configuracion:create'. El controller responde 201 Created.
         _factory.PerfilService
             .Setup(s => s.CreateAsync(It.IsAny<PerfilRequestDto>(), It.IsAny<Guid>()))
             .ReturnsAsync(new PerfilResponseDto
@@ -85,7 +85,7 @@ public class PerfilesControllerTests : IDisposable
             Descripcion = "Perfil personalizado"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]

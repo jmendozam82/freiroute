@@ -1,0 +1,105 @@
+@model dynamic
+@{
+    ViewData["Title"] = "Mi perfil";
+}
+
+<!-- Page header (sin sidebar) -->
+<div class="fr-page-header" style="margin-bottom:24px">
+    <div>
+        <h1 class="fr-page-title">Mi perfil</h1>
+    </div>
+</div>
+
+<div class="row g-4">
+
+    <!-- Columna izquierda: Información personal -->
+    <div class="col-8">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Información personal</span>
+            </div>
+            <div class="fr-card-body">
+                <p><strong>Nombre:</strong> @User.FindFirstValue("nombre")</p>
+                <p><strong>Email:</strong> @User.FindFirstValue("email")</p>
+                <p><strong>Teléfono:</strong> @User.FindFirstValue("telefono")</p>
+                <p><strong>Tipo identidad:</strong> @User.FindFirstValue("tipo_identidad")</p>
+                <p><strong>Número identidad:</strong> @User.FindFirstValue("numero_identidad")</p>
+                <div class="mt-3">
+                    <button class="fr-btn fr-btn-ghost fr-btn-sm">
+                        <i class="ti ti-edit"></i> Editar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna derecha: Seguridad -->
+    <div class="col-4">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Seguridad de cuenta</span>
+            </div>
+            <div class="fr-card-body">
+                
+                <!-- Sección: 2FA -->
+                <div class="mb-4">
+                    <h6 class="text-uppercase small text-muted">2FA</h6>
+                    <p class="text-muted small mb-2">
+                        Protege tu cuenta con verificación en 2 pasos
+                    </p>
+                    
+                    @if ((ViewData["Tiene2FA"] as bool?) == false)
+                    {
+                        <!-- Sin 2FA activo -->
+                        <div style="background: var(--fr-danger-light); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                            <span class="fr-badge fr-badge-danger">Sin 2FA</span>
+                            <p class="text-muted small mb-0">
+                                Tu cuenta no tiene verificación en 2 pasos activada.
+                            </p>
+                            <button class="fr-btn fr-btn-ghost fr-btn-sm w-100 mt-2"
+                                    style="width:100%;"
+                                    onclick="window.location.href='/account/2fa/setup'">
+                                <i class="ti ti-lock"></i> Activar 2FA
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- 2FA Activo -->
+                        <div style="background: var(--fr-success-light); border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                            <span class="fr-badge fr-badge-success">2FA Activo</span>
+                            <p class="text-muted small mb-0">
+                                Tipo: <span id="tipo2fa">TOTP</span>
+                            </p>
+                            <div class="mt-2">
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm w-100"
+                                        style="width:100%;"
+                                        onclick="window.location='/account/2fa/setup'">
+                                    <i class="ti ti-lock"></i> Configurar 2FA
+                                </button>
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm w-100 mt-2"
+                                        style="width:100%; margin-top:8px">
+                                    <i class="ti ti-reload"></i> Regenerar códigos de recuperación
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    
+                    <!-- Sección: Contraseña -->
+                    <div class="mt-4">
+                        <h6 class="text-uppercase small text-muted">Contraseña</h6>
+                        <p class="text-muted small mb-2">
+                            Tu contraseña actual para acceder al sistema
+                        </p>
+                        <button class="fr-btn fr-btn-ghost fr-btn-sm w-100"
+                                style="width:100%;"
+                                onclick="window.location='/auth/forgot-password'">
+                            <i class="ti ti-lock"></i> Cambiar contraseña
+                        </button>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

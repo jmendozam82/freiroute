@@ -1,0 +1,236 @@
+@model PagedResult<Freiroute.DTO.Suscripcion.SuscripcionResponseDto>
+@{
+    ViewData["Title"] = "Suscripciones";
+    ViewData["ActiveMenu"] = "admin-suscripciones";
+}
+
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Suscripciones</span>
+</nav>
+
+<!-- KPI Grid -->
+<div class="fr-kpi-grid mb-4">
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Suscripciones activas</div>
+        <div class="fr-kpi-value kpi-blue">@Model.TotalItems</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Por vencer (15 días)</div>
+        <div class="fr-kpi-value kpi-amber">@(Model.Items.Count(i => i.DiasParaVencimiento <= 15))</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Ingresos del mes</div>
+        <div class="fr-kpi-value kpi-green">$@(Model.Items.Sum(i => i.PrecioPactado).ToString("N0"))</div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="fr-card mb-4">
+    <div class="fr-card-body" style="padding:16px">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="fr-form-label">Estado</label>
+                <select name="estado" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="ACTIVE" selected="@(ViewData["Estado"]?.ToString() == "ACTIVE")">Activa</option>
+                    <option value="PAST_DUE" selected="@(ViewData["Estado"]?.ToString() == "PAST_DUE")">Vencida</option>
+                    <option value="SUSPENDED" selected="@(ViewData["Estado"]?.ToString() == "SUSPENDED")">Suspendida</option>
+                    <option value="CANCELLED" selected="@(ViewData["Estado"]?.ToString() == "CANCELLED")">Cancelada</option>
+                    <option value="TRIAL" selected="@(ViewData["Estado"]?.ToString() == "TRIAL")">Trial</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label">Buscar empresa</label>
+                <input name="q" value="@ViewData["Q"]" class="fr-form-control"
+                       placeholder="Nombre de empresa..." />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="fr-btn fr-btn-primary">
+                    <i class="ti ti-search"></i> Filtrar
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="fr-table-wrapper">
+    @if (!Model.Items.Any())
+    {
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+            <div class="fr-empty-title">No hay suscripciones registradas</div>
+        </div>
+    }
+    else
+    {
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Empresa</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    <th>Inicio</th>
+                    <th>Vencimiento</th>
+                    <th>Precio</th>
+                    <th style="width:180px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                string rowBg = "";
+                if (item.Estado == "PAST_DUE") rowBg = "var(--fr-warning-light)";
+                else if (item.Estado == "SUSPENDED") rowBg = "var(--fr-danger-light)";
+
+                int dias = item.DiasParaVencimiento;
+                string diasTexto = dias >= 0 ? $"{dias} días" : "Vencido";
+
+                <tr style="@(string.IsNullOrEmpty(rowBg) ? "" : $"background:{rowBg};")">
+                    <td>
+                        <span class="fr-id-code">@item.EmpresaNombre</span>
+                    </td>
+                    <td>
+                        <span class="fr-badge @FrHelper.PlanBadgeClase(item.PlanCodigo)">@item.PlanCodigo</span>
+                    </td>
+                    <td>
+                        <span class="fr-badge @FrHelper.BadgeClase(item.Estado)">@FrHelper.EstadoLabel(item.Estado)</span>
+                    </td>
+                    <td>@item.FechaInicio.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @item.FechaVencimiento.ToString("dd/MM/yyyy")
+                        <span style="font-size:11px; color:var(--fr-text-muted)">(@diasTexto)</span>
+                    </td>
+                    <td>$@item.PrecioPactado.ToString("N2") @item.MonedaPactada</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.EmpresaId"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle" aria-label="Ver detalle">
+                                <i class="ti ti-eye"></i>
+                            </a>
+                            <button class="fr-btn fr-btn-ghost fr-btn-sm btn-pago"
+                                    data-id="@item.Id"
+                                    title="Registrar pago" aria-label="Registrar pago">
+                                <i class="ti ti-wallet"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Modal: Registrar pago -->
+<div class="modal fade" id="modalPago" tabindex="-1" aria-labelledby="modalPagoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalPagoLabel">Registrar pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="frPagoForm">
+                <input type="hidden" name="SuscripcionId" id="hiddenSuscripcionId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fr-form-label">Monto *</label>
+                        <input type="number" step="0.01" name="Monto" class="fr-form-control"
+                               placeholder="0.00"
+                               data-val="true"
+                               data-val-required="El monto es obligatorio" required />
+                        <span class="fr-form-error"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fr-form-label">Moneda</label>
+                        <select name="Moneda" class="fr-form-control">
+                            <option value="USD">USD — Dólar</option>
+                            <option value="EUR">EUR — Euro</option>
+                            <option value="GTQ">GTQ — Quetzal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fr-form-label">Método de pago</label>
+                        <select name="MetodoPago" class="fr-form-control">
+                            <option value="Tarjeta">Tarjeta</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Efectivo">Efectivo</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fr-form-label">Referencia</label>
+                        <input type="text" name="Referencia" class="fr-form-control"
+                               placeholder="Referencia de la transacción" />
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="fr-form-label">Período desde *</label>
+                            <input type="date" name="PeriodoDesde" class="fr-form-control" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="fr-form-label">Período hasta *</label>
+                            <input type="date" name="PeriodoHasta" class="fr-form-control" required />
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label class="fr-form-label">Notas</label>
+                        <textarea name="Notas" class="fr-form-control" rows="2"
+                                  placeholder="Notas adicionales"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="fr-btn fr-btn-primary" id="btnRegistrarPago">
+                        <i class="ti ti-wallet"></i> Registrar pago
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Abrir modal de pago
+    document.querySelectorAll('.btn-pago').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('hiddenSuscripcionId').value = btn.dataset.id;
+            FrModal.show('modalPago');
+        });
+    });
+
+    // Manejar envío del formulario
+    document.getElementById('frPagoForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnRegistrarPago');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+
+        const form = e.target;
+        const resp = await FrApi.post('/api/admin/suscripciones/pago', {
+            SuscripcionId: form.querySelector('[name="SuscripcionId"]').value,
+            Monto:         form.querySelector('[name="Monto"]').value,
+            Moneda:        form.querySelector('[name="Moneda"]').value,
+            MetodoPago:    form.querySelector('[name="MetodoPago"]').value,
+            Referencia:    form.querySelector('[name="Referencia"]').value,
+            PeriodoDesde:  form.querySelector('[name="PeriodoDesde"]').value,
+            PeriodoHasta:  form.querySelector('[name="PeriodoHasta"]').value,
+            Notas:         form.querySelector('[name="Notas"]').value
+        });
+
+        FrApi.handleResponse(resp, () => {
+            FrModal.hide('modalPago');
+            FrToast.success('Pago registrado exitosamente');
+            form.reset();
+            setTimeout(() => location.reload(), 1000);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-wallet"></i> Registrar pago';
+    });
+</script>
+}

@@ -83,6 +83,40 @@ public class UsuarioRepository : IUsuarioRepository
             sql, new { Id = id, EmpresaId = empresaId });
     }
 
+    /// <summary>
+    /// Obtiene un usuario por Id dentro de la empresa SIN filtrar por activo
+    /// (HU-013 CA-07): permite reactivar un usuario previamente desactivado.
+    /// </summary>
+    public async Task<Usuario?> GetByIdIncluyendoInactivosAsync(Guid id, Guid empresaId)
+    {
+        const string sql = @"
+            SELECT
+                id                 AS Id,
+                empresa_id         AS EmpresaId,
+                perfil_id          AS PerfilId,
+                tipo_identidad     AS TipoIdentidad,
+                numero_identidad   AS NumeroIdentidad,
+                nombre_completo    AS NombreCompleto,
+                email              AS Email,
+                telefono           AS Telefono,
+                foto_url           AS FotoUrl,
+                supabase_user_id   AS SupabaseUserId,
+                tipo_usuario       AS TipoUsuario,
+                estado             AS Estado,
+                ultimo_acceso      AS UltimoAcceso,
+                intentos_fallidos  AS IntentosFallidos,
+                bloqueado_hasta    AS BloqueadoHasta,
+                activo             AS Activo,
+                fecha_creacion     AS FechaCreacion,
+                fecha_modificacion AS FechaModificacion
+            FROM usuarios
+            WHERE id = @Id
+              AND empresa_id = @EmpresaId";
+
+        return await _connection.QueryFirstOrDefaultAsync<Usuario>(
+            sql, new { Id = id, EmpresaId = empresaId });
+    }
+
     /// <summary>Obtiene un usuario activo por email dentro de la empresa (login, HU-003).</summary>
     public async Task<Usuario?> GetByEmailAsync(string email, Guid empresaId)
     {
@@ -262,6 +296,25 @@ public class UsuarioRepository : IUsuarioRepository
         const string sql = @"
             UPDATE usuarios
             SET activo = false
+            WHERE id = @Id
+              AND empresa_id = @EmpresaId";
+
+        var rows = await _connection.ExecuteAsync(sql, new { Id = id, EmpresaId = empresaId });
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Reactiva un usuario previamente desactivado y restablece su estado a ACTIVE
+    /// (HU-009 / HU-011 CA-03). Resetea intentos_fallidos a 0.
+    /// </summary>
+    public async Task<bool> ReactivarAsync(Guid id, Guid empresaId)
+    {
+        const string sql = @"
+            UPDATE usuarios
+            SET activo = true,
+                estado = 'ACTIVE',
+                intentos_fallidos = 0,
+                bloqueado_hasta = NULL
             WHERE id = @Id
               AND empresa_id = @EmpresaId";
 

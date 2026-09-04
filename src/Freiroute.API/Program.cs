@@ -1,6 +1,8 @@
+using Freiroute.API.BackgroundJobs;
 using Freiroute.API.Middleware;
 using Freiroute.IOC;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -41,6 +43,9 @@ public class Program
         // --- DI Centralizada (IOC Layer) ---
         builder.Services.AddFreirouteServices(builder.Configuration);
 
+        // --- Job de fondo: vencimiento de suscripciones (HU-011 CA-05/06) ---
+        builder.Services.AddHostedService<VencimientoSuscripcionJob>();
+
         // --- Auth JWT Base ---
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -62,9 +67,27 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c =>
         {
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "Freiroute TMS API",
+                Version = "v1",
+                Description = "API REST del Transportation Management System Freiroute. " +
+                              "SaaS Multi-Tenant — todos los endpoints requieren JWT Bearer. " +
+                              "Referencia: Oracle TMS · SAP TM · MercuryGate · BluJay.",
+                Contact = new OpenApiContact
+                {
+                    Name = "Freiroute",
+                    Email = "api@freiroute.com",
+                    Url = new Uri("https://freiroute.com")
+                }
+            });
+
             var xmlFile = $"{typeof(Program).Namespace}.xml";
             var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
             if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+
+            // Anotaciones de Swashbuckle ([SwaggerSchema], [SwaggerOperation], etc.)
+            c.EnableAnnotations();
 
             // Esquema de seguridad Bearer para probar los endpoints desde Swagger
             // (documenta el header Authorization: Bearer {token}).
@@ -121,6 +144,9 @@ public class Program
         app.UseAuthentication();           // 1. Valida token JWT
         app.UseAuthorization();            // 2. Verifica [Authorize] / [RequirePermission]
         app.UseMiddleware<TenantMiddleware>(); // 3. Resuelve empresa_id → RLS session
+        // 3b. Redirección de onboarding para navegadores con tenant incompleto
+        //     (conservador: solo peticiones GET Accept:text/html, no APIs JSON).
+        app.UseMiddleware<OnboardingRedirectMiddleware>();
 
         app.MapControllers();
 

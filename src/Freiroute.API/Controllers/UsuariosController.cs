@@ -65,11 +65,15 @@ public class UsuariosController : ControllerBase
     /// <summary>Crea un usuario en estado PENDING (debe activar/aceptar invitación).</summary>
     [HttpPost]
     [RequirePermission(ModuloPermiso.Usuarios, PermissionType.Create)]
+    [ProducesResponseType(typeof(ApiResponse<UsuarioResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<UsuarioResponseDto>>> Create(UsuarioRequestDto request)
     {
         var empresaId = User.GetTenantEfectivo(HttpContext);
         var usuario = await _usuarioService.CreateAsync(request, empresaId);
-        return Ok(ApiResponse<UsuarioResponseDto>.Ok(usuario, "Usuario creado"));
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = usuario.Id },
+            ApiResponse<UsuarioResponseDto>.Ok(usuario, "Usuario creado exitosamente"));
     }
 
     /// <summary>Actualiza un usuario activo de la empresa (el email debe seguir siendo único).</summary>
@@ -92,23 +96,38 @@ public class UsuariosController : ControllerBase
         return Ok(ApiResponse<string>.Ok(string.Empty, "Usuario desactivado"));
     }
 
+    /// <summary>Reactiva un usuario previamente desactivado (HU-013 CA-07). Verifica el límite del plan.</summary>
+    [HttpPatch("{id:guid}/reactivate")]
+    [RequirePermission(ModuloPermiso.Usuarios, PermissionType.Update)]
+    public async Task<ActionResult<ApiResponse<UsuarioResponseDto>>> Reactivate(Guid id)
+    {
+        var empresaId = User.GetTenantEfectivo(HttpContext);
+        var reactivadoPorId = User.GetUsuarioId();
+        var usuario = await _usuarioService.ReactivarAsync(id, empresaId, reactivadoPorId);
+        return Ok(ApiResponse<UsuarioResponseDto>.Ok(usuario, "Usuario reactivado"));
+    }
+
     /// <summary>Invita a un usuario por email (crea la cuenta PENDING + token 48 h + email).</summary>
     [HttpPost("invitar")]
     [RequirePermission(ModuloPermiso.Usuarios, PermissionType.Create)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status201Created)]
     public async Task<IActionResult> Invitar(InvitacionRequestDto request)
     {
         var empresaId = User.GetTenantEfectivo(HttpContext);
         var creadoPorId = User.GetUsuarioId();
         await _usuarioService.InvitarAsync(request, empresaId, creadoPorId);
-        return Ok(ApiResponse<string>.Ok(string.Empty, "Invitación enviada"));
+        return StatusCode(StatusCodes.Status201Created,
+            ApiResponse<string>.Ok(string.Empty, "Invitación enviada exitosamente"));
     }
 
     /// <summary>Endpoint público: acepta la invitación con el token de 48 horas (HU-003 CA-03).</summary>
     [AllowAnonymous]
     [HttpPost("aceptar-invitacion")]
+    [ProducesResponseType(typeof(ApiResponse<UsuarioResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<UsuarioResponseDto>>> AceptarInvitacion(ResetPasswordRequestDto request)
     {
         var usuario = await _usuarioService.AceptarInvitacionAsync(request.Token, request.NewPassword);
-        return Ok(ApiResponse<UsuarioResponseDto>.Ok(usuario, "Cuenta activada"));
+        return StatusCode(StatusCodes.Status201Created,
+            ApiResponse<UsuarioResponseDto>.Ok(usuario, "Cuenta activada exitosamente"));
     }
 }

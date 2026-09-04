@@ -1,7 +1,7 @@
-@model PagedResult<EmpresaResponseDto>
+@model PagedResult<Freiroute.DTO.Admin.EmpresaResponseDto>
 @{
-    ViewData["Title"]      = "Empresas";
-    ViewData["ActiveMenu"] = "empresas";
+    ViewData["Title"] = "Empresas";
+    ViewData["ActiveMenu"] = "admin-empresas";
 }
 
 <!-- Breadcrumb -->
@@ -14,15 +14,15 @@
 <!-- Page header -->
 <div class="fr-page-header">
     <div>
-        <h1 class="fr-page-title">Gestión de Empresas</h1>
-        <p class="fr-page-subtitle">@Model.TotalItems registros activos</p>
+        <h1 class="fr-page-title">Empresas</h1>
+        <p class="fr-page-subtitle">@Model.TotalItems tenants</p>
     </div>
     <div class="d-flex gap-2">
         <a asp-area="Admin" asp-controller="Empresas" asp-action="Create" class="fr-btn fr-btn-primary">
             <i class="ti ti-plus"></i> Nueva Empresa
         </a>
-        <button class="fr-btn fr-btn-ghost" onclick="FrToast.info('Exportación disponible próximamente')">
-            <i class="ti ti-table-export"></i> Exportar
+        <button class="fr-btn fr-btn-ghost" onclick="exportarEmpresasCSV()">
+            <i class="ti ti-table-export"></i> Exportar CSV
         </button>
     </div>
 </div>
@@ -31,18 +31,28 @@
 <div class="fr-card mb-4">
     <div class="fr-card-body" style="padding:16px">
         <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-5">
-                <label class="fr-form-label">Buscar por nombre o email</label>
+            <div class="col-md-4">
+                <label class="fr-form-label">Buscar nombre/email</label>
                 <input name="q" value="@ViewData["Q"]" class="fr-form-control"
                        placeholder="Nombre, RUC, email..." />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="fr-form-label">Plan</label>
+                <select name="plan" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="STARTER" selected="@(ViewData["Plan"]?.ToString() == "STARTER")">Starter</option>
+                    <option value="PROFESSIONAL" selected="@(ViewData["Plan"]?.ToString() == "PROFESSIONAL")">Professional</option>
+                    <option value="ENTERPRISE" selected="@(ViewData["Plan"]?.ToString() == "ENTERPRISE")">Enterprise</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="fr-form-label">Estado</label>
                 <select name="estado" class="fr-form-control">
                     <option value="">Todos</option>
                     <option value="ACTIVE" selected="@(ViewData["Estado"]?.ToString() == "ACTIVE")">Activa</option>
                     <option value="SUSPENDED" selected="@(ViewData["Estado"]?.ToString() == "SUSPENDED")">Suspendida</option>
                     <option value="CANCELLED" selected="@(ViewData["Estado"]?.ToString() == "CANCELLED")">Cancelada</option>
+                    <option value="PAST_DUE" selected="@(ViewData["Estado"]?.ToString() == "PAST_DUE")">Vencida</option>
                 </select>
             </div>
             <div class="col-md-auto">
@@ -61,7 +71,7 @@
     {
         <div class="fr-empty">
             <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
-            <div class="fr-empty-title">No hay empresas registradas</div>
+            <div class="fr-empty-title">No hay tenants registrados</div>
             <div class="fr-empty-text">Crea la primera usando el botón "Nueva Empresa"</div>
         </div>
     }
@@ -70,64 +80,45 @@
         <table class="fr-table">
             <thead>
                 <tr>
-                    <th>Nombre</th>
+                    <th>Empresa</th>
                     <th>RUC/NIT</th>
                     <th>Email Admin</th>
                     <th>País</th>
                     <th>Plan</th>
                     <th>Estado</th>
-                    <th>Fecha Creación</th>
-                    <th style="width:120px">Acciones</th>
+                    <th>Fecha Registro</th>
+                    <th>Onboarding</th>
+                    <th style="width:140px">Acciones</th>
                 </tr>
             </thead>
             <tbody>
             @foreach (var item in Model.Items)
             {
-                <tr>
+                // Determinar clases de fila por estado
+                string rowBg = "";
+                if (item.Estado == "PAST_DUE") rowBg = "var(--fr-warning-light)";
+                else if (item.Estado == "SUSPENDED") rowBg = "var(--fr-danger-light)";
+
+                <tr style="background: @rowBg;">
                     <td>
                         <span class="fr-id-code">@item.Nombre</span>
+                        <small class="text-muted">@item.Pais</small>
                     </td>
                     <td>@item.RucNit</td>
                     <td>@item.EmailAdmin</td>
                     <td>@item.Pais</td>
                     <td>
-                        @{
-                            var planClase = item.PlanSuscripcion switch
-                            {
-                                "ENTERPRISE"    => "fr-badge-success",
-                                "PROFESSIONAL"  => "fr-badge-info",
-                                _               => "fr-badge-neutral"
-                            };
-                            var planLabel = item.PlanSuscripcion switch
-                            {
-                                "ENTERPRISE"    => "ENTERPRISE",
-                                "PROFESSIONAL"  => "PROFESSIONAL",
-                                "STARTER"       => "STARTER",
-                                _               => item.PlanSuscripcion
-                            };
-                        }
-                        <span class="fr-badge @planClase">@planLabel</span>
+                        <span class="fr-badge @FrHelper.PlanBadgeClase(item.PlanSuscripcion)">@item.PlanSuscripcion</span>
                     </td>
                     <td>
-                        @{
-                            var estadoClase = item.Estado switch
-                            {
-                                "ACTIVE"    => "fr-badge-success",
-                                "SUSPENDED" => "fr-badge-warning",
-                                "CANCELLED" => "fr-badge-danger",
-                                _           => "fr-badge-neutral"
-                            };
-                            var estadoLabel = item.Estado switch
-                            {
-                                "ACTIVE"    => "Activa",
-                                "SUSPENDED" => "Suspendida",
-                                "CANCELLED" => "Cancelada",
-                                _           => item.Estado
-                            };
-                        }
-                        <span class="fr-badge @estadoClase">@estadoLabel</span>
+                        <span class="fr-badge @FrHelper.BadgeClase(item.Estado)">@FrHelper.EstadoLabel(item.Estado)</span>
                     </td>
                     <td>@item.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @item.OnboardingCompletado
+                            ? <span class="fr-badge fr-badge-success">Sí</span>
+                            : <span class="fr-badge fr-badge-neutral">No</span>
+                    </td>
                     <td>
                         <div class="d-flex gap-1">
                             <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.Id"
@@ -159,12 +150,12 @@
             </span>
             <div class="d-flex gap-2">
                 <a asp-area="Admin" asp-controller="Empresas" asp-action="Index"
-                   asp-route-page="@(Model.PageNumber - 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]"
+                   asp-route-page="@(Model.HasPreviousPage ? Model.PageNumber - 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-plan="@ViewData["Plan"]" asp-route-estado="@ViewData["Estado"]"
                    class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
                     ← Anterior
                 </a>
                 <a asp-area="Admin" asp-controller="Empresas" asp-action="Index"
-                   asp-route-page="@(Model.PageNumber + 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]"
+                   asp-route-page="@(Model.HasNextPage ? Model.PageNumber + 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-plan="@ViewData["Plan"]" asp-route-estado="@ViewData["Estado"]"
                    class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
                     Siguiente →
                 </a>
@@ -172,3 +163,9 @@
         </div>
     }
 </div>
+
+<script>
+function exportarEmpresasCSV() {
+    window.location.href = '/api/admin/empresas/export';
+}
+</script>

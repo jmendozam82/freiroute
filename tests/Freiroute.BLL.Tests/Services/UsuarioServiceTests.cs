@@ -31,6 +31,7 @@ public class UsuarioServiceTests
     private readonly Mock<ISupabaseAuthService> _supabaseAuth;
     private readonly Mock<IAuditoriaService> _auditoria;
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<IPlanLimiteService> _planLimiteService;
     private readonly IOptions<AppSettings> _appSettings;
     private readonly Mock<ILogger<UsuarioService>> _logger;
     private readonly UsuarioService _service;
@@ -44,6 +45,7 @@ public class UsuarioServiceTests
         _supabaseAuth = new Mock<ISupabaseAuthService>();
         _auditoria = new Mock<IAuditoriaService>();
         _emailService = new Mock<IEmailService>();
+        _planLimiteService = new Mock<IPlanLimiteService>();
         _appSettings = Options.Create(new AppSettings { BaseUrl = "https://localhost:5001" });
         _logger = new Mock<ILogger<UsuarioService>>();
 
@@ -60,6 +62,7 @@ public class UsuarioServiceTests
             _supabaseAuth.Object,
             _auditoria.Object,
             _emailService.Object,
+            _planLimiteService.Object,
             _appSettings,
             _logger.Object);
     }
@@ -588,5 +591,177 @@ public class UsuarioServiceTests
         var act = async () => await _service.AceptarInvitacionAsync(token, "NuevaPassword123!");
 
         await act.Should().ThrowAsync<BusinessException>();
+    }
+
+    // ── ReactivarAsync (HU-013 CA-07) ─────────────────────────────
+
+    [Fact]
+    public async Task ReactivarAsync_CuandoUsuarioNoExiste_LanzaNotFoundException()
+    {
+        // Arrange
+        var usuarioId = Guid.NewGuid();
+        _usuarioRepository
+            .Setup(r => r.GetByIdIncluyendoInactivosAsync(usuarioId, EmpresaId))
+            .ReturnsAsync((Usuario?)null);
+
+        // Act
+        var act = async () => await _service.ReactivarAsync(usuarioId, EmpresaId, Guid.NewGuid());
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task ReactivarAsync_CuandoUsuarioYaActivo_LanzaBusinessException()
+    {
+        // Arrange
+        var usuarioId = Guid.NewGuid();
+        _usuarioRepository
+            .Setup(r => r.GetByIdIncluyendoInactivosAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(new Usuario
+            {
+                Id = usuarioId,
+                EmpresaId = EmpresaId,
+                PerfilId = PerfilId,
+                NombreCompleto = "Juan Pérez",
+                Email = "juan@transnic.com",
+                TipoUsuario = TipoUsuario.OPERADOR,
+                Estado = EstadoUsuario.ACTIVE,
+                Activo = true
+            });
+
+        // Act
+        var act = async () => await _service.ReactivarAsync(usuarioId, EmpresaId, Guid.NewGuid());
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*ya está activo*");
+    }
+
+    [Fact]
+    public async Task ReactivarAsync_Exitoso_ReactivaYRegistraAuditoria()
+    {
+        // Arrange
+        var usuarioId = Guid.NewGuid();
+        var reactivadoPorId = Guid.NewGuid();
+
+        _usuarioRepository
+            .Setup(r => r.GetByIdIncluyendoInactivosAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(new Usuario
+            {
+                Id = usuarioId,
+                EmpresaId = EmpresaId,
+                PerfilId = PerfilId,
+                NombreCompleto = "Juan Pérez",
+                Email = "juan@transnic.com",
+                TipoUsuario = TipoUsuario.OPERADOR,
+                Estado = EstadoUsuario.SUSPENDED,
+                Activo = false
+            });
+
+        _planLimiteService
+            .Setup(s => s.VerificarLimiteUsuariosAsync(EmpresaId))
+            .Returns(Task.CompletedTask);
+
+        _usuarioRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Usuario>()))
+            .ReturnsAsync(true);
+
+        _usuarioRepository
+            .Setup(r => r.GetByIdAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(new Usuario
+            {
+                Id = usuarioId,
+                EmpresaId = EmpresaId,
+                PerfilId = PerfilId,
+                NombreCompleto = "Juan Pérez",
+                Email = "juan@transnic.com",
+                TipoUsuario = TipoUsuario.OPERADOR,
+                Estado = EstadoUsuario.ACTIVE,
+                Activo = true
+            });
+
+        ConfigurarPerfilPorId(PerfilId);
+        ConfigurarAuditoriaYEmail();
+
+        // Act
+        var result = await _service.ReactivarAsync(usuarioId, EmpresaId, reactivadoPorId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Activo.Should().BeTrue();
+        result.Estado.Should().Be(EstadoUsuario.ACTIVE);
+
+        _planLimiteService.Verify(
+            s => s.VerificarLimiteUsuariosAsync(EmpresaId), Times.Once);
+
+        _auditoria.Verify(
+            a => a.RegistrarAsync(
+                "usuarios", AccionAuditoria.REACTIVAR, EmpresaId, reactivadoPorId,
+                nameof(Usuario), usuarioId,
+                It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivarAsync_CuandoUpdateFalla_UsaReactivarDelRepositorio()
+    {
+        // Arrange
+        var usuarioId = Guid.NewGuid();
+        var reactivadoPorId = Guid.NewGuid();
+
+        _usuarioRepository
+            .Setup(r => r.GetByIdIncluyendoInactivosAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(new Usuario
+            {
+                Id = usuarioId,
+                EmpresaId = EmpresaId,
+                PerfilId = PerfilId,
+                NombreCompleto = "Juan Pérez",
+                Email = "juan@transnic.com",
+                TipoUsuario = TipoUsuario.OPERADOR,
+                Estado = EstadoUsuario.SUSPENDED,
+                Activo = false
+            });
+
+        _planLimiteService
+            .Setup(s => s.VerificarLimiteUsuariosAsync(EmpresaId))
+            .Returns(Task.CompletedTask);
+
+        // UpdateAsync retorna false (usuario inactivo, UPDATE no afecta filas).
+        _usuarioRepository
+            .Setup(r => r.UpdateAsync(It.IsAny<Usuario>()))
+            .ReturnsAsync(false);
+
+        _usuarioRepository
+            .Setup(r => r.ReactivarAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(true);
+
+        _usuarioRepository
+            .Setup(r => r.GetByIdAsync(usuarioId, EmpresaId))
+            .ReturnsAsync(new Usuario
+            {
+                Id = usuarioId,
+                EmpresaId = EmpresaId,
+                PerfilId = PerfilId,
+                NombreCompleto = "Juan Pérez",
+                Email = "juan@transnic.com",
+                TipoUsuario = TipoUsuario.OPERADOR,
+                Estado = EstadoUsuario.ACTIVE,
+                Activo = true
+            });
+
+        ConfigurarPerfilPorId(PerfilId);
+        ConfigurarAuditoriaYEmail();
+
+        // Act
+        var result = await _service.ReactivarAsync(usuarioId, EmpresaId, reactivadoPorId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Activo.Should().BeTrue();
+
+        _usuarioRepository.Verify(
+            r => r.ReactivarAsync(usuarioId, EmpresaId), Times.Once);
     }
 }

@@ -10,6 +10,11 @@ using Freiroute.DTO.Empresa;
 using Freiroute.DTO.Permiso;
 using Freiroute.DTO.Perfil;
 using Freiroute.DTO.Usuario;
+using Freiroute.DTO.Plan;
+using Freiroute.DTO.Suscripcion;
+using Freiroute.DTO.Onboarding;
+using Freiroute.DTO.Configuracion;
+using Freiroute.DTO.Admin;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -50,6 +55,13 @@ public static class DependencyInjection
         services.AddScoped<IInvitacionRepository, InvitacionRepository>();
         services.AddScoped<ISesionRepository, SesionRepository>();
 
+        // ── Repositorios Sprint 2 (EP-02 Admin SaaS & Tenants) ──────
+        services.AddScoped<IPlanRepository,             PlanRepository>();
+        services.AddScoped<ISuscripcionRepository,      SuscripcionRepository>();
+        services.AddScoped<IPagoRepository,             PagoRepository>();
+        services.AddScoped<IConfiguracion2faRepository, Configuracion2faRepository>();
+        services.AddScoped<IConfiguracionRepository,    ConfiguracionRepository>();
+
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
         // Sprint 1: stubs (envío de email y Supabase Auth reales van en Sprint 2).
@@ -65,6 +77,17 @@ public static class DependencyInjection
         services.AddScoped<IPermisoService, PermisoService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
 
+        // ── 6b. Servicios BLL Sprint 2 (EP-02 Admin SaaS & Tenants) ──
+        services.AddScoped<IPlanService, PlanService>();
+        services.AddScoped<IPlanLimiteService, PlanLimiteService>();
+        services.AddScoped<ISuscripcionService, SuscripcionService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+        services.AddScoped<IOnboardingService, OnboardingService>();
+        services.AddScoped<IConfiguracionService, ConfiguracionService>();
+
+        // ── 6c. Supabase Storage (HU-014, ADR-012) via HttpClient ───
+        services.AddHttpClient<IStorageService, SupabaseStorageService>();
+
         // ── 7. Validadores FluentValidation (validación servidor) ──
         services.AddScoped<IValidator<LoginRequestDto>, BLL.Validators.LoginValidator>();
         services.AddScoped<IValidator<EmpresaRequestDto>, BLL.Validators.EmpresaValidator>();
@@ -72,6 +95,15 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UsuarioRequestDto>, BLL.Validators.UsuarioValidator>();
         services.AddScoped<IValidator<ResetPasswordRequestDto>, BLL.Validators.ResetPasswordValidator>();
         services.AddScoped<IValidator<PermisoRequestDto>, BLL.Validators.PermisoValidator>();
+
+        // ── 7b. Validadores Sprint 2 ─────────────────────────────────
+        services.AddScoped<IValidator<PlanRequestDto>, BLL.Validators.PlanValidator>();
+        services.AddScoped<IValidator<SuscripcionRequestDto>, BLL.Validators.SuscripcionValidator>();
+        services.AddScoped<IValidator<PagoRequestDto>, BLL.Validators.PagoValidator>();
+        services.AddScoped<IValidator<OnboardingPaso1RequestDto>, BLL.Validators.OnboardingPaso1Validator>();
+        services.AddScoped<IValidator<OnboardingPaso3RequestDto>, BLL.Validators.OnboardingPaso3Validator>();
+        services.AddScoped<IValidator<ConfiguracionRequestDto>, BLL.Validators.ConfiguracionValidator>();
+        services.AddScoped<IValidator<NumeracionRequestDto>, BLL.Validators.NumeracionValidator>();
 
         return services;
     }

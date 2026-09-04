@@ -21,6 +21,10 @@ public class Empresa
     public string Pais { get; set; } = "Nicaragua";                    // VARCHAR(100) DEFAULT 'Nicaragua'
     public string? Ciudad { get; set; }                                // VARCHAR(100)
     public string? Direccion { get; set; }                             // TEXT
+    public string? Industria { get; set; }                             // VARCHAR(100) — giro o sector (Sprint 2)
+    public string? SitioWeb { get; set; }                              // VARCHAR(200) — sitio web (Sprint 2)
+    public string? EmailRemitente { get; set; }                        // VARCHAR(200) — remitente de notificaciones (Sprint 2)
+    public string? NombreRemitente { get; set; }                       // VARCHAR(200) — nombre del remitente (Sprint 2)
     public string? LogoUrl { get; set; }                               // TEXT (Supabase Storage)
 
     // ── Personalización white-label ────────────────────────────────
@@ -36,10 +40,21 @@ public class Empresa
     public string ZonaHoraria { get; set; } = "America/Managua";       // VARCHAR(100) DEFAULT
     public string Idioma { get; set; } = "es";                         // VARCHAR(10) DEFAULT 'es'
     public string FormatoFecha { get; set; } = "DD/MM/YYYY";           // VARCHAR(20) DEFAULT
+    public string? ModosTransporte { get; set; }                       // TEXT -- modos activos (HU-012 CA-04) [falta migracion]
 
     // ── Numeración de documentos ───────────────────────────────────
     public string PrefijoEmbarque { get; set; } = "FR";                // VARCHAR(10) DEFAULT 'FR'
     public int ConsecutivoEmbarque { get; set; } = 1;                  // INTEGER DEFAULT 1
     public string PrefijoOrden { get; set; } = "ORD";                  // VARCHAR(10) DEFAULT 'ORD'
     public int ConsecutivoOrden { get; set; } = 1;                     // INTEGER DEFAULT 1
+
+    // ── Numeración de carta de porte ──────────────────────────────
+    public string PrefijoCartaPorte { get; set; } = "CP";              // VARCHAR(10) DEFAULT 'CP'
+    public int ConsecutivoCartaPorte { get; set; } = 1;               // INTEGER DEFAULT 1
+
+    // ── Onboarding y plan (Sprint 2) ─────────────────────────────
+    public Guid? PlanId { get; set; }                                  // FK planes(id) — nullable
+    public int OnboardingPasoActual { get; set; } = 1;                // INTEGER DEFAULT 1 (1-5)
+    public bool OnboardingCompletado { get; set; } = false;           // BOOLEAN DEFAULT false
+    // Estado y PlanSuscripcion ya existen como strings
 }

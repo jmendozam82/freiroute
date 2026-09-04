@@ -1,0 +1,282 @@
+@using Freiroute.DTO.Usuario
+@using Freiroute.Utility.Pagination
+@model PagedResult<Freiroute.DTO.Usuario.UsuarioResponseDto>
+@functions
+{
+    private string HaceTiempo(DateTime fecha)
+    {
+        var ahora = DateTime.Now;
+        var diffMs = ahora - fecha;
+        var diffMin = Math.Floor(diffMs.TotalMinutes);
+        var diffH = Math.Floor(diffMs.TotalHours);
+        var diffD = Math.Floor(diffMs.TotalDays);
+
+        if (diffMin < 1) return "hace un momento";
+        if (diffMin < 60) return $"hace {diffMin} min";
+        if (diffH < 24) return $"hace {diffH} hrs";
+        if (diffD < 2) return "ayer";
+        return fecha.ToString("dd/MM/yyyy");
+    }
+
+    private string BadgeEstado(string estado) => estado switch
+    {
+        "ACTIVE"    => "fr-badge-success",
+        "PENDING"   => "fr-badge-info",
+        "SUSPENDED" => "fr-badge-warning",
+        "LOCKED"    => "fr-badge-danger",
+        _           => "fr-badge-neutral"
+    };
+
+    private string BgFila(bool activo, string estado)
+    {
+        if (!activo) return "var(--fr-danger-light)";
+        if (estado == "LOCKED") return "var(--fr-warning-light)";
+        return "";
+    }
+}
+@{
+    ViewData["Title"] = "Usuarios";
+    ViewData["ActiveMenu"] = "usuarios";
+}
+
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/dashboard">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Usuarios</span>
+</nav>
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Usuarios</h1>
+        <p class="fr-page-subtitle">@(Model.TotalItems) registrados</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="fr-btn fr-btn-primary" onclick="FrModal.show('modalInvitar')">
+            <i class="ti ti-user-plus"></i> Invitar usuario
+        </button>
+        <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Create"
+           class="fr-btn fr-btn-ghost">
+            <i class="ti ti-user"></i> Crear usuario
+        </a>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="fr-card mb-4">
+    <div class="fr-card-body" style="padding:16px">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="fr-form-label">Estado</label>
+                <select name="estado" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="ACTIVE" selected="@(ViewData["Estado"]?.ToString() == "ACTIVE")">Activo</option>
+                    <option value="PENDING" selected="@(ViewData["Estado"]?.ToString() == "PENDING")">Pendiente</option>
+                    <option value="SUSPENDED" selected="@(ViewData["Estado"]?.ToString() == "SUSPENDED")">Suspendido</option>
+                    <option value="LOCKED" selected="@(ViewData["Estado"]?.ToString() == "LOCKED")">Bloqueado</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label">Perfil</label>
+                <select name="perfil" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="ADMIN" selected="@(ViewData["Perfil"]?.ToString() == "ADMIN")">ADMIN</option>
+                    <option value="OPERADOR" selected="@(ViewData["Perfil"]?.ToString() == "OPERADOR")">Operador</option>
+                    <option value="CONDUCTOR" selected="@(ViewData["Perfil"]?.ToString() == "CONDUCTOR")">Conductor</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label">Búsqueda</label>
+                <input name="q" value="@ViewData["Q"]" class="fr-form-control"
+                       placeholder="Nombre o email..." />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="fr-btn fr-btn-primary">
+                    <i class="ti ti-search"></i> Filtrar
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="fr-table-wrapper">
+    @if (!Model.Items.Any())
+    {
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+            <div class="fr-empty-title">No hay usuarios registrados</div>
+            <div class="fr-empty-text">Invita al primer usuario o crea uno nuevo</div>
+        </div>
+    }
+    else
+    {
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Tipo/Perfil</th>
+                    <th>Estado</th>
+                    <th>Último acceso</th>
+                    <th style="width:200px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                string bgFila = BgFila(item.Estado == "ACTIVE" || item.Estado == "PENDING", item.Estado ?? "");
+                string badgeTipo = item.TipoUsuario == "ADMIN" ? "fr-badge-info"
+                                 : item.TipoUsuario == "OPERADOR" ? "fr-badge-warning"
+                                 : "fr-badge-neutral";
+
+                <tr style="@(string.IsNullOrEmpty(bgFila) ? "" : $"background:{bgFila};")">
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px">
+                            <span class="fr-avatar">
+                                <span class="fr-avatar-inicial">@(item.NombreCompleto?.Length > 0 ? item.NombreCompleto[0].ToString().ToUpper() : "?")</span>
+                            </span>
+                            <div>
+                                <div style="font-weight:600; font-size:13px">@item.NombreCompleto</div>
+                                <div style="font-size:11px; color:var(--fr-text-muted)">@item.Email</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="fr-badge @badgeTipo">@(item.TipoUsuario ?? "-")</span>
+                    </td>
+                    <td>
+                        <span class="fr-badge @BadgeEstado(item.Estado ?? "")">@(item.Estado ?? "-")</span>
+                    </td>
+                    <td>
+                        <span class="small" style="color:var(--fr-text-muted)">
+                            @(item.UltimoAcceso.HasValue ? HaceTiempo(item.UltimoAcceso.Value) : "Nunca")
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Edit" asp-route-id="@item.Id"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
+                                <i class="ti ti-pencil"></i>
+                            </a>
+                            @if (item.Estado == "ACTIVE" || item.Estado == "PENDING")
+                            {
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        data-fr-deactivate="/api/usuarios/@item.Id/desactivar"
+                                        data-fr-nombre="@item.NombreCompleto"
+                                        title="Desactivar" aria-label="Desactivar"
+                                        style="color:var(--fr-danger)">
+                                    <i class="ti ti-user-off"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        data-fr-deactivate="/api/usuarios/@item.Id/reactivar"
+                                        data-fr-nombre="@item.NombreCompleto"
+                                        title="Reactivar" aria-label="Reactivar"
+                                        style="color:var(--fr-success)">
+                                    <i class="ti ti-user-check"></i>
+                                </button>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Paginación -->
+@if (Model.TotalItems > 0)
+{
+    <div class="fr-pagination mt-3">
+        <span class="fr-pagination-info">
+            Mostrando @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalItems))
+            de @Model.TotalItems usuarios
+        </span>
+        <div class="d-flex gap-2">
+            <a asp-action="Index"
+               asp-route-page="@(Model.HasPreviousPage ? Model.PageNumber - 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]" asp-route-perfil="@ViewData["Perfil"]"
+               class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
+                ← Anterior
+            </a>
+            <a asp-action="Index"
+               asp-route-page="@(Model.HasNextPage ? Model.PageNumber + 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]" asp-route-perfil="@ViewData["Perfil"]"
+               class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
+                Siguiente →
+            </a>
+        </div>
+    </div>
+}
+
+<!-- Modal: Invitar usuario -->
+<div class="modal fade" id="modalInvitar" tabindex="-1" aria-labelledby="modalInvitarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalInvitarLabel">Invitar usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="frInvitarForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fr-form-label">Email *</label>
+                        <input type="email" name="Email" class="fr-form-control"
+                               placeholder="usuario@empresa.com"
+                               data-val="true"
+                               data-val-required="El email es obligatorio"
+                               data-val-email="Ingrese un email válido" required />
+                        <span class="fr-form-error" data-valmsg-for="Email"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fr-form-label">Perfil a asignar *</label>
+                        <select name="PerfilId" class="fr-form-control" required>
+                            <option value="">-- Seleccionar --</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="OPERADOR">OPERADOR</option>
+                            <option value="CONDUCTOR">CONDUCTOR</option>
+                        </select>
+                        <span class="fr-form-error" data-valmsg-for="PerfilId"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="fr-btn fr-btn-primary" id="btnEnviarInvitacion">
+                        <i class="ti ti-paper-plane"></i> Enviar invitación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Manejar envío de invitación
+    document.getElementById('frInvitarForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnEnviarInvitacion');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Enviando...';
+
+        const form = e.target;
+        const resp = await FrApi.post('/api/usuarios/invitar', {
+            Email: form.querySelector('[name="Email"]').value.trim(),
+            PerfilId: form.querySelector('[name="PerfilId"]').value
+        });
+
+        FrApi.handleResponse(resp, () => {
+            FrModal.hide('modalInvitar');
+            FrToast.success('Invitación enviada exitosamente');
+            form.reset();
+            setTimeout(() => location.reload(), 1000);
+        });
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-paper-plane"></i> Enviar invitación';
+    });
+</script>
+}

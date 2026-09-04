@@ -14,6 +14,12 @@ public interface IUsuarioRepository
     /// <summary>Obtiene un usuario activo por Id dentro de la empresa.</summary>
     Task<Usuario?> GetByIdAsync(Guid id, Guid empresaId);
 
+    /// <summary>
+    /// Obtiene un usuario por Id dentro de la empresa SIN filtrar por activo
+    /// (Hu-013 CA-07): permite reactivar un usuario previamente desactivado.
+    /// </summary>
+    Task<Usuario?> GetByIdIncluyendoInactivosAsync(Guid id, Guid empresaId);
+
     /// <summary>Obtiene un usuario activo por email dentro de la empresa (login, HU-003).</summary>
     Task<Usuario?> GetByEmailAsync(string email, Guid empresaId);
 
@@ -41,6 +47,13 @@ public interface IUsuarioRepository
 
     /// <summary>Soft delete: SET activo = false WHERE id = @Id AND empresa_id = @EmpresaId.</summary>
     Task<bool> DeactivateAsync(Guid id, Guid empresaId);
+
+    /// <summary>
+    /// Reactiva un usuario previamente desactivado: SET activo = true,
+    /// Estado = 'ACTIVE', intentos_fallidos = 0 (HU-009 / HU-011 CA-03).
+    /// Retorna true si el usuario exist�a (aunque ya estuviera activo).
+    /// </summary>
+    Task<bool> ReactivarAsync(Guid id, Guid empresaId);
 
     // ── Seguridad de cuenta (HU-003 CA-04/05/06) ──────────────────
 

@@ -8,6 +8,7 @@
   /* ── Identidad Freiroute ──────────────────────────────── */
   --fr-navy-primary:    #0B2545;
   --fr-navy-mid:        #1B4F8A;
+  --fr-navy-light:      #2C6BAD;
   --fr-navy-hover:      rgba(255,255,255,.06);
   --fr-action-blue:     #1A73E8;
   --fr-action-hover:    #1557B0;
@@ -17,10 +18,13 @@
   /* ── Semántica operacional TMS ───────────────────────── */
   --fr-success:         #2E7D32;
   --fr-success-light:   #E6F4EA;
+  --fr-success-border:  #A5D6A7;
   --fr-warning:         #F57F17;
   --fr-warning-light:   #FFF8E1;
+  --fr-warning-border:  #FFE082;
   --fr-danger:          #E53935;
   --fr-danger-light:    #FFEBEE;
+  --fr-danger-border:   #EF9A9A;
   --fr-info:            #1A73E8;
   --fr-info-light:      #E3F0FF;
   --fr-neutral:         #64748B;
@@ -30,24 +34,43 @@
   --fr-surface-bg:      #F8FAFC;
   --fr-surface-card:    #FFFFFF;
   --fr-surface-hover:   #F1F5F9;
+  --fr-surface-disabled: #F8FAFC;
   --fr-border:          #E2E8F0;
   --fr-border-strong:   #CBD5E1;
-  --fr-shadow-sm:       0 1px 3px rgba(0,0,0,.08);
-  --fr-shadow-md:       0 4px 12px rgba(0,0,0,.10);
+  --fr-border-focus:    #1A73E8;
+  --fr-shadow-xs:       0 1px 2px rgba(0,0,0,.05);
+  --fr-shadow-sm:       0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --fr-shadow-md:       0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
+  --fr-shadow-lg:       0 10px 25px rgba(0,0,0,.12), 0 4px 6px rgba(0,0,0,.07);
 
   /* ── Texto ───────────────────────────────────────────── */
   --fr-text-primary:    #1E293B;
   --fr-text-secondary:  #475569;
   --fr-text-muted:      #64748B;
   --fr-text-disabled:   #94A3B8;
+  --fr-text-inverse:    #FFFFFF;
 
   /* ── Layout ──────────────────────────────────────────── */
   --fr-sidebar-width:   240px;
   --fr-sidebar-collapsed: 64px;
   --fr-topbar-height:   56px;
+
+  /* ── Espaciado ───────────────────────────────────────── */
+  --fr-space-1:         4px;
+  --fr-space-2:         8px;
+  --fr-space-3:         12px;
+  --fr-space-4:         16px;
+  --fr-space-5:         20px;
+  --fr-space-6:         24px;
+  --fr-space-8:         32px;
+  --fr-space-12:        48px;
+
+  /* ── Border radius ───────────────────────────────────── */
+  --fr-radius-xs:       4px;
   --fr-radius-sm:       6px;
   --fr-radius-md:       10px;
   --fr-radius-lg:       14px;
+  --fr-radius-full:     9999px;
 }
 
 /* ── Reset y base ─────────────────────────────────────────── */
@@ -235,6 +258,12 @@ body {
 
 .fr-card-body { padding: 20px; }
 
+/* ── Card alert variants ───────────────────────────────── */
+.fr-card-warning { border-left: 3px solid var(--fr-warning); }
+.fr-card-danger  { border-left: 3px solid var(--fr-danger);  }
+.fr-card-success { border-left: 3px solid var(--fr-success); }
+.fr-card-info    { border-left: 3px solid var(--fr-action-blue); }
+
 /* ── KPI Cards ────────────────────────────────────────────── */
 .fr-kpi-grid {
   display: grid;
@@ -309,6 +338,15 @@ body {
   background: var(--fr-surface-hover);
 }
 
+/* Fila con permisos activos (vista de permisos) */
+.fr-table tbody tr.fr-fila-activa td {
+  background: var(--fr-blue-tint);
+}
+.fr-table tbody tr.fr-fila-activa td:first-child {
+  font-weight: 600;
+  color: var(--fr-text-primary);
+}
+
 /* Código de embarque / IDs */
 .fr-id-code {
   font-family: 'JetBrains Mono', monospace;
@@ -357,6 +395,12 @@ body {
 .fr-btn-sm { padding: 5px 10px; font-size: 11.5px; }
 .fr-btn-icon { padding: 7px; }
 
+.fr-btn:disabled, .fr-btn.disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ── Formularios ──────────────────────────────────────────── */
 .fr-form-label {
   font-size: 12px; font-weight: 600;
@@ -388,6 +432,13 @@ body {
 .fr-form-control.is-invalid { border-color: var(--fr-danger); }
 .fr-form-control.is-invalid:focus {
   box-shadow: 0 0 0 3px rgba(229,57,53,.15);
+}
+
+.fr-form-control:disabled, .fr-form-control[disabled] {
+  background: var(--fr-surface-disabled);
+  border-color: var(--fr-border);
+  color: var(--fr-text-disabled);
+  cursor: not-allowed;
 }
 
 .fr-form-error {
@@ -689,7 +740,7 @@ body {
 }
 
 .badge-fr-neutral {
-  background: #F1F5F9;
+  background: var(--fr-neutral-light);
   color: var(--fr-text-secondary);
 }
 
@@ -911,6 +962,108 @@ body {
   padding: 24px;
 }
 
+/* ── Login split-panel (40% navy + 60% white) ────────────── */
+.fr-auth-split {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.fr-auth-split-left {
+  flex: 0 0 40%;
+  max-width: 40%;
+  background: var(--fr-navy-primary);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.fr-auth-split-left::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(0,212,255,.18) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.fr-auth-split-left::after {
+  content: '';
+  position: absolute;
+  bottom: -120px; left: -120px;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(27,79,138,.35) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.fr-auth-split-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.fr-auth-split-brand .fr-logo-text {
+  color: #fff;
+}
+
+.fr-auth-split-brand .fr-logo-tag {
+  color: rgba(255,255,255,.55);
+}
+
+.fr-auth-split-hero {
+  position: relative;
+  z-index: 1;
+}
+
+.fr-auth-split-hero h1 {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  margin-bottom: 16px;
+  letter-spacing: -.5px;
+}
+
+.fr-auth-split-hero p {
+  font-size: 14px;
+  color: rgba(255,255,255,.65);
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+.fr-auth-split-quote {
+  position: relative;
+  z-index: 1;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--fr-cyan-accent);
+  opacity: .9;
+  line-height: 1.5;
+}
+
+.fr-auth-split-right {
+  flex: 1;
+  background: var(--fr-surface-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.fr-auth-split-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ── Auth standard card (Forgot / Reset) ─────────────────── */
 .fr-auth-card {
   width: 100%;
   max-width: 420px;
@@ -961,4 +1114,15 @@ body {
   .fr-kpi-grid { grid-template-columns: 1fr 1fr; }
   .fr-content { padding: 16px; }
   .fr-footer { margin-left: var(--fr-sidebar-collapsed); }
+
+  /* Login split-panel se apila en móviles */
+  .fr-auth-split { flex-direction: column; }
+  .fr-auth-split-left {
+    flex: 0 0 auto;
+    max-width: 100%;
+    padding: 24px;
+  }
+  .fr-auth-split-hero, .fr-auth-split-quote { display: none; }
+  .fr-auth-split-brand { margin-bottom: 0; }
+  .fr-auth-split-right { padding: 32px 20px; }
 }

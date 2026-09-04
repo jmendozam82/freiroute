@@ -1,0 +1,274 @@
+@model dynamic
+@{
+    ViewData["Title"] = "Activar 2FA";
+}
+
+<!-- Vista standalone (sin sidebar - igual que Login) -->
+<div style="max-width:500px; margin:0 auto">
+
+    <!-- Tabs: TOTP | Email -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-totp" data-bs-toggle="tab" data-bs-target="#tab-totp-content" type="button" role="tab">
+                <i class="ti ti-smartphone"></i> TOTP (app autenticadora)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-email" data-bs-toggle="tab" data-bs-target="#tab-email-content" type="button" role="tab">
+                <i class="ti ti-mail"></i> Email
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab: TOTP -->
+    <div class="tab-pane fade show active" id="tab-totp-content" role="tabpanel">
+        <div class="fr-card" style="padding:24px">
+            <h4 class="text-center mb-3">Activar 2FA con TOTP</h4>
+
+            <div id="seccionActivacion">
+                <!-- Paso 1 -->
+                <div class="mb-3 text-center">
+                    <span style="display:inline-flex; align-items:center; justify-content:center;
+                                 width:28px; height:28px; border-radius:50%;
+                                 background:var(--fr-action-blue); color:#fff;
+                                 font-size:12px; font-weight:700; margin-right:8px">1</span>
+                    <span style="font-size:13px">Descarga Google Authenticator o Authy en tu teléfono</span>
+                </div>
+
+                <!-- Paso 2: QR -->
+                <div class="mb-4 text-center">
+                    <span style="display:inline-flex; align-items:center; justify-content:center;
+                                 width:28px; height:28px; border-radius:50%;
+                                 background:var(--fr-action-blue); color:#fff;
+                                 font-size:12px; font-weight:700; margin-right:8px">2</span>
+                    <span style="font-size:13px">Escanea este código QR</span>
+                    <div style="margin:16px auto; padding:16px; background:var(--fr-surface-bg);
+                                border-radius:10px; display:inline-block">
+                        <img id="qrImage" src="" alt="Código QR TOTP"
+                             style="max-width:180px; display:none" />
+                        <div id="qrLoading" style="width:180px; height:180px;
+                             display:flex; align-items:center; justify-content:center">
+                            <div class="spinner-border" style="color:var(--fr-action-blue)" role="status">
+                                <span class="visually-hidden">Generando QR...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="font-size:12px; color:var(--fr-text-muted)">O ingresa manualmente:</p>
+                    <div id="secretManual"
+                         style="font-family:'JetBrains Mono',monospace; font-size:14px;
+                                font-weight:600; letter-spacing:2px;
+                                padding:8px 16px; background:var(--fr-surface-bg);
+                                border:1px solid var(--fr-border); border-radius:6px;
+                                display:inline-block; margin-top:4px">
+                        Cargando...
+                    </div>
+                </div>
+
+                <!-- Paso 3: Código -->
+                <div class="mb-4 text-center">
+                    <span style="display:inline-flex; align-items:center; justify-content:center;
+                                 width:28px; height:28px; border-radius:50%;
+                                 background:var(--fr-action-blue); color:#fff;
+                                 font-size:12px; font-weight:700; margin-right:8px">3</span>
+                    <span style="font-size:13px">Ingresa el código de 6 dígitos</span>
+                    <div style="margin:12px auto; max-width:280px">
+                        <input type="text" id="codigoTotp" class="form-control text-center"
+                               maxlength="6" placeholder="123456"
+                               style="font-size:24px; letter-spacing:8px; font-weight:600"
+                               inputmode="numeric"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                    </div>
+                </div>
+
+                <button type="button" class="fr-btn fr-btn-primary w-100" id="btnActivarTotp">
+                    <i class="ti ti-check"></i> Activar 2FA
+                </button>
+            </div>
+
+            <!-- Recovery codes (inicialmente oculto) -->
+            <div id="seccionRecoveryCodes"
+                 style="display:none; border-left:3px solid var(--fr-warning);
+                        padding-left:16px; margin-top:16px">
+                <h5 style="color:var(--fr-warning); font-size:15px; font-weight:700">
+                    <i class="ti ti-alert-triangle"></i>
+                    Guarda tus códigos de recuperación
+                </h5>
+                <p style="font-size:13px; color:var(--fr-text-secondary); margin:8px 0 16px">
+                    Estos códigos solo se muestran <strong>una vez</strong>.
+                    Si pierdes acceso a tu autenticador, podrás usar uno de estos
+                    códigos para ingresar. Guárdalos en un lugar seguro.
+                </p>
+                <div id="gridCodigos"
+                     style="display:grid; grid-template-columns:1fr 1fr;
+                            gap:8px; margin-bottom:16px">
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="fr-btn fr-btn-ghost" id="btnCopiarCodigos">
+                        <i class="ti ti-copy"></i> Copiar todos
+                    </button>
+                    <a href="/account/perfil" class="fr-btn fr-btn-primary">
+                        <i class="ti ti-check"></i>
+                        He guardado mis códigos → Ir al perfil
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Email -->
+    <div class="tab-pane fade" id="tab-email-content" role="tabpanel">
+        <div class="fr-card" style="padding:24px">
+            <h4 class="text-center mb-3">Activar 2FA por Email</h4>
+
+            <p style="font-size:13px; color:var(--fr-text-secondary); text-align:center">
+                Se enviará un código de 6 dígitos a <strong>@User.FindFirstValue("email")</strong>
+                cada vez que inicies sesión.
+            </p>
+
+            <div class="mb-3 text-center">
+                <button type="button" class="fr-btn fr-btn-ghost" id="btnEnviarCodigoEmail">
+                    <i class="ti ti-send"></i> Enviar código de prueba
+                </button>
+            </div>
+
+            <div class="mb-3 text-center">
+                <label style="font-size:13px">Ingresa el código de 6 dígitos</label>
+                <div style="margin:8px auto; max-width:280px">
+                    <input type="text" id="inputCodigoEmail" class="form-control text-center"
+                           maxlength="6" placeholder="123456"
+                           style="font-size:24px; letter-spacing:8px; font-weight:600"
+                           inputmode="numeric"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                </div>
+            </div>
+
+            <button type="button" class="fr-btn fr-btn-primary w-100" id="btnActivarEmail">
+                <i class="ti ti-check"></i> Activar 2FA por email
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let setup2faData = null;
+
+    // Cargar el setup al abrir la página (QR dinámico)
+    async function cargarSetup2fa() {
+        const resp = await FrApi.get('/api/auth/2fa/setup');
+        if (!resp?.success) {
+            FrToast.error('Error al generar el código 2FA');
+            return;
+        }
+        setup2faData = resp.data;
+
+        // Mostrar QR
+        const qrImg = document.getElementById('qrImage');
+        qrImg.src = resp.data.qrCodeUrl;
+        qrImg.style.display = 'block';
+        document.getElementById('qrLoading').style.display = 'none';
+
+        // Mostrar secret legible
+        if (resp.data.secret) {
+            document.getElementById('secretManual').textContent =
+                resp.data.secret.match(/.{1,4}/g)?.join(' ') || resp.data.secret;
+        }
+    }
+
+    // Activar 2FA TOTP
+    document.getElementById('btnActivarTotp').addEventListener('click', async () => {
+        const btn = document.getElementById('btnActivarTotp');
+        const codigo = document.getElementById('codigoTotp').value.trim();
+        if (codigo.length !== 6) {
+            FrToast.error('El código debe tener 6 dígitos');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Verificando...';
+
+        const resp = await FrApi.post('/api/auth/2fa/activate', {
+            tipo: 'TOTP',
+            codigo: codigo
+        });
+
+        if (resp?.success) {
+            // Mostrar los 8 códigos de recuperación
+            mostrarCodigosRecuperacion(resp.data?.codigosRecuperacion || resp.data?.recoveryCodes || []);
+        } else {
+            FrToast.error(resp?.message || 'Código incorrecto');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-check"></i> Activar 2FA';
+    });
+
+    // Mostrar sección de recovery codes
+    function mostrarCodigosRecuperacion(codigos) {
+        document.getElementById('seccionActivacion').style.display = 'none';
+        document.getElementById('seccionRecoveryCodes').style.display = 'block';
+
+        const grid = document.getElementById('gridCodigos');
+        grid.innerHTML = codigos.map(c => `
+            <div style="font-family:'JetBrains Mono',monospace;
+                        font-size:13px; font-weight:600;
+                        padding:8px 12px;
+                        background:var(--fr-surface-bg);
+                        border:1px solid var(--fr-border);
+                        border-radius:6px; text-align:center">
+                ${c}
+            </div>
+        `).join('');
+    }
+
+    // Copiar todos los códigos
+    document.getElementById('btnCopiarCodigos')?.addEventListener('click', () => {
+        const codigos = [...document.querySelectorAll('#gridCodigos div')]
+            .map(d => d.textContent.trim())
+            .join('\n');
+        navigator.clipboard.writeText(codigos);
+        FrToast.success('Códigos copiados al portapapeles');
+    });
+
+    // Enviar código de prueba por email
+    document.getElementById('btnEnviarCodigoEmail').addEventListener('click', async () => {
+        const resp = await FrApi.post('/api/auth/2fa/setup', {});
+        if (resp?.success) {
+            FrToast.success('Código enviado a tu email');
+        } else {
+            FrToast.error(resp?.message || 'Error al enviar código');
+        }
+    });
+
+    // Activar 2FA por email
+    document.getElementById('btnActivarEmail').addEventListener('click', async () => {
+        const btn = document.getElementById('btnActivarEmail');
+        const codigo = document.getElementById('inputCodigoEmail').value.trim();
+        if (codigo.length !== 6) {
+            FrToast.error('El código debe tener 6 dígitos');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Verificando...';
+
+        const resp = await FrApi.post('/api/auth/2fa/activate', {
+            tipo: 'EMAIL',
+            codigo: codigo
+        });
+
+        if (resp?.success) {
+            FrToast.success('2FA por email activado correctamente');
+            setTimeout(() => window.location.href = '/account/perfil', 1500);
+        } else {
+            FrToast.error(resp?.message || 'Código incorrecto');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-check"></i> Activar 2FA por email';
+    });
+
+    // Cargar al abrir la página
+    cargarSetup2fa();
+</script>
+}

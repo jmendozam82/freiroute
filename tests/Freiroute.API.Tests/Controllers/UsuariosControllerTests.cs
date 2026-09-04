@@ -67,9 +67,9 @@ public class UsuariosControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task Invitar_EmailNuevo_Retorna200()
+    public async Task Invitar_EmailNuevo_Retorna201()
     {
-        // TokenAdmin tiene 'usuarios:create'. El controller responde Ok() = 200 (no 201).
+        // TokenAdmin tiene 'usuarios:create'. El controller responde 201 Created.
         _factory.UsuarioService
             .Setup(s => s.InvitarAsync(
                 It.IsAny<InvitacionRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
@@ -83,7 +83,7 @@ public class UsuariosControllerTests : IDisposable
             PerfilId = Guid.NewGuid()
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
@@ -106,9 +106,9 @@ public class UsuariosControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task AceptarInvitacion_TokenValido_Retorna200()
+    public async Task AceptarInvitacion_TokenValido_Retorna201()
     {
-        // Endpoint pública (AllowAnonymous) — no requiere token JWT.
+        // Endpoint pública (AllowAnonymous) — no requiere token JWT. Responde 201 Created.
         _factory.UsuarioService
             .Setup(s => s.AceptarInvitacionAsync(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync(UsuarioDto());
@@ -121,7 +121,7 @@ public class UsuariosControllerTests : IDisposable
             NewPassword = "NuevaPassword123!"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]
@@ -160,5 +160,188 @@ public class UsuariosControllerTests : IDisposable
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ── POST /api/usuarios (Create) ──────────────────────────────────
+
+    [Fact]
+    public async Task Create_ConPermisoCreate_Retorna201()
+    {
+        var dto = UsuarioDto();
+        _factory.UsuarioService
+            .Setup(s => s.CreateAsync(It.IsAny<UsuarioRequestDto>(), It.IsAny<Guid>()))
+            .ReturnsAsync(dto);
+
+        // TokenAdmin tiene 'usuarios:create'
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsJsonAsync("/api/usuarios", new UsuarioRequestDto
+        {
+            PerfilId = Guid.NewGuid(),
+            NombreCompleto = "Juan Pérez",
+            Email = "juan@transnic.com",
+            TipoUsuario = "OPERADOR"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("Juan Pérez");
+    }
+
+    [Fact]
+    public async Task Create_SinPermiso_Retorna403()
+    {
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura); // solo read
+
+        var response = await client.PostAsJsonAsync("/api/usuarios", new UsuarioRequestDto
+        {
+            PerfilId = Guid.NewGuid(),
+            NombreCompleto = "Sin Permiso",
+            Email = "sin@permiso.com"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    // ── PUT /api/usuarios/{id} (Update) ───────────────────────────────
+
+    [Fact]
+    public async Task Update_ConPermisoUpdate_Retorna200()
+    {
+        var dto = UsuarioDto();
+        _factory.UsuarioService
+            .Setup(s => s.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UsuarioRequestDto>(), It.IsAny<Guid>()))
+            .ReturnsAsync(dto);
+
+        // TokenAdmin no tiene 'usuarios:update', generamos un token con todos los permisos.
+        var clientUpdate = _factory.CrearClientConToken(
+            JwtTestHelper.GenerateTestToken(
+                Guid.NewGuid(), JwtTestHelper.EmpresaTenant,
+                ["usuarios:read", "usuarios:create", "usuarios:update"], "ADMIN"));
+
+        var response = await clientUpdate.PutAsJsonAsync($"/api/usuarios/{Guid.NewGuid()}", new UsuarioRequestDto
+        {
+            PerfilId = Guid.NewGuid(),
+            NombreCompleto = "Juan Actualizado",
+            Email = "juan@transnic.com"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("actualizado");
+    }
+
+    // ── GET /api/usuarios/{id} (GetById) ──────────────────────────────
+
+    [Fact]
+    public async Task GetById_ConPermisoRead_Retorna200()
+    {
+        var dto = UsuarioDto();
+        _factory.UsuarioService
+            .Setup(s => s.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(dto);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura); // usuarios:read
+
+        var response = await client.GetAsync($"/api/usuarios/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("Juan Pérez");
+    }
+
+    [Fact]
+    public async Task GetById_UsuarioNoExiste_Retorna404()
+    {
+        _factory.UsuarioService
+            .Setup(s => s.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync((UsuarioResponseDto?)null);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura);
+
+        var response = await client.GetAsync($"/api/usuarios/{Guid.NewGuid()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── GET /api/usuarios/by-email/{email} ────────────────────────────
+
+    [Fact]
+    public async Task GetByEmail_ConPermisoRead_Retorna200()
+    {
+        var dto = UsuarioDto();
+        _factory.UsuarioService
+            .Setup(s => s.GetByEmailAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            .ReturnsAsync(dto);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura); // usuarios:read
+
+        var response = await client.GetAsync("/api/usuarios/by-email/juan@transnic.com");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("juan@transnic.com");
+    }
+
+    // ── PATCH /api/usuarios/{id}/deactivate ───────────────────────────
+
+    [Fact]
+    public async Task Deactivate_ConPermisoUpdate_Retorna200()
+    {
+        _factory.UsuarioService
+            .Setup(s => s.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(true);
+
+        var clientUpdate = _factory.CrearClientConToken(
+            JwtTestHelper.GenerateTestToken(
+                Guid.NewGuid(), JwtTestHelper.EmpresaTenant,
+                ["usuarios:read", "usuarios:create", "usuarios:update"], "ADMIN"));
+
+        var response = await clientUpdate.PatchAsync($"/api/usuarios/{Guid.NewGuid()}/deactivate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("desactivado");
+    }
+
+    [Fact]
+    public async Task Deactivate_UsuarioInexistente_Retorna422()
+    {
+        _factory.UsuarioService
+            .Setup(s => s.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ThrowsAsync(new BusinessException("Usuario no encontrado en la empresa"));
+
+        var clientUpdate = _factory.CrearClientConToken(
+            JwtTestHelper.GenerateTestToken(
+                Guid.NewGuid(), JwtTestHelper.EmpresaTenant,
+                ["usuarios:read", "usuarios:create", "usuarios:update"], "ADMIN"));
+
+        var response = await clientUpdate.PatchAsync($"/api/usuarios/{Guid.NewGuid()}/deactivate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("no encontrado");
+    }
+
+    // ── PATCH /api/usuarios/{id}/reactivate ───────────────────────────
+
+    [Fact]
+    public async Task Reactivate_ConPermisoUpdate_Retorna200()
+    {
+        var dto = UsuarioDto();
+        _factory.UsuarioService
+            .Setup(s => s.ReactivarAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(dto);
+
+        var clientUpdate = _factory.CrearClientConToken(
+            JwtTestHelper.GenerateTestToken(
+                Guid.NewGuid(), JwtTestHelper.EmpresaTenant,
+                ["usuarios:read", "usuarios:create", "usuarios:update"], "ADMIN"));
+
+        var response = await clientUpdate.PatchAsync($"/api/usuarios/{Guid.NewGuid()}/reactivate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("reactivado");
     }
 }

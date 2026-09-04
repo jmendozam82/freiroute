@@ -5,9 +5,12 @@ using Freiroute.DTO.Auth;
 using Freiroute.Entity;
 using Freiroute.Utility.Constants;
 using Freiroute.Utility.Exceptions;
+using Freiroute.Utility.Security;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OtpNet;
 
 namespace Freiroute.BLL.Services;
 
@@ -28,6 +31,7 @@ public class AuthService : IAuthService
     private readonly IEmpresaRepository _empresaRepository;
     private readonly IInvitacionRepository _invitacionRepository;
     private readonly ISesionRepository _sesionRepository;
+    private readonly IConfiguracion2faRepository _config2faRepository;
     private readonly ISupabaseAuthService _supabaseAuth;
     private readonly IJwtService _jwtService;
     private readonly IAuditoriaService _auditoria;
@@ -35,6 +39,7 @@ public class AuthService : IAuthService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly JwtSettings _jwtSettings;
     private readonly AppSettings _appSettings;
+    private readonly string _totpEncryptionKey;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -43,11 +48,13 @@ public class AuthService : IAuthService
         IEmpresaRepository empresaRepository,
         IInvitacionRepository invitacionRepository,
         ISesionRepository sesionRepository,
+        IConfiguracion2faRepository config2faRepository,
         ISupabaseAuthService supabaseAuth,
         IJwtService jwtService,
         IAuditoriaService auditoria,
         IEmailService emailService,
         IHttpContextAccessor httpContextAccessor,
+        IConfiguration configuration,
         IOptions<JwtSettings> jwtSettings,
         IOptions<AppSettings> appSettings,
         ILogger<AuthService> logger)
@@ -57,6 +64,7 @@ public class AuthService : IAuthService
         _empresaRepository = empresaRepository;
         _invitacionRepository = invitacionRepository;
         _sesionRepository = sesionRepository;
+        _config2faRepository = config2faRepository;
         _supabaseAuth = supabaseAuth;
         _jwtService = jwtService;
         _auditoria = auditoria;
@@ -64,6 +72,11 @@ public class AuthService : IAuthService
         _httpContextAccessor = httpContextAccessor;
         _jwtSettings = jwtSettings.Value;
         _appSettings = appSettings.Value;
+        // Clave maestra para cifrar el secret TOTP (ADR-011). Si no está configurada
+        // se deriva una aleatoria en memoria (fallback de tests/desarrollo).
+        _totpEncryptionKey = string.IsNullOrWhiteSpace(configuration["Security:TotpEncryptionKey"])
+            ? RandomKeyFallback()
+            : configuration["Security:TotpEncryptionKey"]!;
         _logger = logger;
     }
 
@@ -140,6 +153,55 @@ public class AuthService : IAuthService
         // 7. Nombre del tenant para la respuesta.
         var empresa = await _empresaRepository.GetByIdAsync(usuario.EmpresaId);
         var empresaNombre = empresa?.Nombre ?? string.Empty;
+
+        // 7b. Verificar si el usuario tiene 2FA activo (HU-005).
+        var config2fa = await _config2faRepository
+            .GetByUsuarioIdAsync(usuario.Id, usuario.EmpresaId);
+
+        if (config2fa is not null && config2fa.Activo &&
+            (config2fa.TotpHabilitado || config2fa.EmailHabilitado))
+        {
+            // Enviar código por email si EmailHabilitado.
+            if (config2fa.EmailHabilitado)
+            {
+                var codigo = GenerarCodigo6Digitos();
+                var codigoHash = HashCodigo(codigo);
+                await _config2faRepository.CrearCodigoTemporalAsync(new Codigo2faTempora
+                {
+                    UsuarioId = usuario.Id,
+                    CodigoHash = codigoHash,
+                    Tipo = "EMAIL",
+                    Usado = false,
+                    FechaExpiracion = DateTime.UtcNow.AddMinutes(10)
+                });
+
+                try
+                {
+                    await _emailService.EnviarAsync(
+                        usuario.Email,
+                        "Código de verificación Freiroute",
+                        $"Tu código de verificación es: <strong>{codigo}</strong>" +
+                        $"<br>Válido por 10 minutos.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Error enviando código 2FA por email a {Email}", usuario.Email);
+                }
+            }
+
+            // Generar TempToken (JWT mínimo, exp 5 min).
+            var tempToken = _jwtService.GenerateTempToken(
+                usuario.Id, usuario.EmpresaId, 5);
+
+            // Registrar en auditoría.
+            await _auditoria.RegistrarAsync(
+                "auth", "2FA_REQUERIDO", usuario.EmpresaId, usuario.Id,
+                ipAddress: ipAddress);
+
+            // Lanzar excepción especial → el middleware retorna 202.
+            throw new Requires2faException(tempToken);
+        }
 
         // 8. Generar access token + refresh token (hash persistido en sesiones).
         var accessToken = _jwtService.GenerateAccessToken(
@@ -339,7 +401,355 @@ public class AuthService : IAuthService
             nameof(Usuario), usuario.Id, null, ipAddress, userAgent);
     }
 
+    // ── 2FA TOTP (HU-005) ──────────────────────────────────────────
+
+    /// <summary>
+    /// Prepara el alta de 2FA TOTP (HU-005 CA-01): genera secret, QR y 8 códigos
+    /// de recuperación. Persiste un registro pendiente (TotpHabilitado=false) con el
+    /// secret cifrado AES-256 para poder verificar el primer código al activar.
+    /// </summary>
+    public async Task<Setup2faResponseDto> Setup2faAsync(Guid usuarioId, Guid empresaId)
+    {
+        var usuario = await ObtenerUsuarioActivoAsync(usuarioId, empresaId);
+
+        // Generar secret TOTP de 20 bytes (160 bits) y el URI otpauth.
+        var secretBytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(20);
+        var secretB32 = Base32Encoding.ToString(secretBytes);
+
+        var otpauthUri = $"otpauth://totp/{Uri.EscapeDataString("Freiroute TMS")}:" +
+                         $"{Uri.EscapeDataString(usuario.Email)}?secret={secretB32}&issuer=" +
+                         $"{Uri.EscapeDataString("Freiroute TMS")}&algorithm=SHA1&digits=6&period=30";
+
+        // 8 códigos de recuperación de un solo uso.
+        var recoveryCodes = GenerarCodigosRecuperacion(8);
+
+        // Persistir (o actualizar) un registro pendiente con el secret cifrado.
+        var config = await _config2faRepository.GetByUsuarioIdAsync(usuarioId, empresaId);
+        string secretCifrado = AesGcmEncryptor.Encrypt(secretB32, _totpEncryptionKey);
+
+        if (config is null)
+        {
+            await _config2faRepository.CreateAsync(new Configuracion2fa
+            {
+                EmpresaId = empresaId,
+                UsuarioId = usuarioId,
+                TotpSecret = secretCifrado,
+                TotpHabilitado = false,
+                EmailHabilitado = false,
+                CodigosRecuperacion = recoveryCodes.Select(HashCodigo).ToArray(),
+                FechaCreacion = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            config.TotpSecret = secretCifrado;
+            config.TotpHabilitado = false;
+            config.CodigosRecuperacion = recoveryCodes.Select(HashCodigo).ToArray();
+            config.FechaModificacion = DateTime.UtcNow;
+            await _config2faRepository.UpdateAsync(config);
+        }
+
+        return new Setup2faResponseDto
+        {
+            // Solo se muestra una vez: el secret en claro y los códigos de recuperación.
+            Secret = secretB32,
+            // Sin librería QrCodeOwnEnvironment en el stack: se expone la URI otpauth
+            // para que el frontend genere el QR (data URL) del lado cliente.
+            QrCodeUrl = otpauthUri,
+            CodigosRecuperacion = recoveryCodes.ToList()
+        };
+    }
+
+    /// <summary>
+    /// Activa el 2FA tras verificar el primer código TOTP (HU-005 CA-01).
+    /// Marca TotpHabilitado=true; los códigos de recuperación ya quedaron persistidos
+    /// como hashes durante el setup.
+    /// </summary>
+    public async Task<bool> Activar2faAsync(Activar2faRequestDto dto, Guid usuarioId, Guid empresaId)
+    {
+        var config = await _config2faRepository.GetByUsuarioIdAsync(usuarioId, empresaId);
+        if (config is null || string.IsNullOrEmpty(config.TotpSecret))
+        {
+            throw new BusinessException("Debe ejecutar el setup de 2FA antes de activarlo.");
+        }
+
+        var secretB32 = AesGcmEncryptor.Decrypt(config.TotpSecret, _totpEncryptionKey);
+        var totp = new Totp(Base32Encoding.ToBytes(secretB32), step: 30,
+            mode: OtpHashMode.Sha1, totpSize: 6);
+
+        if (!totp.VerifyTotp(dto.Codigo, out _, new VerificationWindow(1, 1)))
+        {
+            throw new BusinessException("El código TOTP es inválido o ha expirado.");
+        }
+
+        config.TotpHabilitado = true;
+        config.FechaModificacion = DateTime.UtcNow;
+        await _config2faRepository.UpdateAsync(config);
+
+        await _auditoria.RegistrarAsync(
+            "auth", "ACTIVAR_2FA", empresaId, usuarioId,
+            nameof(Configuracion2fa), config.Id, new { tipo = "TOTP" });
+
+        return true;
+    }
+
+    /// <summary>
+    /// Desactiva el 2FA de un usuario (HU-005 CA-06). Requiere la verificación del
+    /// código actual (TOTP o email) antes de desactivar por seguridad.
+    /// </summary>
+    public async Task<bool> Desactivar2faAsync(Guid usuarioId, Guid empresaId, string codigoActual)
+    {
+        var config = await _config2faRepository.GetByUsuarioIdAsync(usuarioId, empresaId)
+            ?? throw new NotFoundException(nameof(Configuracion2fa), usuarioId);
+
+        // Verificar el código actual antes de desactivar.
+        var codigoValido = false;
+
+        if (config.TotpHabilitado && !string.IsNullOrEmpty(config.TotpSecret))
+        {
+            var secret = AesGcmEncryptor.Decrypt(config.TotpSecret, _totpEncryptionKey);
+            var totp = new Totp(Base32Encoding.ToBytes(secret), step: 30,
+                mode: OtpHashMode.Sha1, totpSize: 6);
+            codigoValido = totp.VerifyTotp(codigoActual, out _, new VerificationWindow(2, 2));
+        }
+
+        if (!codigoValido && config.EmailHabilitado)
+        {
+            var hash = HashCodigo(codigoActual);
+            var codigoTemp = await _config2faRepository
+                .GetCodigoTemporalValidoAsync(usuarioId, hash);
+            codigoValido = codigoTemp is not null;
+            if (codigoValido)
+            {
+                await _config2faRepository.MarcarCodigoUsadoAsync(codigoTemp!.Id);
+            }
+        }
+
+        if (!codigoValido)
+        {
+            throw new BusinessException(
+                "Código incorrecto. No se puede desactivar el 2FA.");
+        }
+
+        var ok = await _config2faRepository.DeactivateAsync(usuarioId, empresaId);
+
+        if (ok)
+        {
+            await _auditoria.RegistrarAsync(
+                "auth", "DESACTIVAR_2FA", empresaId, usuarioId,
+                nameof(Configuracion2fa), config.Id, null);
+        }
+
+        return ok;
+    }
+
+    /// <summary>
+    /// Segundo paso del login con 2FA (HU-005): valida el temp token y el código
+    /// TOTP (o un código de recuperación de un solo uso). Emite access + refresh token.
+    /// </summary>
+    public async Task<LoginResponseDto> Verificar2faAsync(Verificar2faRequestDto request)
+    {
+        var (ipAddress, userAgent) = GetRequestContext();
+
+        var payload = _jwtService.ValidateTempToken(request.TempToken);
+        if (payload is null)
+        {
+            throw new BusinessException("Sesión 2FA inválida o expirada. Vuelva a iniciar sesión.");
+        }
+
+        var usuario = await _usuarioRepository.GetByIdAsync(payload.UserId, payload.EmpresaId);
+        if (usuario is null || !usuario.Activo || usuario.Estado != EstadoUsuario.ACTIVE)
+        {
+            throw new BusinessException("Usuario inválido");
+        }
+
+        var config = await _config2faRepository.GetByUsuarioIdAsync(usuario.Id, usuario.EmpresaId);
+        if (config is null || (!config.TotpHabilitado && !config.EmailHabilitado))
+        {
+            throw new BusinessException("El usuario no tiene 2FA activo.");
+        }
+
+        var valido = false;
+
+        if (config.TotpHabilitado && !string.IsNullOrEmpty(config.TotpSecret))
+        {
+            var secretB32 = AesGcmEncryptor.Decrypt(config.TotpSecret, _totpEncryptionKey);
+            var totp = new Totp(Base32Encoding.ToBytes(secretB32), mode: OtpHashMode.Sha1, totpSize: 6);
+            valido = totp.VerifyTotp(request.Codigo, out _, new VerificationWindow(1, 1));
+        }
+
+        // Código de recuperación de un solo uso (hash).
+        if (!valido)
+        {
+            var codigoHash = HashCodigo(request.Codigo);
+            if (config.CodigosRecuperacion.Contains(codigoHash))
+            {
+                config.CodigosRecuperacion = config.CodigosRecuperacion
+                    .Where(c => c != codigoHash).ToArray();
+                await _config2faRepository.UpdateAsync(config);
+                valido = true;
+            }
+        }
+
+        if (!valido)
+        {
+            throw new BusinessException("El código 2FA es inválido o ha expirado.");
+        }
+
+        return await CompletarLoginAsync(usuario, "2fa", ipAddress, userAgent);
+    }
+
+    /// <summary>
+    /// Login con OAuth (HU-004). En este sprint se resuelve el vínculo por
+    /// supabase_user_id; la llamada real a Supabase Auth por proveedor va pendiente.
+    /// </summary>
+    public async Task<LoginResponseDto> LoginConOAuthAsync(OAuthCallbackRequestDto request)
+    {
+        var (ipAddress, userAgent) = GetRequestContext();
+
+        // Implementación base: se asume que el frontend ya validó el access token del
+        // proveedor contra Supabase. Aquí solo se resuelve el usuario vinculado.
+        // El parseo real del token OAuth de Supabase se integra en Sprint 3.
+        await Task.CompletedTask;
+        throw new NotImplementedException(
+            "La resolución del token OAuth de Supabase se implementa en Sprint 3 (HU-004).");
+    }
+
+    // ── Recovery codes (HU-005) ──────────────────────────────────
+
+    /// <summary>
+    /// Los códigos de recuperación en BD son hashes SHA-256 — no se pueden recuperar.
+    /// Siempre lanza BusinessException con un mensaje informativo.
+    /// </summary>
+    public Task GetRecoveryCodesAsync(Guid usuarioId, Guid empresaId)
+    {
+        throw new BusinessException(
+            "Los códigos de recuperación solo se muestran al activar 2FA. " +
+            "Genera nuevos códigos si necesitas acceder a ellos.");
+    }
+
+    /// <summary>
+    /// Regenera los 8 códigos de recuperación de 2FA (HU-005 CA-04).
+    /// Retorna los códigos en claro — solo se muestran una vez.
+    /// </summary>
+    public async Task<List<string>> RegenerarRecoveryCodesAsync(Guid usuarioId, Guid empresaId)
+    {
+        var config = await _config2faRepository.GetByUsuarioIdAsync(usuarioId, empresaId)
+            ?? throw new NotFoundException(nameof(Configuracion2fa), usuarioId);
+
+        if (!config.TotpHabilitado && !config.EmailHabilitado)
+        {
+            throw new BusinessException(
+                "No tienes 2FA activo. Activa 2FA primero.");
+        }
+
+        // Generar 8 códigos nuevos.
+        var codigosClaro = Enumerable.Range(0, 8)
+            .Select(_ => Guid.NewGuid().ToString("N")[..8].ToUpper())
+            .ToList();
+
+        // Hashear y guardar.
+        config.CodigosRecuperacion = codigosClaro
+            .Select(HashCodigo).ToArray();
+        config.FechaModificacion = DateTime.UtcNow;
+        await _config2faRepository.UpdateAsync(config);
+
+        await _auditoria.RegistrarAsync(
+            "auth", "2FA_CODIGOS_REGENERADOS", empresaId, usuarioId);
+
+        return codigosClaro; // Retornar en claro — solo esta vez
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
+
+    /// <summary>Obtiene un usuario activo de la empresa; si no, lanza not found.</summary>
+    private async Task<Usuario> ObtenerUsuarioActivoAsync(Guid usuarioId, Guid empresaId)
+    {
+        var usuario = await _usuarioRepository.GetByIdAsync(usuarioId, empresaId);
+        if (usuario is null)
+        {
+            throw new NotFoundException(nameof(Usuario), usuarioId);
+        }
+        return usuario;
+    }
+
+    /// <summary>Genera N códigos de recuperación aleatorios (formato XXXX-XXXX).</summary>
+    private static List<string> GenerarCodigosRecuperacion(int cantidad)
+    {
+        var codigos = new List<string>();
+        for (var i = 0; i < cantidad; i++)
+        {
+            var rnd = new Random();
+            var parte1 = rnd.Next(0, 10000).ToString("D4");
+            var parte2 = rnd.Next(0, 10000).ToString("D4");
+            codigos.Add($"{parte1}-{parte2}");
+        }
+        return codigos;
+    }
+
+    /// <summary>Hash SHA-256 (hex) de un código de recuperación para persistirlo.</summary>
+    private static string HashCodigo(string codigo)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(codigo));
+        return Convert.ToHexString(bytes);
+    }
+
+    /// <summary>
+    /// Completa el login tras superar la verificación 2FA: relee permisos, genera
+    /// access token, crea la sesión de refresh y registra auditoría LOGIN.
+    /// </summary>
+    private async Task<LoginResponseDto> CompletarLoginAsync(
+        Usuario usuario, string metodo, string? ipAddress, string? userAgent)
+    {
+        await _usuarioRepository.ResetearIntentosFallidosAsync(usuario.Id);
+        await _usuarioRepository.ActualizarUltimoAccesoAsync(usuario.Id);
+
+        var permisos = await CargarPermisosAsync(usuario.PerfilId, usuario.EmpresaId);
+        var empresa = await _empresaRepository.GetByIdAsync(usuario.EmpresaId);
+        var empresaNombre = empresa?.Nombre ?? string.Empty;
+
+        var accessToken = _jwtService.GenerateAccessToken(
+            usuario.Id, usuario.EmpresaId, usuario.PerfilId,
+            usuario.TipoUsuario, usuario.NombreCompleto, permisos);
+
+        var refreshToken = await CrearSesionAsync(usuario);
+
+        await _auditoria.RegistrarAsync(
+            "auth", AccionAuditoria.LOGIN, usuario.EmpresaId, usuario.Id,
+            nameof(Usuario), usuario.Id,
+            new { metodo }, ipAddress, userAgent);
+
+        return new LoginResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = _jwtSettings.ExpiryHours * 3600,
+            Usuario = new UsuarioTokenDto
+            {
+                Id = usuario.Id,
+                Nombre = usuario.NombreCompleto,
+                Email = usuario.Email,
+                TipoUsuario = usuario.TipoUsuario,
+                EmpresaNombre = empresaNombre,
+                Permisos = permisos.ToList()
+            }
+        };
+    }
+
+    /// <summary>Clave maestra TOTP de respaldo derivada en memoria (solo desarrollo/tests).</summary>
+    private static string RandomKeyFallback()
+    {
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        return Convert.ToBase64String(bytes);
+    }
+
+    /// <summary>Genera un código de verificación de 6 dígitos numéricos aleatorios.</summary>
+    private static string GenerarCodigo6Digitos()
+    {
+        var rnd = new Random();
+        return rnd.Next(0, 999999).ToString("D6");
+    }
 
     /// <summary>Serializa los permisos del perfil a claims "modulo:read|create|update" (ADR-009).</summary>
     private async Task<IEnumerable<string>> CargarPermisosAsync(Guid perfilId, Guid empresaId)

@@ -134,10 +134,25 @@ else
                     @if (User.EsSuperAdmin())
                     {
                         <div class="fr-sidebar-group">SaaS Admin</div>
+                        <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "admin-dashboard" ? "active" : "")">
+                            <i class="ti ti-layout-dashboard fr-icon"></i>
+                            <span>Panel Admin</span>
+                        </a>
                         <a asp-area="Admin" asp-controller="Empresas" asp-action="Index"
-                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "empresas" ? "active" : "")">
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "admin-empresas" || ViewData["ActiveMenu"]?.ToString() == "empresas" ? "active" : "")">
                             <i class="ti ti-building fr-icon"></i>
                             <span>Empresas</span>
+                        </a>
+                        <a asp-area="Admin" asp-controller="Planes" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "admin-planes" ? "active" : "")">
+                            <i class="ti ti-credit-card fr-icon"></i>
+                            <span>Planes</span>
+                        </a>
+                        <a asp-area="Admin" asp-controller="Suscripciones" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "admin-suscripciones" ? "active" : "")">
+                            <i class="ti ti-receipt fr-icon"></i>
+                            <span>Suscripciones</span>
                         </a>
                     }
 

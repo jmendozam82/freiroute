@@ -1,0 +1,108 @@
+@model dynamic
+@{
+    ViewData["Title"] = "Verificación 2FA";
+}
+
+<!-- Vista standalone (sin sidebar - igual que Login) -->
+<div style="max-width:420px; margin:0 auto; padding:24px">
+
+    <div class="text-center mb-4">
+        <div style="width:80px; height:80px; margin:0 auto 16px;
+                    background:var(--fr-navy-primary);
+                    border-radius:50%;
+                    display:flex; align-items:center; justify-content:center">
+            <div class="fr-logo-mark" style="color:white">FR</div>
+        </div>
+        <h2>Verificación en dos pasos</h2>
+        <p class="text-muted">Ingresa el código de tu aplicación autenticadora o el código enviado a tu email</p>
+    </div>
+
+    <div class="fr-card p-4" style="border-radius:8">
+        <p>Ingresa el código de 6 dígitos:</p>
+        <input type="text" id="codigo2fa" class="form-control text-center"
+               maxlength="6" placeholder="123456"
+               style="font-size:24px; text-align:center; margin:16px 0;"
+               inputmode="numeric" />
+        
+        <div id="recovery-code-section" style="display:none; margin-top:16px">
+            <p>¿Usar un código de recuperación?</p>
+            <input type="text" id="codigo-recuperacion" class="form-control"
+                   maxlength="8" placeholder="8 caracteres"
+                   style="font-size:18px; text-align:center; margin:8px 0" />
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="button" class="fr-btn fr-btn-primary flex-1"
+                onclick="verificar2fa()">Verificar</button>
+        <button type="button" class="fr-btn fr-btn-ghost flex-1" style="display:none"
+                onclick="usarCodigoRecuperacion()">Usar código de recuperación</button>
+    </div>
+
+    <script>
+    function verificar2fa() {
+        const codigo = document.getElementById('codigo2fa').value;
+        
+        if (!codigo || codigo.length !== 6) {
+            FrToast.error('Ingresa un código de 6 dígitos');
+            return;
+        }
+
+        // Obtener tempToken de sessionStorage
+        const tempToken = sessionStorage.getItem('fr_temp_token');
+
+        FrApi.post('/api/auth/2fa/verify', {
+            tempToken: tempToken,
+            codigo: codigo
+        })
+        .then(resp => {
+            if (resp.success) {
+                // Guardar JWT completo
+                sessionStorage.setItem('fr_token', resp.data.accessToken);
+                sessionStorage.setItem('fr_tipo_usuario', resp.data.tipoUsuario);
+                sessionStorage.setItem('fr_empresa_id', resp.data.empresaId);
+                FrToast.success('Autenticación 2FA correcta');
+                setTimeout(() => window.location.href = '/dashboard', 800);
+            } else {
+                FrToast.error(resp.message || 'Código inválido');
+                // Limpiar input sin mostrar detalles
+                document.getElementById('codigo2fa').value = '';
+                document.getElementById('codigo-recuperacion').value = '';
+            }
+        })
+        .catch(() => {
+            FrToast.error('No se pudo conectar con el servidor');
+        });
+    }
+
+    function usarCodigoRecuperacion() {
+        const codigo = document.getElementById('codigo-recuperacion').value;
+        if (!codigo || codigo.length !== 8) {
+            FrToast.error('Ingresa un código de recuperación de 8 caracteres');
+            return;
+        }
+
+        const tempToken = sessionStorage.getItem('fr_temp_token');
+
+        FrApi.post('/api/auth/2fa/verify', {
+            tempToken: tempToken,
+            codigo: codigo,
+            esCodigoRecuperacion: true
+        })
+        .then(resp => {
+            if (resp.success) {
+                sessionStorage.setItem('fr_token', resp.data.accessToken);
+                sessionStorage.setItem('fr_tipo_usuario', resp.data.tipoUsuario);
+                sessionStorage.setItem('fr_empresa_id', resp.data.empresaId);
+                FrToast.success('Autenticación 2FA correcta');
+                setTimeout(() => window.location.href = '/dashboard', 800);
+            } else {
+                FrToast.error(resp.message || 'Código de recuperación inválido');
+            }
+        })
+        .catch(() => {
+            FrToast.error('No se pudo conectar con el servidor');
+        });
+    }
+    </script>
+</div>

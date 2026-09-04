@@ -49,12 +49,15 @@ public class EmpresasController : ControllerBase
     /// <summary>Registra un nuevo tenant con sus perfiles base (HU-001 CA-02/03).</summary>
     [HttpPost]
     [RequirePermission(ModuloPermiso.Configuracion, PermissionType.Create)]
-    [ProducesResponseType(typeof(ApiResponse<EmpresaResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<EmpresaResponseDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ApiResponse<EmpresaResponseDto>>> Create(EmpresaRequestDto request)
     {
         var empresa = await _empresaService.CreateAsync(request);
-        return Ok(ApiResponse<EmpresaResponseDto>.Ok(empresa, "Empresa registrada correctamente"));
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = empresa.Id },
+            ApiResponse<EmpresaResponseDto>.Ok(empresa, "Empresa creada exitosamente"));
     }
 
     /// <summary>Actualiza los datos de una empresa.</summary>

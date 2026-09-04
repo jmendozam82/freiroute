@@ -204,22 +204,18 @@ public class AuthControllerTests : IDisposable
     // ── POST /api/auth/logout ─────────────────────────────────────
 
     [Fact]
-    public async Task Logout_SinToken_Retorna200()
+    public async Task Logout_SinToken_Retorna401()
     {
-        // El AuthController es [AllowAnonymous] → logout sin token no es 401;
-        // es idempotente y devuelve 200 (documentado como desviación del label informal).
-        _factory.AuthService
-            .Setup(s => s.LogoutAsync(It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
-
+        // Logout ahora requiere [Authorize] → sin token → 401 Unauthorized.
+        // Se envía body JSON válido para que model binding no bloquee la eval de auth.
         var client = _factory.CrearClientSinToken();
 
         var response = await client.PostAsJsonAsync("/api/auth/logout", new RefreshTokenRequestDto
         {
-            RefreshToken = string.Empty
+            RefreshToken = "dummy"
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -229,7 +225,7 @@ public class AuthControllerTests : IDisposable
             .Setup(s => s.LogoutAsync(It.IsAny<string>()))
             .Returns(Task.CompletedTask);
 
-        var client = _factory.CrearClientSinToken();
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura);
 
         var response = await client.PostAsJsonAsync("/api/auth/logout", new RefreshTokenRequestDto
         {
@@ -320,5 +316,189 @@ public class AuthControllerTests : IDisposable
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    // �"?�"? POST /api/auth/2fa/* (HU-005) �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+
+    [Fact]
+    public async Task Setup2fa_ConToken_Retorna200ConSecret()
+    {
+        _factory.AuthService
+            .Setup(s => s.Setup2faAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(new Setup2faResponseDto
+            {
+                Secret = "SECRETO",
+                QrCodeUrl = "otpauth://totp/Freiroute:admin?secret=SECRETO",
+                CodigosRecuperacion = ["AAA", "BBB"]
+            });
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsync("/api/auth/2fa/setup", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Activar2fa_CodigoCorrecto_Retorna200()
+    {
+        _factory.AuthService
+            .Setup(s => s.Activar2faAsync(It.IsAny<Activar2faRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(true);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/activar",
+            new Activar2faRequestDto { Tipo = "TOTP", Codigo = "123456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Verificar2fa_TempTokenValido_Retorna200ConLogin()
+    {
+        _factory.AuthService
+            .Setup(s => s.Verificar2faAsync(It.IsAny<Verificar2faRequestDto>()))
+            .ReturnsAsync(new LoginResponseDto { AccessToken = "access", RefreshToken = "refresh", ExpiresIn = 28800 });
+
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/verify",
+            new Verificar2faRequestDto { TempToken = "temp", Codigo = "123456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task OAuthCallback_Devuelve500CuandoAunNoImplementado()
+    {
+        // El stub de OAuth lanza NotImplementedException (Sprint 3, HU-004),
+        // que el GlobalExceptionMiddleware mapea al 500 genérico.
+        _factory.AuthService
+            .Setup(s => s.LoginConOAuthAsync(It.IsAny<OAuthCallbackRequestDto>()))
+            .ThrowsAsync(new NotImplementedException());
+
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsJsonAsync("/api/auth/oauth/callback",
+            new OAuthCallbackRequestDto { Provider = "google", SupabaseToken = "tok" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
+    // ── POST /api/auth/2fa/recovery-codes/regenerate ──────────────────
+
+    [Fact]
+    public async Task RegenerarRecoveryCodes_ConToken_Retorna200ConCodigos()
+    {
+        var codigos = new List<string> { "CODE-AAA", "CODE-BBB", "CODE-CCC", "CODE-DDD" };
+        _factory.AuthService
+            .Setup(s => s.RegenerarRecoveryCodesAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(codigos);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsync("/api/auth/2fa/recovery-codes/regenerate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("CODE-AAA");
+        json.Should().Contain("CODE-DDD");
+    }
+
+    [Fact]
+    public async Task RegenerarRecoveryCodes_SinToken_Retorna401()
+    {
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsync("/api/auth/2fa/recovery-codes/regenerate", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // ── GET /api/auth/2fa/recovery-codes ──────────────────────────────
+
+    [Fact]
+    public async Task GetRecoveryCodes_ConToken_Retorna422Siempre()
+    {
+        // El controller GetRecoveryCodes SIEMPRE lanza BusinessException porque
+        // los hashes en BD no son reversibles (solo se muestran una vez al activar 2FA).
+        _factory.AuthService
+            .Setup(s => s.GetRecoveryCodesAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ThrowsAsync(new BusinessException("Los códigos de recuperación no son reversibles."));
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.GetAsync("/api/auth/2fa/recovery-codes");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("no son reversibles");
+    }
+
+    // ── POST /api/auth/2fa/deactivate ────────────────────────────────
+
+    [Fact]
+    public async Task Desactivar2fa_ConCodigoValido_Retorna200()
+    {
+        _factory.AuthService
+            .Setup(s => s.Desactivar2faAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/deactivate",
+            new Desactivar2faRequestDto { Codigo = "123456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("desactivado");
+    }
+
+    [Fact]
+    public async Task Desactivar2fa_CodigoIncorrecto_Retorna422()
+    {
+        _factory.AuthService
+            .Setup(s => s.Desactivar2faAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>()))
+            .ThrowsAsync(new BusinessException("Código 2FA inválido"));
+
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenAdmin);
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/deactivate",
+            new Desactivar2faRequestDto { Codigo = "000000" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("2FA");
+    }
+
+    [Fact]
+    public async Task Desactivar2fa_SinToken_Retorna401()
+    {
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/deactivate",
+            new Desactivar2faRequestDto { Codigo = "123456" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    // ── POST /api/auth/2fa/verify ─────────────────────────────────────
+
+    [Fact]
+    public async Task Verificar2fa_CodigoInvalido_Retorna422()
+    {
+        _factory.AuthService
+            .Setup(s => s.Verificar2faAsync(It.IsAny<Verificar2faRequestDto>()))
+            .ThrowsAsync(new BusinessException("Código 2FA inválido o expirado"));
+
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsJsonAsync("/api/auth/2fa/verify",
+            new Verificar2faRequestDto { TempToken = "temp-valido", Codigo = "000000" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("2FA");
     }
 }

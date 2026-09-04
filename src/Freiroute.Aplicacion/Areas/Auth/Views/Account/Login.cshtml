@@ -4,63 +4,106 @@
     ViewData["HideSidebar"] = true;
 }
 
-<div class="fr-auth-wrapper">
-    <div class="fr-auth-card">
-        <!-- Logo -->
-        <div class="fr-auth-logo">
+<div class="fr-auth-split">
+    <!-- ── Panel izquierdo (40% navy Freiroute) ─────────────────── -->
+    <div class="fr-auth-split-left">
+        <div class="fr-auth-split-brand">
             <div class="fr-logo-mark">FR</div>
-            <span class="fr-logo-text" style="color:var(--fr-navy-primary);font-size:20px">Freiroute TMS</span>
-        </div>
-
-        <h1 class="fr-auth-title">Bienvenido</h1>
-        <p class="fr-auth-subtitle">Ingresa tus credenciales para acceder a la plataforma</p>
-
-        <form id="loginForm" method="post" novalidate>
-            @Html.AntiForgeryToken()
-
-            <div class="mb-3">
-                <label asp-for="Email" class="fr-form-label fr-form-required"></label>
-                <input asp-for="Email" type="email" class="fr-form-control"
-                       placeholder="admin@freiroute.com"
-                       autocomplete="username"
-                       data-val="true"
-                       data-val-required="El email es obligatorio"
-                       data-val-email="Ingrese un email válido" />
-                <span asp-validation-for="Email" class="fr-form-error"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="Password" class="fr-form-label fr-form-required"></label>
-                <input asp-for="Password" type="password" class="fr-form-control"
-                       placeholder="••••••••"
-                       autocomplete="current-password"
-                       data-val="true"
-                       data-val-required="La contraseña es obligatoria" />
-                <span asp-validation-for="Password" class="fr-form-error"></span>
-            </div>
-
-            <div class="d-flex justify-content-end mb-3">
-                <a asp-area="Auth" asp-controller="Account" asp-action="ForgotPassword" style="font-size:12px;color:var(--fr-action-blue);text-decoration:none">
-                    ¿Olvidaste tu contraseña?
-                </a>
-            </div>
-
-            <button type="submit" class="fr-btn fr-btn-primary w-100 justify-content-center" id="btnLogin" style="padding:11px 16px">
-                <i class="ti ti-login"></i>
-                Iniciar sesión
-            </button>
-        </form>
-
-        <!-- Badges demo -->
-        <div class="mt-4 p-3" style="background:var(--fr-surface-bg);border:1px solid var(--fr-border);border-radius:8px">
-            <div style="font-size:11px;font-weight:600;color:var(--fr-text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Cuenta demo</div>
-            <div style="font-size:12px;color:var(--fr-text-secondary)">
-                <code class="fr-id-code">admin@freiroute.com</code> / <code class="fr-id-code">Admin123!</code>
+            <div>
+                <div class="fr-logo-text">Freiroute</div>
+                <div class="fr-logo-tag">Transportation Management System</div>
             </div>
         </div>
 
-        <div style="text-align:center;font-size:11px;color:var(--fr-text-muted);margin-top:24px">
-            &copy; 2026 Freiroute TMS — Todos los derechos reservados
+        <div class="fr-auth-split-hero">
+            <h1>Controla cada ruta.<br />Mueve cada carga.</h1>
+            <p>La plataforma integral para gestionar embarques, conductores, carriers y entregas en tiempo real.</p>
+        </div>
+
+        <div class="fr-auth-split-quote">
+            &ldquo;Manage every route. Move every load.&rdquo;
+        </div>
+    </div>
+
+    <!-- ── Panel derecho (60% blanco) ───────────────────────────── -->
+    <div class="fr-auth-split-right">
+        <div class="fr-auth-split-card">
+            <h1 class="fr-auth-title" style="text-align:left">Iniciar sesión</h1>
+            <p class="fr-auth-subtitle" style="text-align:left">Bienvenido de nuevo, ingresa tus credenciales</p>
+
+            <form id="loginForm" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                <div class="mb-3">
+                    <label asp-for="Email" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Email" type="email" class="fr-form-control"
+                           placeholder="tu@empresa.com"
+                           autocomplete="username"
+                           data-val="true"
+                           data-val-required="El email es obligatorio"
+                           data-val-email="Ingrese un email válido" />
+                    <span asp-validation-for="Email" class="fr-form-error"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="fr-form-label fr-form-required"></label>
+                    <div class="position-relative">
+                        <input asp-for="Password" type="password" id="Password" class="fr-form-control"
+                               placeholder="••••••••"
+                               autocomplete="current-password"
+                               data-val="true"
+                               data-val-required="La contraseña es obligatoria"
+                               style="padding-right:42px" />
+                        <button type="button" id="btnTogglePwd" class="fr-btn fr-btn-ghost fr-btn-icon"
+                                style="position:absolute;top:50%;right:6px;transform:translateY(-50%);padding:4px;border:none;background:none"
+                                aria-label="Mostrar u ocultar contraseña" title="Mostrar contraseña">
+                            <i class="ti ti-eye" style="font-size:17px;color:var(--fr-text-muted)"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Password" class="fr-form-error"></span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="recordar">
+                        <label class="form-check-label" for="recordar" style="font-size:12px;color:var(--fr-text-secondary)">
+                            Recordarme
+                        </label>
+                    </div>
+                    <a asp-area="Auth" asp-controller="Account" asp-action="ForgotPassword"
+                       style="font-size:12px;color:var(--fr-action-blue);text-decoration:none">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+
+                <button type="submit" class="fr-btn fr-btn-primary w-100 justify-content-center" id="btnLogin" style="padding:11px 16px">
+                    <i class="ti ti-login"></i>
+                    Iniciar sesión
+                </button>
+            </form>
+
+            <!-- Separador OAuth -->
+            <div class="d-flex align-items-center gap-3 my-4">
+                <div style="flex:1;height:1px;background:var(--fr-border)"></div>
+                <span style="font-size:11px;color:var(--fr-text-muted)">o continúa con</span>
+                <div style="flex:1;height:1px;background:var(--fr-border)"></div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="fr-btn fr-btn-ghost w-50 justify-content-center" disabled
+                        title="Disponible pronto" style="opacity:.6">
+                    <i class="ti ti-brand-google"></i> Google
+                </button>
+                <button type="button" class="fr-btn fr-btn-ghost w-50 justify-content-center" disabled
+                        title="Disponible pronto" style="opacity:.6">
+                    <i class="ti ti-brand-windows"></i> Microsoft
+                </button>
+            </div>
+
+            <div style="text-align:center;font-size:11px;color:var(--fr-text-muted);margin-top:28px">
+                &copy; 2026 Freiroute TMS — Todos los derechos reservados
+            </div>
         </div>
     </div>
 </div>
@@ -68,6 +111,16 @@
 @section Scripts {
 <script>
     $.validator.unobtrusive.parse('#loginForm');
+
+    // ── Mostrar / ocultar contraseña ──────────────────────────
+    $('#btnTogglePwd').on('click', function () {
+        const input = document.getElementById('Password');
+        const icon = $(this).find('i');
+        const esPassword = input.type === 'password';
+        input.type = esPassword ? 'text' : 'password';
+        icon.attr('class', esPassword ? 'ti ti-eye-off' : 'ti ti-eye');
+        $(this).attr('title', esPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
 
     $('#loginForm').on('submit', async function (e) {
         e.preventDefault();
@@ -82,17 +135,30 @@
 
         const data = {
             email: $('#Email').val(),
-            password: $('#Password').val()
+            password: $('#Password').val(),
+            returnUrl: $('input[name="returnUrl"]').val()
         };
 
         try {
             const resp = await FrApi.post('@Url.Action("Login", "Account", new { area = "Auth" })', data);
 
-            if (resp.success) {
-                FrToast.success(resp.message || 'Inicio de sesión exitoso');
+            // Flujo con 2FA (HU-005)
+            if (resp.status === 202 || resp.data?.requires2fa) {
+                // Guardar TempToken en sessionStorage
+                sessionStorage.setItem('fr_temp_token', resp.data.tempToken);
+                // Redirigir a la vista de verificación 2FA
+                window.location.href = '/account/verify2fa';
+            } else if (resp.success) {
+                // Flujo normal — guardar JWT y redirigir
+                sessionStorage.setItem('fr_token', resp.data.accessToken);
                 setTimeout(() => {
                     const tipo = resp.data?.usuario?.tipoUsuario;
-                    window.location.href = tipo === 'SUPER_ADMIN' ? '/Admin' : '/';
+                    const returnUrl = data.returnUrl;
+                    if (returnUrl) {
+                        window.location.href = returnUrl;
+                    } else {
+                        window.location.href = tipo === 'SUPER_ADMIN' ? '/Admin' : '/';
+                    }
                 }, 800);
             } else {
                 if (resp.errors?.length) {

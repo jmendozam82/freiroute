@@ -1,0 +1,182 @@
+@model Freiroute.DTO.Admin.DashboardGlobalResponseDto
+@{
+    ViewData["Title"] = "Panel de Administración";
+    ViewData["ActiveMenu"] = "admin-dashboard";
+}
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Panel de Administración Global</h1>
+        <p class="fr-page-subtitle">Freiroute SaaS · @DateTime.Now.ToString("yyyy")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="fr-btn fr-btn-ghost" onclick="cargarDashboard()">
+            <i class="ti ti-refresh"></i> Actualizar
+        </button>
+    </div>
+</div>
+
+<!-- KPI Grid -->
+<div class="fr-kpi-grid">
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Tenants activos</div>
+        <div class="fr-kpi-value kpi-blue">@Model.TotalEmpresasActivas</div>
+        <div class="fr-kpi-delta">Tenant raíz incluido</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Nuevos este mes</div>
+        <div class="fr-kpi-value kpi-green">@Model.NuevasEstesMes</div>
+        <div class="fr-kpi-delta">Nuevos registros</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">MRR</div>
+        <div class="fr-kpi-value kpi-blue">$@Model.Mrr.ToString("N0")</div>
+        <div class="fr-kpi-delta">Ingresos mensuales recurrentes</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">ARR</div>
+        <div class="fr-kpi-value kpi-green">$@Model.Arr.ToString("N0")</div>
+        <div class="fr-kpi-delta">Ingresos anuales recurrentes</div>
+    </div>
+</div>
+
+<!-- Fila de 2 cards -->
+<div class="row g-4 mt-4">
+    <!-- Card izquierda: Empresas por estado -->
+    <div class="col-lg-6">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Empresas por estado</span>
+            </div>
+            <div class="fr-card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-success">ACTIVE</span>
+                        <span>@Model.EmpresasPorEstado["ACTIVE"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-neutral">TRIAL</span>
+                        <span>@Model.EmpresasPorEstado["TRIAL"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-warning">PAST_DUE</span>
+                        <span>@Model.EmpresasPorEstado["PAST_DUE"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-warning">SUSPENDED</span>
+                        <span>@Model.EmpresasPorEstado["SUSPENDED"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-danger">CANCELLED</span>
+                        <span>@Model.EmpresasPorEstado["CANCELLED"]</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card derecha: Empresas por plan -->
+    <div class="col-lg-6">
+        <div class="fr-card h-100">
+            <div class="fr-card-header">
+                <span class="fr-card-title">Empresas por plan</span>
+            </div>
+            <div class="fr-card-body p-0">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-neutral">STARTER</span>
+                        <span>@Model.EmpresasPorPlan["STARTER"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-info">PROFESSIONAL</span>
+                        <span>@Model.EmpresasPorPlan["PROFESSIONAL"]</span>
+                    </li>
+                    <li class="list-group-item">
+                        <span class="fr-badge fr-badge-success">ENTERPRISE</span>
+                        <span>@Model.EmpresasPorPlan["ENTERPRISE"]</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card por vencer en 15 días -->
+<div class="fr-card mt-4">
+    <div class="fr-card-header">
+        <span class="fr-card-title">Por vencer en 15 días</span>
+    </div>
+    <div class="fr-card-body p-0">
+        <div class="fr-table-responsive">
+            <table class="fr-table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>Plan</th>
+                        <th>Vencimiento</th>
+                        <th style="width:120px">Días restantes</th>
+                        <th style="width:140px">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in Model.TenantsPorVencer)
+                {
+                    var dias = item.DiasParaVencimiento > 0 ? item.DiasParaVencimiento : 0;
+                    var bgClass = dias <= 7 ? "fr-bg-warning-light" : "";
+                    var bgClassDanger = dias <= 1 ? "fr-bg-danger-light" : "";
+                    <tr style="background: @(dias <= 7 ? "var(--fr-warning-light)" : "");">
+                        <td>
+                            <span class="fr-id-code">@item.EmpresaNombre</span>
+                        </td>
+                        <td>
+                            <span class="fr-badge @(item.PlanCodigo == "STARTER" ? "fr-badge-neutral" : item.PlanCodigo == "PROFESSIONAL" ? "fr-badge-info" : "fr-badge-success")">@item.PlanCodigo</span>
+                        </td>
+                        <td>@item.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                        <td>@dias</td>
+                        <td>
+                            <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.EmpresaId"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle" aria-label="Ver detalle">
+                                <i class="ti ti-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts para dashboard -->
+@section Scripts {
+<script>
+async function cargarDashboard() {
+    const resp = await fetch('/api/admin/dashboard',
+        { headers: { 'Authorization': 'Bearer ' + getToken() }});
+    const data = await resp.json();
+    if (data.success) renderDashboard(data.data);
+}
+
+function renderDashboard(data) {
+    // Actualizar KPIs
+    const kpiBlue = document.querySelector('.fr-kpi-value.kpi-blue');
+    if (kpiBlue) kpiBlue.textContent = data.TotalEmpresasActivas;
+    
+    const kpiGreen = document.querySelector('.fr-kpi-value.kpi-green');
+    if (kpiGreen) kpiGreen.textContent = data.NuevasEstesMes;
+    
+    // Actualizar MRR/ARR
+    const mrrDiv = document.querySelector('.fr-kpi-card:nth-of-type(3) .fr-kpi-value.kpi-blue');
+    if (mrrDiv) mrrDiv.textContent = '$' + data.Mrr.toLocaleString();
+    
+    const arrDiv = document.querySelector('.fr-kpi-card:nth-of-type(4) .fr-kpi-value.kpi-green');
+    if (arrDiv) arrDiv.textContent = '$' + data.Arr.toLocaleString();
+    
+    // Actualizar empresas por estado
+    const estadoKeys = ['ACTIVE', 'TRIAL', 'PAST_DUE', 'SUSPENDED', 'CANCELLED'];
+    const estadoCounts = data.EmpresasPorEstado;
+    // ... rendering logic
+}
+</script>
+}

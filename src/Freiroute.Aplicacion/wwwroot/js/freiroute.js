@@ -1,5 +1,5 @@
 /* ================================================================
-   FREIROUTE TMS — JavaScript Global v1.0
+   FREIROUTE TMS — JavaScript Global v2.0
    ================================================================ */
 
 // ── Toggle Sidebar ─────────────────────────────────────────────
@@ -16,6 +16,31 @@ if (localStorage.getItem('fr_sidebar') === '1') {
     document.getElementById('frSidebar')?.classList.add('collapsed');
     document.getElementById('frMain')?.classList.add('sidebar-collapsed');
 }
+
+// ── Gestión de token JWT ───────────────────────────────────────
+const FrAuth = {
+    getToken() {
+        return sessionStorage.getItem('fr_token') || '';
+    },
+    getTempToken() {
+        return sessionStorage.getItem('fr_temp_token') || '';
+    },
+    setToken(token) {
+        sessionStorage.setItem('fr_token', token);
+    },
+    clearToken() {
+        sessionStorage.removeItem('fr_token');
+        sessionStorage.removeItem('fr_temp_token');
+        sessionStorage.removeItem('fr_tipo_usuario');
+        sessionStorage.removeItem('fr_empresa_id');
+    },
+    isAuthenticated() {
+        return !!this.getToken();
+    }
+};
+
+// Alias global para compatibilidad con código existente
+function getToken() { return FrAuth.getToken(); }
 
 // ── Sistema de Toasts ──────────────────────────────────────────
 const FrToast = {
@@ -40,8 +65,13 @@ const FrToast = {
 
         const container = document.getElementById('frToastContainer');
         if (container) {
+            while (container.children.length >= 3) {
+                container.removeChild(container.firstChild);
+            }
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4500);
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, 4500);
         }
     },
     success: (msg, title) => FrToast.show(msg, 'success', title),
@@ -50,50 +80,135 @@ const FrToast = {
     info:    (msg, title) => FrToast.show(msg, 'info',    title)
 };
 
-// ── AJAX Helper para ApiResponse<T> ───────────────────────────
+// ── FrApi con Authorization header ─────────────────────────────
 const FrApi = {
+    _headers(extraHeaders = {}) {
+        const token = FrAuth.getToken();
+        return {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            'RequestVerificationToken': document
+                .querySelector('input[name="__RequestVerificationToken"]')
+                ?.value || '',
+            ...extraHeaders
+        };
+    },
+
+    async get(url) {
+        const resp = await fetch(url, {
+            method: 'GET',
+            headers: this._headers()
+        });
+        if (resp.status === 401) {
+            FrAuth.clearToken();
+            window.location.href = '/auth/login';
+            return null;
+        }
+        return await resp.json();
+    },
+
     async post(url, data) {
         const resp = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json',
-                       'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+            headers: this._headers(),
             body: JSON.stringify(data)
         });
+        if (resp.status === 401) {
+            FrAuth.clearToken();
+            window.location.href = '/auth/login';
+            return null;
+        }
+        if (resp.status === 202) {
+            const body = await resp.json();
+            return { status: 202, ...body };
+        }
         return await resp.json();
     },
+
     async put(url, data) {
         const resp = await fetch(url, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json',
-                       'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' },
+            headers: this._headers(),
             body: JSON.stringify(data)
         });
+        if (resp.status === 401) {
+            FrAuth.clearToken();
+            window.location.href = '/auth/login';
+            return null;
+        }
         return await resp.json();
     },
+
     async delete(url) {
         const resp = await fetch(url, {
             method: 'DELETE',
-            headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
+            headers: this._headers()
         });
+        if (resp.status === 401) {
+            FrAuth.clearToken();
+            window.location.href = '/auth/login';
+            return null;
+        }
         return await resp.json();
     },
+
     async patch(url) {
         const resp = await fetch(url, {
             method: 'PATCH',
-            headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || '' }
+            headers: this._headers()
+        });
+        if (resp.status === 401) {
+            FrAuth.clearToken();
+            window.location.href = '/auth/login';
+            return null;
+        }
+        return await resp.json();
+    },
+
+    // Upload multipart (logo)
+    async upload(url, formData) {
+        const token = FrAuth.getToken();
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                'RequestVerificationToken': document
+                    .querySelector('input[name="__RequestVerificationToken"]')
+                    ?.value || ''
+            },
+            body: formData
         });
         return await resp.json();
     },
-    handleResponse(response, onSuccess) {
+
+    handleResponse(response, onSuccess, onError) {
+        if (!response) return;
         if (response.success) {
-            FrToast.success(response.message || 'Operación exitosa');
             if (onSuccess) onSuccess(response.data);
         } else {
-            if (response.errors?.length) {
-                response.errors.forEach(e => FrToast.error(e));
-            } else {
-                FrToast.error(response.message || 'Error en la operación');
-            }
+            const msgs = response.errors?.length
+                ? response.errors
+                : [response.message || 'Error en la operación'];
+            msgs.forEach(m => FrToast.error(m));
+            if (onError) onError(response);
+        }
+    }
+};
+
+// ── Sistema de modales Bootstrap ───────────────────────────────
+const FrModal = {
+    show(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            const existing = bootstrap.Modal.getInstance(el);
+            if (existing) existing.show();
+            else new bootstrap.Modal(el).show();
+        }
+    },
+    hide(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            bootstrap.Modal.getInstance(el)?.hide();
         }
     }
 };
@@ -127,9 +242,10 @@ const FrBadge = {
             'CANCELLED':        'fr-badge-danger',
             'ON_HOLD':          'fr-badge-warning',
             'FAILED_DELIVERY':  'fr-badge-danger',
-            // Estados de empresa/tenant
             'ACTIVE':           'fr-badge-success',
+            'PENDING':          'fr-badge-info',
             'SUSPENDED':        'fr-badge-warning',
+            'LOCKED':           'fr-badge-danger',
             'CANCELLED_EMPRESA':'fr-badge-danger'
         };
         return mapa[estado] || 'fr-badge-neutral';

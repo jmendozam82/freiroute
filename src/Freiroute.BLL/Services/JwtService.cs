@@ -65,6 +65,115 @@ public class JwtService : IJwtService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    /// <summary>
+    /// Genera un access token de impersonación de tenant (HU-009 CA-05).
+    /// Incluye el claim "impersonado_por" con el Id del SUPER_ADMIN que impersona
+    /// para trazabilidad en AuditoriaService.
+    /// </summary>
+    public string GenerateImpersonationToken(
+        Guid userId,
+        Guid empresaId,
+        Guid perfilId,
+        string tipoUsuario,
+        string nombre,
+        IEnumerable<string> permisos,
+        Guid impersonadoPor,
+        int expiryHours = 8)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_settings.Key));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new("user_id", userId.ToString()),
+            new("empresa_id", empresaId.ToString()),
+            new("perfil_id", perfilId.ToString()),
+            new("tipo_usuario", tipoUsuario),
+            new("nombre", nombre),
+            new("impersonado_por", impersonadoPor.ToString())
+        };
+
+        foreach (var permiso in permisos)
+        {
+            claims.Add(new Claim("permisos", permiso));
+        }
+
+        var token = new JwtSecurityToken(
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
+            claims: claims,
+            notBefore: DateTime.UtcNow,
+            expires: DateTime.UtcNow.AddHours(expiryHours),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>Genera un token temporal de corta vida para 2FA (HU-005).</summary>
+    public string GenerateTempToken(Guid userId, Guid empresaId, int expiryMinutes = 5)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_settings.Key));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim("user_id", userId.ToString()),
+            new Claim("empresa_id", empresaId.ToString())
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
+            claims: claims,
+            notBefore: DateTime.UtcNow,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>Valida un token temporal de 2FA y extrae su payload.</summary>
+    public TempTokenPayload? ValidateTempToken(string token)
+    {
+        try
+        {
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_settings.Key));
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            tokenHandler.ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = _settings.Issuer,
+                ValidAudience = _settings.Audience,
+                IssuerSigningKey = key,
+                ClockSkew = TimeSpan.Zero
+            }, out var validatedToken);
+
+            var jwt = validatedToken as JwtSecurityToken;
+            var userId = jwt?.Claims.FirstOrDefault(c => c.Type == "user_id")?.Value;
+            var empresaId = jwt?.Claims.FirstOrDefault(c => c.Type == "empresa_id")?.Value;
+
+            if (userId is null ||
+                !Guid.TryParse(userId, out var parsedUserId) ||
+                !Guid.TryParse(empresaId, out var parsedEmpresaId))
+            {
+                return null;
+            }
+
+            return new TempTokenPayload(parsedUserId, parsedEmpresaId);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     /// <summary>Genera un refresh token opaco (UUID aleatorio de 32 hex — sin guiones).</summary>
     public string GenerateRefreshToken() => Guid.NewGuid().ToString("N");
 

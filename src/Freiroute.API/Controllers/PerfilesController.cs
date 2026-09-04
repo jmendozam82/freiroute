@@ -46,11 +46,15 @@ public class PerfilesController : ControllerBase
     /// <summary>Crea un perfil personalizado (CUSTOM) del tenant.</summary>
     [HttpPost]
     [RequirePermission(ModuloPermiso.Configuracion, PermissionType.Create)]
+    [ProducesResponseType(typeof(ApiResponse<PerfilResponseDto>), StatusCodes.Status201Created)]
     public async Task<ActionResult<ApiResponse<PerfilResponseDto>>> Create(PerfilRequestDto request)
     {
         var empresaId = User.GetTenantEfectivo(HttpContext);
         var perfil = await _perfilService.CreateAsync(request, empresaId);
-        return Ok(ApiResponse<PerfilResponseDto>.Ok(perfil, "Perfil creado"));
+        return CreatedAtAction(
+            nameof(GetPermisos),
+            new { id = perfil.Id },
+            ApiResponse<PerfilResponseDto>.Ok(perfil, "Perfil creado exitosamente"));
     }
 
     /// <summary>Actualiza los datos de un perfil del tenant.</summary>

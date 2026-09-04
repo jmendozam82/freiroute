@@ -1,0 +1,44 @@
+<!-- Modal: Invitar usuario -->
+<div class="fr-modal" id="modalInvitar" tabindex="-1">
+    <div class="fr-modal-dialog">
+        <div class="fr-modal-content">
+            <div class="fr-modal-header">
+                <h5 class="fr-modal-title">Invitar usuario</h5>
+                <button type="button" class="fr-btn-fr-close" data-fr-close>&times;</button>
+            </div>
+            <form id="frInvitarForm">
+                <div class="fr-modal-body">
+                    <div class="mb-3">
+                        <label class="fr-form-label">Email *</label>
+                        <input type="email" name="Email" class="fr-form-control"
+                               placeholder="usuario@dominio.com" required />
+                        <span class="fr-form-error"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="fr-form-label">Perfil a asignar *</label>
+                        <select name="Perfil" class="fr-form-control" required>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="OPERADOR">OPERADOR</option>
+                            <option value="CONDUCTOR">CONDUCTOR</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="fr-modal-footer">
+                    <button type="button" class="fr-btn fr-btn-ghost" data-fr-close>Cancelar</button>
+                    <button type="submit" class="fr-btn fr-btn-primary">
+                        <i class="ti ti-paper-plane"></i> Enviar invitación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Manejar el caso 409 (email ya registrado)
+    $(document).on('ajaxComplete', function() {
+        // Se manejará en el success handler del form
+    });
+});
+</script>

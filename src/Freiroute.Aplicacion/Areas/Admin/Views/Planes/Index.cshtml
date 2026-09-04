@@ -1,0 +1,117 @@
+@model IEnumerable<Freiroute.DTO.Plan.PlanResponseDto>
+@{
+    ViewData["Title"] = "Planes de Suscripción";
+    ViewData["ActiveMenu"] = "admin-planes";
+}
+
+<!-- Breadcrumb -->
+<nav class="fr-breadcrumb" aria-label="breadcrumb">
+    <a href="/">Inicio</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span>Planes</span>
+</nav>
+
+<!-- Page header -->
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Planes de Suscripción</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-area="Admin" asp-controller="Planes" asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nuevo Plan
+        </a>
+    </div>
+</div>
+
+<!-- Tabla -->
+<div class="fr-table-wrapper">
+    @if (!Model.Any())
+    {
+        <div class="fr-empty">
+            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+            <div class="fr-empty-title">No hay planes registrados</div>
+            <div class="fr-empty-text">Crea el primer plan usando el botón anterior</div>
+        </div>
+    }
+    else
+    {
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Código</th>
+                    <th>Límite usuarios</th>
+                    <th>Embarques/mes</th>
+                    <th>Storage (GB)</th>
+                    <th>Precio mensual</th>
+                    <th>Precio anual</th>
+                    <th>Empresas suscritas</th>
+                    <th>Estado</th>
+                    <th style="width:180px">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        <span class="fr-id-code">@item.Nombre</span>
+                    </td>
+                    <td>
+                        <span class="fr-badge fr-badge-neutral">@item.Codigo</span>
+                    </td>
+                    <td>
+                        @if (item.LimiteUsuarios == -1)
+                        {
+                            <span class="text-success">Ilimitado</span>
+                        }
+                        else
+                        {
+                            @item.LimiteUsuarios
+                        }
+                    </td>
+                    <td>
+                        @if (item.LimiteEmbarquesMes == -1)
+                        {
+                            <span class="text-success">Ilimitado</span>
+                        }
+                        else
+                        {
+                            @item.LimiteEmbarquesMes
+                        }
+                    </td>
+                    <td>@item.LimiteStorageGb GB</td>
+                    <td>$@item.PrecioMensual.ToString("N2")</td>
+                    <td>$@item.PrecioAnual.ToString("N2")</td>
+                    <td>@item.EmpresasSuscritas</td>
+                    <td>
+                        <span class="fr-badge @(item.Activo ? "fr-badge-success" : "fr-badge-danger")">
+                            @(item.Activo ? "Activo" : "Inactivo")
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a asp-area="Admin" asp-controller="Planes" asp-action="Edit" asp-route-id="@item.Id"
+                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
+                                <i class="ti ti-pencil"></i>
+                            </a>
+                            <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                    @(item.EmpresasSuscritas > 0 ? "disabled" : "")
+                                    title="Desactivar si no tiene empresas suscritas">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+<!-- Paginación (aunque venga como IEnumerable, agregamos paginación ligera) -->
+<div class="fr-pagination mt-3">
+    <span class="fr-pagination-info">
+        Mostrando @(Model.Count()) de @(Model.Count()) registros
+    </span>
+</div>

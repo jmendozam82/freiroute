@@ -25,6 +25,14 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public Mock<IUsuarioService> UsuarioService { get; }
     public Mock<IAuditoriaService> AuditoriaService { get; }
 
+    // Servicios Sprint 2 (EP-02) — nuevos controllers Admin / Onboarding / Configuración.
+    public Mock<IAdminDashboardService> AdminDashboardService { get; }
+    public Mock<ISuscripcionService> SuscripcionService { get; }
+    public Mock<IPlanService> PlanService { get; }
+    public Mock<IPlanLimiteService> PlanLimiteService { get; }
+    public Mock<IOnboardingService> OnboardingService { get; }
+    public Mock<IConfiguracionService> ConfiguracionService { get; }
+
     public TestWebApplicationFactory()
     {
         AuthService = new Mock<IAuthService>();
@@ -33,6 +41,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         PermisoService = new Mock<IPermisoService>();
         UsuarioService = new Mock<IUsuarioService>();
         AuditoriaService = new Mock<IAuditoriaService>();
+
+        AdminDashboardService = new Mock<IAdminDashboardService>();
+        SuscripcionService = new Mock<ISuscripcionService>();
+        PlanService = new Mock<IPlanService>();
+        PlanLimiteService = new Mock<IPlanLimiteService>();
+        OnboardingService = new Mock<IOnboardingService>();
+        ConfiguracionService = new Mock<IConfiguracionService>();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -47,6 +62,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IPermisoService>();
             services.RemoveAll<IUsuarioService>();
             services.RemoveAll<IAuditoriaService>();
+            services.RemoveAll<IAdminDashboardService>();
+            services.RemoveAll<ISuscripcionService>();
+            services.RemoveAll<IPlanService>();
+            services.RemoveAll<IPlanLimiteService>();
+            services.RemoveAll<IOnboardingService>();
+            services.RemoveAll<IConfiguracionService>();
 
             services.AddSingleton(AuthService.Object);
             services.AddSingleton(EmpresaService.Object);
@@ -54,6 +75,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(PermisoService.Object);
             services.AddSingleton(UsuarioService.Object);
             services.AddSingleton(AuditoriaService.Object);
+            services.AddSingleton(AdminDashboardService.Object);
+            services.AddSingleton(SuscripcionService.Object);
+            services.AddSingleton(PlanService.Object);
+            services.AddSingleton(PlanLimiteService.Object);
+            services.AddSingleton(OnboardingService.Object);
+            services.AddSingleton(ConfiguracionService.Object);
         });
     }
 
