@@ -1,6 +1,7 @@
 using Freiroute.BLL.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
@@ -52,6 +53,14 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureAppConfiguration((context, conf) =>
+        {
+            conf.AddInMemoryCollection(new[]
+            {
+                new KeyValuePair<string, string?>("Security:TotpEncryptionKey", "TestTotpEncryptionKey12345678901234")
+            });
+        });
+
         builder.ConfigureServices(services =>
         {
             // Reemplazar las implementaciones reales por los mocks (los controllers
