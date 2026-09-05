@@ -54,23 +54,23 @@
                     <tbody>
                         <tr>
                             <td><span class="fr-badge fr-badge-success">ACTIVE</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi="ACTIVE">@Model.EmpresasPorEstado["ACTIVE"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi="ACTIVE">@Model.EmpresasPorEstado.GetValueOrDefault("ACTIVE", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-neutral">TRIAL</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi="TRIAL">@Model.EmpresasPorEstado["TRIAL"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi="TRIAL">@Model.EmpresasPorEstado.GetValueOrDefault("TRIAL", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-warning">PAST_DUE</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi="PAST_DUE">@Model.EmpresasPorEstado["PAST_DUE"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi="PAST_DUE">@Model.EmpresasPorEstado.GetValueOrDefault("PAST_DUE", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-warning">SUSPENDED</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi="SUSPENDED">@Model.EmpresasPorEstado["SUSPENDED"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi="SUSPENDED">@Model.EmpresasPorEstado.GetValueOrDefault("SUSPENDED", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-danger">CANCELLED</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi="CANCELLED">@Model.EmpresasPorEstado["CANCELLED"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi="CANCELLED">@Model.EmpresasPorEstado.GetValueOrDefault("CANCELLED", 0)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -89,15 +89,15 @@
                     <tbody>
                         <tr>
                             <td><span class="fr-badge fr-badge-neutral">STARTER</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi-plan="STARTER">@Model.EmpresasPorPlan["STARTER"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="STARTER">@Model.EmpresasPorPlan.GetValueOrDefault("STARTER", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-info">PROFESSIONAL</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi-plan="PROFESSIONAL">@Model.EmpresasPorPlan["PROFESSIONAL"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="PROFESSIONAL">@Model.EmpresasPorPlan.GetValueOrDefault("PROFESSIONAL", 0)</td>
                         </tr>
                         <tr>
                             <td><span class="fr-badge fr-badge-success">ENTERPRISE</span></td>
-                            <td class="text-end fr-kpi-count" data-kpi-plan="ENTERPRISE">@Model.EmpresasPorPlan["ENTERPRISE"]</td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="ENTERPRISE">@Model.EmpresasPorPlan.GetValueOrDefault("ENTERPRISE", 0)</td>
                         </tr>
                     </tbody>
                 </table>
@@ -185,5 +185,8 @@ function renderDashboard(data) {
         if (plan[key] !== undefined) td.textContent = plan[key];
     });
 }
+
+// Cargar automáticamente al entrar
+document.addEventListener('DOMContentLoaded', cargarDashboard);
 </script>
 }

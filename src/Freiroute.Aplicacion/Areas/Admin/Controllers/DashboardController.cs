@@ -14,6 +14,11 @@ public class DashboardController : BaseAdminController
     {
         ViewData["Title"]      = "Panel de Administración";
         ViewData["ActiveMenu"] = "admin-dashboard";
-        return View();
+        return View(new Freiroute.DTO.Admin.DashboardGlobalResponseDto
+        {
+            EmpresasPorEstado = new Dictionary<string, int>(),
+            EmpresasPorPlan = new Dictionary<string, int>(),
+            TenantsPorVencer = new List<Freiroute.DTO.Suscripcion.SuscripcionResponseDto>()
+        });
     }
 }

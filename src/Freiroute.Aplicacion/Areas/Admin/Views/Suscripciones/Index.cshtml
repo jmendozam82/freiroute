@@ -15,15 +15,15 @@
 <div class="fr-kpi-grid mb-4">
     <div class="fr-kpi-card">
         <div class="fr-kpi-label">Suscripciones activas</div>
-        <div class="fr-kpi-value kpi-blue">@Model.TotalItems</div>
+        <div class="fr-kpi-value kpi-blue">@(Model?.TotalItems ?? 0)</div>
     </div>
     <div class="fr-kpi-card">
         <div class="fr-kpi-label">Por vencer (15 días)</div>
-        <div class="fr-kpi-value kpi-amber">@(Model.Items.Count(i => i.DiasParaVencimiento <= 15))</div>
+        <div class="fr-kpi-value kpi-amber">@(Model?.Items?.Count(i => i.DiasParaVencimiento <= 15) ?? 0)</div>
     </div>
     <div class="fr-kpi-card">
         <div class="fr-kpi-label">Ingresos del mes</div>
-        <div class="fr-kpi-value kpi-green">$@(Model.Items.Sum(i => i.PrecioPactado).ToString("N0"))</div>
+        <div class="fr-kpi-value kpi-green">$@(Model?.Items?.Sum(i => i.PrecioPactado).ToString("N0") ?? "0")</div>
     </div>
 </div>
 
@@ -59,7 +59,7 @@
 
 <!-- Tabla -->
 <div class="fr-table-wrapper">
-    @if (!Model.Items.Any())
+    @if (Model == null || Model.Items == null || !Model.Items.Any())
     {
         <div class="fr-empty">
             <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>

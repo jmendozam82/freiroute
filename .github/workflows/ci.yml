@@ -21,6 +21,8 @@ jobs:
         run: dotnet build --no-restore
       - name: Test
         run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage"
+        env:
+          Security__TotpEncryptionKey: "TestTotpEncryptionKey12345678901234"
 
   # Deploy a staging en push a develop
   deploy-staging:

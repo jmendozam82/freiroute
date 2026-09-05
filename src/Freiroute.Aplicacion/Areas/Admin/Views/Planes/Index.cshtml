@@ -25,7 +25,7 @@
 
 <!-- Tabla -->
 <div class="fr-table-wrapper">
-    @if (!Model.Any())
+    @if (Model == null || !Model.Any())
     {
         <div class="fr-empty">
             <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
@@ -112,6 +112,6 @@
 <!-- Paginación (aunque venga como IEnumerable, agregamos paginación ligera) -->
 <div class="fr-pagination mt-3">
     <span class="fr-pagination-info">
-        Mostrando @(Model.Count()) de @(Model.Count()) registros
+        Mostrando @(Model?.Count() ?? 0) de @(Model?.Count() ?? 0) registros
     </span>
 </div>
