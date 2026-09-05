@@ -67,6 +67,11 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c =>
         {
+            // Evita colisión de schemaId entre DTOs con el mismo nombre de clase en
+            // namespaces distintos (p. ej. Freiroute.DTO.Empresa.EmpresaResponseDto y
+            // Freiroute.DTO.Admin.EmpresaResponseDto). Usa el nombre fully-qualified.
+            c.CustomSchemaIds(type => type.FullName);
+
             c.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "Freiroute TMS API",

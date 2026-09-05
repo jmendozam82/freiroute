@@ -31,6 +31,12 @@ public class EmpresaValidator : AbstractValidator<EmpresaRequestDto>
             .WithMessage("El plan de suscripción debe ser STARTER, PROFESSIONAL o ENTERPRISE")
             .When(x => !string.IsNullOrWhiteSpace(x.PlanSuscripcion));
 
+        // PlanId es opcional — si se envía debe ser un UUID válido (no vacío).
+        RuleFor(x => x.PlanId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.PlanId.HasValue)
+            .WithMessage("El PlanId debe ser un UUID válido");
+
         RuleFor(x => x.ColorPrimario)
             .Matches("^#[0-9A-Fa-f]{6}$")
             .WithMessage("El color primario debe ser un hex válido (#RRGGBB)")

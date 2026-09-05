@@ -233,6 +233,24 @@ public class EmpresaRepository : IEmpresaRepository
         return rows > 0;
     }
 
+    /// <summary>
+    /// Actualiza solo el plan_id de la empresa (columna de la migración
+    /// alter_empresas_sprint2). Se usa al crear el tenant para vincular la
+    /// suscripción TRIAL inicial (HU-011 / ADR-004).
+    /// </summary>
+    public async Task<bool> UpdatePlanIdAsync(Guid empresaId, Guid planId)
+    {
+        const string sql = @"
+            UPDATE empresas
+            SET plan_id = @PlanId,
+                fecha_modificacion = NOW()
+            WHERE id = @EmpresaId";
+
+        var rows = await _connection.ExecuteAsync(sql,
+            new { EmpresaId = empresaId, PlanId = planId });
+        return rows > 0;
+    }
+
     /// <summary>Soft delete: SET activo = false WHERE id = @Id. Nunca se borra físicamente.</summary>
     public async Task<bool> DeactivateAsync(Guid id)
     {

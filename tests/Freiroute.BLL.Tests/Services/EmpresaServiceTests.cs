@@ -14,13 +14,18 @@ namespace Freiroute.BLL.Tests.Services;
 
 /// <summary>
 /// Tests del servicio de empresas/tenants (HU-001) — tabla raíz gestionada por
-/// el SUPER_ADMIN. Cubre los criterios CA-01 a CA-07.
+/// el SUPER_ADMIN. Cubre los criterios CA-01 a CA-07 y la orquestación del
+/// flujo completo del tenant: empresa TRIAL + suscripción TRIAL + usuario admin.
 /// </summary>
 public class EmpresaServiceTests
 {
     private readonly Mock<IEmpresaRepository> _empresaRepository;
     private readonly Mock<IPerfilRepository> _perfilRepository;
     private readonly Mock<IPermisoRepository> _permisoRepository;
+    private readonly Mock<ISuscripcionRepository> _suscripcionRepoMock;
+    private readonly Mock<IPlanRepository> _planRepoMock;
+    private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
+    private readonly Mock<ISupabaseAuthService> _supabaseAuthMock;
     private readonly Mock<IValidator<EmpresaRequestDto>> _validator;
     private readonly Mock<IAuditoriaService> _auditoria;
     private readonly Mock<IEmailService> _emailService;
@@ -32,6 +37,10 @@ public class EmpresaServiceTests
         _empresaRepository = new Mock<IEmpresaRepository>();
         _perfilRepository = new Mock<IPerfilRepository>();
         _permisoRepository = new Mock<IPermisoRepository>();
+        _suscripcionRepoMock = new Mock<ISuscripcionRepository>();
+        _planRepoMock = new Mock<IPlanRepository>();
+        _usuarioRepoMock = new Mock<IUsuarioRepository>();
+        _supabaseAuthMock = new Mock<ISupabaseAuthService>();
         _validator = new Mock<IValidator<EmpresaRequestDto>>();
         _auditoria = new Mock<IAuditoriaService>();
         _emailService = new Mock<IEmailService>();
@@ -46,6 +55,10 @@ public class EmpresaServiceTests
             _empresaRepository.Object,
             _perfilRepository.Object,
             _permisoRepository.Object,
+            _suscripcionRepoMock.Object,
+            _planRepoMock.Object,
+            _usuarioRepoMock.Object,
+            _supabaseAuthMock.Object,
             _validator.Object,
             _auditoria.Object,
             _emailService.Object,
@@ -72,15 +85,19 @@ public class EmpresaServiceTests
             .Setup(r => r.CreateAsync(It.IsAny<Empresa>()))
             .ReturnsAsync(Guid.NewGuid());
 
-        // Perfiles base plantilla en la empresa raíz (los 5 tipos).
+        _empresaRepository
+            .Setup(r => r.UpdatePlanIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(true);
+
+        // Perfiles base: plantilla en la empresa raíz y perfil ADMIN del tenant
+        // nuevo (cualquier empresa) devuelven un perfil del tipo solicitado.
         _perfilRepository
-            .Setup(r => r.GetByTipoAsync(
-                It.IsAny<string>(), IdsSistema.EmpresaRaizId))
-            .Returns((string tipo, Guid _) =>
+            .Setup(r => r.GetByTipoAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            .Returns((string tipo, Guid empresaId) =>
                 Task.FromResult<Perfil?>(new Perfil
                 {
                     Id = Guid.NewGuid(),
-                    EmpresaId = IdsSistema.EmpresaRaizId,
+                    EmpresaId = empresaId,
                     Nombre = $"Plantilla {tipo}",
                     TipoPerfil = tipo,
                     EsSistema = true,
@@ -108,6 +125,41 @@ public class EmpresaServiceTests
             .Setup(r => r.CreateAsync(It.IsAny<Permiso>()))
             .ReturnsAsync(Guid.NewGuid());
 
+        // Plan: cualquier código resuelve un plan STARTER (fallback del servicio).
+        _planRepoMock
+            .Setup(r => r.GetByCodigoAsync(It.IsAny<string>()))
+            .ReturnsAsync(new Plan
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Starter",
+                Codigo = "STARTER",
+                PrecioMensual = 99.00m,
+                Moneda = "USD"
+            });
+
+        _planRepoMock
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(new Plan
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Starter",
+                Codigo = "STARTER",
+                PrecioMensual = 99.00m,
+                Moneda = "USD"
+            });
+
+        _suscripcionRepoMock
+            .Setup(r => r.CreateAsync(It.IsAny<Suscripcion>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _usuarioRepoMock
+            .Setup(r => r.CreateAsync(It.IsAny<Usuario>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _supabaseAuthMock
+            .Setup(r => r.SignUpAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(Guid.NewGuid());
+
         _emailService
             .Setup(e => e.EnviarAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -128,7 +180,7 @@ public class EmpresaServiceTests
                 Nombre = "Trans Nicaragua S.A.",
                 EmailAdmin = "admin@transnic.com",
                 PlanSuscripcion = "PROFESSIONAL",
-                Estado = EstadoEmpresa.ACTIVE,
+                Estado = EstadoEmpresa.TRIAL,
                 PrefijoEmbarque = "TR",
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow
@@ -171,7 +223,7 @@ public class EmpresaServiceTests
     [Fact]
     public async Task CreateAsync_CuandoCreada_EnviaEmailBienvenida()
     {
-        // CA-03 — email de bienvenida al email_admin.
+        // CA-03 — email de bienvenida al email_admin (incluye contraseña temporal).
         ConfigurarCreacionExitosa();
 
         await _service.CreateAsync(DtoValido());
@@ -210,6 +262,135 @@ public class EmpresaServiceTests
         var act = async () => await _service.CreateAsync(DtoValido());
 
         await act.Should().ThrowAsync<ValidationException>();
+    }
+
+    [Fact]
+    public async Task CreateAsync_EstadoInicial_EsTrial()
+    {
+        // Fix smoke test — el tenant se crea en TRIAL (ADR-004), no ACTIVE.
+        ConfigurarCreacionExitosa();
+
+        await _service.CreateAsync(DtoValido());
+
+        _empresaRepository.Verify(
+            r => r.CreateAsync(It.Is<Empresa>(e => e.Estado == EstadoEmpresa.TRIAL)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_CuandoDatosValidos_CreaEmpresaYSuscripcionTrial()
+    {
+        // Fix smoke test — se orquesta la suscripción TRIAL de ~30 días (HU-011 / ADR-004).
+        ConfigurarCreacionExitosa();
+
+        await _service.CreateAsync(DtoValido());
+
+        _suscripcionRepoMock.Verify(r => r.CreateAsync(
+            It.Is<Suscripcion>(s =>
+                s.Estado == EstadoSuscripcion.TRIAL &&
+                s.EmpresaId != Guid.Empty &&
+                s.PlanId != Guid.Empty &&
+                s.TipoCiclo == TipoCiclo.MENSUAL &&
+                s.Activo &&
+                s.FechaVencimiento > DateTime.UtcNow.AddDays(28) &&
+                s.FechaVencimiento <= DateTime.UtcNow.AddDays(32) &&
+                s.PrecioPactado == 99.00m &&
+                s.MonedaPactada == "USD" &&
+                s.CreadoPorId == null)),
+            Times.Once);
+
+        // El plan queda vinculado a la empresa.
+        _empresaRepository.Verify(
+            r => r.UpdatePlanIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_CuandoDatosValidos_CreaUsuarioAdmin()
+    {
+        // Fix smoke test — se crea el usuario admin del tenant con su vínculo
+        // en Supabase Auth y contraseña temporal.
+        ConfigurarCreacionExitosa();
+
+        await _service.CreateAsync(DtoValido());
+
+        _usuarioRepoMock.Verify(r => r.CreateAsync(
+            It.Is<Usuario>(u =>
+                u.TipoUsuario == TipoUsuario.ADMIN &&
+                u.Email == "admin@transnic.com" &&
+                u.Activo &&
+                u.Estado == EstadoUsuario.ACTIVE &&
+                u.SupabaseUserId != null)),
+            Times.Once);
+
+        // El vínculo Supabase Auth se crea con una contraseña temporal que cumple
+        // la política: mayúscula (Fr) + número (4 dígitos) + especial (!).
+        _supabaseAuthMock.Verify(r => r.SignUpAsync(
+            "admin@transnic.com",
+            It.Is<string>(p =>
+                p.StartsWith("Fr") && p.EndsWith("!") && p.Length == 7)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_CuandoFallaCrearSuscripcion_DesactivaEmpresa()
+    {
+        // Fix smoke test — compensación: si falla un paso posterior a la creación
+        // de la empresa, la empresa se desactiva (soft delete — nunca DELETE físico).
+        var empresaId = Guid.NewGuid();
+
+        _empresaRepository
+            .Setup(r => r.GetByEmailAdminAsync(It.IsAny<string>()))
+            .ReturnsAsync((Empresa?)null);
+
+        _empresaRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Empresa>()))
+            .ReturnsAsync(empresaId);
+
+        // Perfiles base OK.
+        _perfilRepository
+            .Setup(r => r.GetByTipoAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            .Returns((string tipo, Guid empresa) =>
+                Task.FromResult<Perfil?>(new Perfil
+                {
+                    Id = Guid.NewGuid(),
+                    EmpresaId = empresa,
+                    Nombre = $"Plantilla {tipo}",
+                    TipoPerfil = tipo,
+                    EsSistema = true,
+                    Activo = true
+                }));
+
+        _perfilRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Perfil>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _permisoRepository
+            .Setup(r => r.GetByPerfilAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .ReturnsAsync(new List<Permiso>());
+
+        // El plan resuelve bien.
+        _planRepoMock
+            .Setup(r => r.GetByCodigoAsync(It.IsAny<string>()))
+            .ReturnsAsync(new Plan
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Starter",
+                Codigo = "STARTER",
+                PrecioMensual = 99.00m,
+                Moneda = "USD"
+            });
+
+        // La suscripción falla → se dispara la compensación.
+        _suscripcionRepoMock
+            .Setup(r => r.CreateAsync(It.IsAny<Suscripcion>()))
+            .ThrowsAsync(new Exception("DB error"));
+
+        var act = async () => await _service.CreateAsync(DtoValido());
+
+        await act.Should().ThrowAsync<Exception>();
+
+        _empresaRepository.Verify(
+            r => r.DeactivateAsync(empresaId), Times.Once);
     }
 
     [Fact]
@@ -401,7 +582,8 @@ public class EmpresaServiceTests
         capturada.ZonaHoraria.Should().Be("America/Managua");
         capturada.Idioma.Should().Be("es");
         capturada.FormatoFecha.Should().Be("DD/MM/YYYY");
-        capturada.Estado.Should().Be(EstadoEmpresa.ACTIVE);
+        // Fix smoke test: estado inicial TRIAL (ADR-004).
+        capturada.Estado.Should().Be(EstadoEmpresa.TRIAL);
         // Prefijo fallback "FR" cuando el nombre tiene <2 caracteres alfanuméricos.
         capturada.PrefijoEmbarque.Should().Be("FR");
     }

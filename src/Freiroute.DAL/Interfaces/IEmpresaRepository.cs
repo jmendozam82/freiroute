@@ -24,6 +24,12 @@ public interface IEmpresaRepository
     /// <summary>Actualiza los datos de una empresa activa.</summary>
     Task<bool> UpdateAsync(Empresa empresa);
 
+    /// <summary>
+    /// Actualiza solo el plan_id de la empresa (migración alter_empresas_sprint2).
+    /// Se ejecuta al crear el tenant para vincular la suscripción TRIAL inicial.
+    /// </summary>
+    Task<bool> UpdatePlanIdAsync(Guid empresaId, Guid planId);
+
     /// <summary>Soft delete: SET activo = false WHERE id = @Id.</summary>
     Task<bool> DeactivateAsync(Guid id);
 }
