@@ -1,4 +1,4 @@
-@model PagedResult<Freiroute.DTO.Admin.EmpresaResponseDto>
+@model PagedResult<Freiroute.DTO.Empresa.EmpresaResponseDto>
 @{
     ViewData["Title"] = "Empresas";
     ViewData["ActiveMenu"] = "admin-empresas";
@@ -87,7 +87,6 @@
                     <th>Plan</th>
                     <th>Estado</th>
                     <th>Fecha Registro</th>
-                    <th>Onboarding</th>
                     <th style="width:140px">Acciones</th>
                 </tr>
             </thead>
@@ -113,11 +112,6 @@
                         <span class="fr-badge @FrHelper.BadgeClase(item.Estado)">@FrHelper.EstadoLabel(item.Estado)</span>
                     </td>
                     <td>@item.FechaCreacion.ToString("dd/MM/yyyy")</td>
-                    <td>
-                        @item.OnboardingCompletado
-                            ? <span class="fr-badge fr-badge-success">Sí</span>
-                            : <span class="fr-badge fr-badge-neutral">No</span>
-                    </td>
                     <td>
                         <div class="d-flex gap-1">
                             <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.Id"
