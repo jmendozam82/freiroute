@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Freiroute.BLL.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -18,12 +19,26 @@ public class EmailServiceStub : IEmailService
         _logger = logger;
     }
 
-    /// <summary>Loguea el email en lugar de enviarlo (stub Sprint 1).</summary>
+    /// <summary>
+    /// Loguea el email en lugar de enviarlo (stub Sprint 1).
+    /// Fix re-smoke test: también loguea el CUERPO en texto plano (sin tags HTML)
+    /// para que la contraseña temporal ("Contraseña temporal: Fr{XXXX}!") y los
+    /// links de invitación sean observables en los logs durante las demos.
+    /// </summary>
     public Task EnviarAsync(string destinatario, string asunto, string cuerpoHtml)
     {
+        // Strip de tags HTML → texto plano legible en logs (Serilog JSON).
+        var cuerpoTexto = Regex.Replace(cuerpoHtml, "<.*?>", " ");
+
         _logger.LogInformation(
-            "EMAIL STUB → Para: {Destinatario} | Asunto: {Asunto}",
-            destinatario, asunto);
+            "╔══════════════════════════════════════════════════════════╗\n" +
+            "║  EMAIL STUB (Sprint 1 — sin SMTP real)                   ║\n" +
+            "╠══════════════════════════════════════════════════════════╣\n" +
+            "║  Para:   {Destinatario}                                   ║\n" +
+            "║  Asunto: {Asunto}                                         ║\n" +
+            "╚══════════════════════════════════════════════════════════╝\n" +
+            "Cuerpo: {CuerpoTexto}",
+            destinatario, asunto, cuerpoTexto);
 
         return Task.CompletedTask;
     }

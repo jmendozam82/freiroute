@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# User-specific appsettings (secrets locales — AGENTS.md #33)
+**/appsettings.Development.json
+
 # Supabase temporal files
 supabase/.temp/
 

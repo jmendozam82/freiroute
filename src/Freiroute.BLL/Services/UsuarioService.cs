@@ -93,6 +93,10 @@ public class UsuarioService : IUsuarioService
             throw new ValidationException(validation.Errors);
         }
 
+        // HU-013 CA-08: verificar el límite de usuarios del plan ANTES de crear
+        // (Fix re-smoke test — antes solo se verificaba en ReactivarAsync).
+        await _planLimiteService.VerificarLimiteUsuariosAsync(empresaId);
+
         await ValidarPerfilAsync(empresaId, dto.PerfilId);
         await ValidarEmailUnicoAsync(empresaId, dto.Email, null);
 
@@ -234,6 +238,10 @@ public class UsuarioService : IUsuarioService
     /// </summary>
     public async Task InvitarAsync(InvitacionRequestDto dto, Guid empresaId, Guid creadoPorId)
     {
+        // HU-013 CA-08: verificar el límite de usuarios del plan al inicio
+        // (Fix re-smoke test — antes solo se verificaba en ReactivarAsync).
+        await _planLimiteService.VerificarLimiteUsuariosAsync(empresaId);
+
         if (string.IsNullOrWhiteSpace(dto.Email) || !IsValidEmail(dto.Email))
         {
             throw new BusinessException("El email no tiene un formato válido");

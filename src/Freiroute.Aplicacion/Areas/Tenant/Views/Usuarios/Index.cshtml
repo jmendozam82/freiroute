@@ -29,8 +29,8 @@
 
     private string BgFila(bool activo, string estado)
     {
-        if (!activo) return "var(--fr-danger-light)";
-        if (estado == "LOCKED") return "var(--fr-warning-light)";
+        if (!activo) return "fr-bg-danger-light";
+        if (estado == "LOCKED") return "fr-bg-warning-light";
         return "";
     }
 }
@@ -41,7 +41,7 @@
 
 <!-- Breadcrumb -->
 <nav class="fr-breadcrumb" aria-label="breadcrumb">
-    <a href="/dashboard">Inicio</a>
+    <a asp-area="Admin" asp-controller="Shared" asp-action="Dashboard">Inicio</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span>Usuarios</span>
 </nav>
@@ -131,7 +131,7 @@
                                  : item.TipoUsuario == "OPERADOR" ? "fr-badge-warning"
                                  : "fr-badge-neutral";
 
-                <tr style="@(string.IsNullOrEmpty(bgFila) ? "" : $"background:{bgFila};")">
+                <tr class="@bgFila">
                     <td>
                         <div style="display:flex; align-items:center; gap:8px">
                             <span class="fr-avatar">
@@ -163,7 +163,7 @@
                             @if (item.Estado == "ACTIVE" || item.Estado == "PENDING")
                             {
                                 <button class="fr-btn fr-btn-ghost fr-btn-sm"
-                                        data-fr-deactivate="/api/usuarios/@item.Id/desactivar"
+                                        data-fr-deactivate="/api/usuarios/@item.Id/deactivate"
                                         data-fr-nombre="@item.NombreCompleto"
                                         title="Desactivar" aria-label="Desactivar"
                                         style="color:var(--fr-danger)">
@@ -173,7 +173,7 @@
                             else
                             {
                                 <button class="fr-btn fr-btn-ghost fr-btn-sm"
-                                        data-fr-deactivate="/api/usuarios/@item.Id/reactivar"
+                                        data-fr-deactivate="/api/usuarios/@item.Id/reactivate"
                                         data-fr-nombre="@item.NombreCompleto"
                                         title="Reactivar" aria-label="Reactivar"
                                         style="color:var(--fr-success)">

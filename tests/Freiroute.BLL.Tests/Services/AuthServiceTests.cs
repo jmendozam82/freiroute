@@ -77,6 +77,15 @@ public class AuthServiceTests
         // Usamos el JwtService REAL para poder verificar los claims del token.
         _jwtService = new JwtService(_jwtSettings);
 
+        // Fix re-smoke test #5B: AuthService requiere Security:TotpEncryptionKey
+        // (antes usaba RandomKeyFallback). Los tests usan la clave TOTP conocida.
+        var configConClave = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Security:TotpEncryptionKey", ClaveTotpConocida }
+            })
+            .Build();
+
         _service = new AuthService(
             _usuarioRepository.Object,
             _permisoRepository.Object,
@@ -89,10 +98,40 @@ public class AuthServiceTests
             _auditoria.Object,
             _emailService.Object,
             _httpContextAccessor.Object,
-            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(),
+            configConClave,
             _jwtSettings,
             _appSettings,
             _logger.Object);
+    }
+
+    [Fact]
+    public void Constructor_CuandoFaltaClaveTotp_LanzaInvalidOperation()
+    {
+        // Fix re-smoke test #5B: sin Security:TotpEncryptionKey el constructor DEBE
+        // fallar (antes se derivaba una clave aleatoria que rompía el descifrado del
+        // secret TOTP entre requests porque cada instancia usaba una clave distinta).
+        var configSinClave = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .Build();
+
+        var act = () => new AuthService(
+            _usuarioRepository.Object,
+            _permisoRepository.Object,
+            _empresaRepository.Object,
+            _invitacionRepository.Object,
+            _sesionRepository.Object,
+            _config2faRepository.Object,
+            _supabaseAuth.Object,
+            _jwtService,
+            _auditoria.Object,
+            _emailService.Object,
+            _httpContextAccessor.Object,
+            configSinClave,
+            _jwtSettings,
+            _appSettings,
+            _logger.Object);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*TotpEncryptionKey*");
     }
 
     private Usuario UsuarioActivo() => new()

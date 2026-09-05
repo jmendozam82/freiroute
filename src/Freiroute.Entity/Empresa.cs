@@ -40,7 +40,7 @@ public class Empresa
     public string ZonaHoraria { get; set; } = "America/Managua";       // VARCHAR(100) DEFAULT
     public string Idioma { get; set; } = "es";                         // VARCHAR(10) DEFAULT 'es'
     public string FormatoFecha { get; set; } = "DD/MM/YYYY";           // VARCHAR(20) DEFAULT
-    public string? ModosTransporte { get; set; }                       // TEXT -- modos activos (HU-012 CA-04) [falta migracion]
+    public string[]? ModosTransporteActivos { get; set; }              // TEXT[] -- modos activos (HU-012 CA-04, migración 20260202000001)
 
     // ── Numeración de documentos ───────────────────────────────────
     public string PrefijoEmbarque { get; set; } = "FR";                // VARCHAR(10) DEFAULT 'FR'

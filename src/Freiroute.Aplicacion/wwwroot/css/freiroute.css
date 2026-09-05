@@ -548,6 +548,30 @@ body {
 /* ── Loading spinner ──────────────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Clase utilitaria: ícono con rotación continua (spinner en botones) */
+.fr-spin { animation: spin 1s linear infinite; }
+
+/* ── Chips de modo de transporte (wizard onboarding Paso 3) ── */
+.modo-card {
+  border: 2px solid var(--fr-border);
+  border-radius: var(--fr-radius-md);
+  padding: 16px;
+  cursor: pointer;
+  text-align: center;
+  background: var(--fr-surface-card);
+  transition: all .15s;
+}
+
+.modo-card i { font-size: 28px; color: var(--fr-text-muted); transition: color .15s; }
+.modo-card .modo-card-titulo { font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--fr-text-primary); }
+.modo-card .modo-card-descripcion { font-size: 10px; color: var(--fr-text-muted); margin-top: 2px; }
+
+.modo-card.modo-activo {
+  background: var(--fr-blue-tint);
+  border-color: var(--fr-action-blue);
+}
+.modo-card.modo-activo i { color: var(--fr-action-blue); }
+
 /* ================================================================
    CLASES LEGACY — Compatibilidad con vistas existentes
    (mantenidas para que el Admin _Layout existente siga funcionando)
@@ -1125,4 +1149,189 @@ body {
   .fr-auth-split-hero, .fr-auth-split-quote { display: none; }
   .fr-auth-split-brand { margin-bottom: 0; }
   .fr-auth-split-right { padding: 32px 20px; }
+}
+
+/* ================================================================
+   CONFORMIDAD DS — Utilidades y componentes de auditoría FR-2026
+   Reemplazan style="" con colores hardcodeados en las vistas.
+   ================================================================ */
+
+/* Fondo de fila por estado operacional (reemplaza <tr style="background:...">) */
+.fr-bg-warning-light { background: var(--fr-warning-light); }
+.fr-bg-danger-light  { background: var(--fr-danger-light); }
+
+/* Contenedor de tabla con scroll horizontal (cards con body p-0) */
+.fr-table-responsive { overflow-x: auto; }
+
+/* Checkbox del design system (vistas de Planes) */
+.fr-check {
+  width: 1em;
+  height: 1em;
+  accent-color: var(--fr-action-blue);
+  cursor: pointer;
+}
+
+/* Footer del sidebar sobre navy (layouts compartido y Admin) */
+.fr-sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding: 12px 16px;
+}
+.fr-sidebar-footer .fr-sidebar-user  { font-size: 11px; color: rgba(255,255,255,.4); }
+.fr-sidebar-footer .fr-sidebar-perfil { font-size: 10px; }
+
+/* ── Layout del wizard de onboarding (Paso 1–5) ─────────────── */
+.fr-ow-body { background: var(--fr-surface-bg); min-height: 100vh; }
+
+.fr-ow-header {
+  background: var(--fr-navy-primary);
+  padding: 16px 32px;
+}
+.fr-ow-header-row { display: flex; align-items: center; gap: 10px; }
+.fr-ow-header-name { color: var(--fr-text-inverse); font-weight: 700; font-size: 16px; }
+.fr-ow-header-tag  { color: rgba(255,255,255,.4); margin-left: auto; font-size: 12px; }
+
+.fr-ow-progress {
+  background: var(--fr-surface-card);
+  border-bottom: 1px solid var(--fr-border);
+  padding: 16px 32px;
+}
+.fr-ow-progress-inner { max-width: 700px; margin: 0 auto; }
+.fr-ow-progress-top   { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.fr-ow-progress-label { font-size: 12px; color: var(--fr-text-muted); }
+.fr-ow-progress-pct   { font-size: 12px; font-weight: 600; color: var(--fr-action-blue); }
+.fr-ow-bar            { background: var(--fr-border); border-radius: 999px; height: 6px; }
+.fr-ow-bar-fill {
+  background: var(--fr-action-blue);
+  border-radius: 999px;
+  height: 6px;
+  transition: width .3s ease;
+}
+
+.fr-ow-steps { display: flex; justify-content: space-between; margin-top: 12px; }
+.fr-ow-step  { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.fr-ow-step-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  background: var(--fr-border);
+  color: var(--fr-text-muted);
+}
+.fr-ow-step-dot.is-current { background: var(--fr-action-blue); color: var(--fr-text-inverse); }
+.fr-ow-step-dot.is-past    { background: var(--fr-success);     color: var(--fr-text-inverse); }
+.fr-ow-step-label { font-size: 10px; color: var(--fr-text-muted); }
+
+.fr-ow-main { max-width: 700px; margin: 32px auto; padding: 0 16px; }
+
+/* ================================================================
+   CONFORMIDAD DS — Utilidades agregadas en auditoría FR-2026 (II)
+   ================================================================ */
+
+/* ── Spinner de carga en botones ─────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Clase aplicada al ícono ti-loader-2 dentro de botones */
+.fr-spin {
+  display: inline-block;
+  animation: spin .9s linear infinite;
+}
+
+/* ── Tarjetas de modo de transporte (Wizard Paso 3) ──────────── */
+.modo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+  border: 1.5px solid var(--fr-border);
+  border-radius: var(--fr-radius-md);
+  background: var(--fr-surface-card);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  user-select: none;
+}
+
+.modo-card:hover {
+  border-color: var(--fr-action-blue);
+  background: var(--fr-blue-tint);
+}
+
+.modo-card i {
+  font-size: 26px;
+  color: var(--fr-text-muted);
+  transition: color .15s ease;
+}
+
+.modo-card-titulo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fr-text-primary);
+}
+
+.modo-card-descripcion {
+  font-size: 10.5px;
+  color: var(--fr-text-muted);
+  line-height: 1.3;
+}
+
+/* Estado activo / seleccionado */
+.modo-card.modo-activo {
+  border-color: var(--fr-action-blue);
+  background: var(--fr-blue-tint);
+  box-shadow: 0 0 0 2px rgba(26,115,232,.25);
+}
+
+.modo-card.modo-activo i {
+  color: var(--fr-action-blue);
+}
+
+.modo-card.modo-activo .modo-card-titulo {
+  color: var(--fr-action-blue);
+}
+
+/* ── Alerta informativa del DS (reemplaza Bootstrap .alert-info) */
+.alert-fr-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--fr-info-light);
+  border: 1px solid rgba(26,115,232,.25);
+  border-left: 3px solid var(--fr-action-blue);
+  border-radius: var(--fr-radius-sm);
+  font-size: 12.5px;
+  color: var(--fr-text-secondary);
+}
+
+.alert-fr-info i {
+  color: var(--fr-action-blue);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Separador de sección en formularios largos ──────────────── */
+.form-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--fr-border);
+}
+
+/* ── Fila activa en tabla de permisos ────────────────────────── */
+.fr-fila-activa td {
+  background: var(--fr-blue-tint);
+  transition: background .15s ease;
+}
+
+.fr-fila-activa:hover td {
+  background: #d8e9ff;
 }

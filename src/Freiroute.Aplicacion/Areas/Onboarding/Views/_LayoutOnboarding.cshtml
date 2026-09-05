@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Freiroute - Configuración inicial</title>
+    <title>Freiroute — Configuración inicial</title>
     <!-- Bootstrap 5.3 -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <!-- Tabler Icons -->
@@ -16,51 +16,47 @@
     <link rel="stylesheet" href="~/css/freiroute.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body style="background: var(--fr-surface-bg); min-height:100vh">
+<body class="fr-ow-body">
+
+  @* Token antiforgery para las peticiones AJAX de FrApi (header RequestVerificationToken). *@
+  @Html.AntiForgeryToken()
 
   <!-- Header mínimo -->
-  <header style="background: var(--fr-navy-primary); padding:16px 32px">
-    <div style="display:flex; align-items:center; gap:10px">
+  <header class="fr-ow-header">
+    <div class="fr-ow-header-row">
       <div class="fr-logo-mark">FR</div>
-      <span style="color:#fff; font-weight:700; font-size:16px">Freiroute</span>
-      <span style="color:rgba(255,255,255,.4); margin-left:auto; font-size:12px">
+      <span class="fr-ow-header-name">Freiroute</span>
+      <span class="fr-ow-header-tag">
         Configuración inicial
       </span>
     </div>
   </header>
 
   <!-- Barra de progreso -->
-  <div style="background:#fff; border-bottom:1px solid var(--fr-border); padding:16px 32px">
-    <div style="max-width:700px; margin:0 auto">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px">
-        <span style="font-size:12px; color:var(--fr-text-muted)">
+  <div class="fr-ow-progress">
+    <div class="fr-ow-progress-inner">
+      <div class="fr-ow-progress-top">
+        <span class="fr-ow-progress-label">
           Paso @ViewData["Paso"] de 5
         </span>
-        <span style="font-size:12px; font-weight:600; color:var(--fr-action-blue)">
+        <span class="fr-ow-progress-pct">
           @ViewData["Porcentaje"]% completado
         </span>
       </div>
-      <!-- Barra de progreso -->
-      <div style="background:var(--fr-border); border-radius:999px; height:6px">
-        <div style="background:var(--fr-action-blue); border-radius:999px;
-                    height:6px; width:@ViewData["Porcentaje"]%;
-                    transition: width .3s ease"></div>
+      <!-- Barra de progreso (width dinámico proviene del ViewData, no es color) -->
+      <div class="fr-ow-bar">
+        <div class="fr-ow-bar-fill" style="width:@ViewData["Porcentaje"]%"></div>
       </div>
       <!-- Steps indicadores -->
-      <div style="display:flex; justify-content:space-between; margin-top:12px">
+      <div class="fr-ow-steps">
         @for (int i = 1; i <= 5; i++) {
           var esPasoActual = ((int?)ViewData["Paso"] ?? 0) == i;
           var esPasado = ((int?)ViewData["Paso"] ?? 0) > i;
-          <div style="display:flex; flex-direction:column; align-items:center; gap:4px">
-            <div style="width:28px; height:28px; border-radius:50%;
-                        background:@(esPasoActual ? "var(--fr-action-blue)" :
-                                     esPasado ? "var(--fr-success)" : "var(--fr-border)");
-                        color:@(esPasoActual || esPasado ? "#fff" : "var(--fr-text-muted)");
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:11px; font-weight:700">
+          <div class="fr-ow-step">
+            <div class="fr-ow-step-dot @(esPasoActual ? "is-current" : esPasado ? "is-past" : "")">
               @(esPasado ? "✓" : i.ToString())
             </div>
-            <span style="font-size:10px; color:var(--fr-text-muted)">
+            <span class="fr-ow-step-label">
               @(i switch { 1 => "Empresa", 2 => "Visual",
                            3 => "Operación", 4 => "Admin", 5 => "Equipo", _ => "" })
             </span>
@@ -71,11 +67,21 @@
   </div>
 
   <!-- Contenido del paso -->
-  <main style="max-width:700px; margin:32px auto; padding:0 16px">
+  <main class="fr-ow-main">
     @RenderBody()
   </main>
 
-  <!-- Scripts base -->
+  <!-- Contenedor de toasts (FrToast) -->
+  <div class="fr-toast-container" id="frToastContainer"></div>
+
+  <!-- Bootstrap JS -->
+  <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- jQuery + Validate -->
+  <script src="~/lib/jquery/dist/jquery.min.js"></script>
+  <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+  <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+  <!-- Freiroute JS -->
+  <script src="~/js/freiroute.js" asp-append-version="true"></script>
   @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

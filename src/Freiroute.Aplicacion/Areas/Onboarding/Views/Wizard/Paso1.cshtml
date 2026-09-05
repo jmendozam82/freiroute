@@ -16,7 +16,7 @@
             <div class="col-12">
                 <label class="fr-form-label">Nombre de la empresa *</label>
                 <input type="text" id="nombre" class="fr-form-control"
-                       placeholder="Ej: Transportes del Norte S.A."
+                       placeholder="Transportes del Norte S.A."
                        data-val="true"
                        data-val-required="El nombre es obligatorio"
                        data-val-maxlength-max="200"
@@ -26,12 +26,12 @@
             <div class="col-md-6">
                 <label class="fr-form-label">RUC / NIT</label>
                 <input type="text" id="rucNit" class="fr-form-control"
-                       placeholder="Ej: J0310000123456" />
+                       placeholder="J0310000123456" />
             </div>
             <div class="col-md-6">
                 <label class="fr-form-label">Teléfono</label>
                 <input type="text" id="telefono" class="fr-form-control"
-                       placeholder="Ej: +505 2222-3333" />
+                       placeholder="+505 2222-3333" />
             </div>
             <div class="col-12">
                 <label class="fr-form-label">Industria</label>
@@ -66,12 +66,18 @@
 @section Scripts {
 <script>
     document.getElementById('btnContinuar').addEventListener('click', async () => {
+        const nombre = document.getElementById('nombre').value.trim();
+        if (!nombre) {
+            FrToast.error('El nombre de la empresa es obligatorio');
+            return;
+        }
+
         const btn = document.getElementById('btnContinuar');
         btn.disabled = true;
-        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i> Guardando...';
 
-        const resp = await FrApi.put('/api/onboarding/paso/1', {
-            nombre:    document.getElementById('nombre').value.trim(),
+        const resp = await FrApi.post('/onboarding/paso/1/guardar', {
+            nombre:    nombre,
             rucNit:    document.getElementById('rucNit').value.trim(),
             telefono:  document.getElementById('telefono').value.trim(),
             industria: document.getElementById('industria').value,
@@ -79,7 +85,8 @@
         });
 
         if (resp?.success) {
-            window.location.href = '/onboarding/paso/2';
+            FrToast.success('Paso 1 guardado');
+            setTimeout(() => window.location.href = '/onboarding/paso/2', 500);
         } else {
             FrToast.error(resp?.message || 'Error al guardar');
             btn.disabled = false;

@@ -30,6 +30,13 @@ public interface IConfiguracionRepository
     Task<bool> UpdateLogoUrlAsync(Guid empresaId, string? logoUrl);
 
     /// <summary>
+    /// Actualiza los modos de transporte activos del tenant (TEXT[]).
+    /// Se escribe en empresas.modos_transporte_activos (HU-012 CA-04,
+    /// migración 20260202000001 — Fix re-smoke test).
+    /// </summary>
+    Task<bool> UpdateModosTransporteAsync(Guid empresaId, string[] modosActivos);
+
+    /// <summary>
     /// Actualiza los prefijos de numeración (embarque, orden, carta de porte).
     /// Los consecutivos no se editan aquí — son autoincrementales (HU-014 CA-05).
     /// </summary>

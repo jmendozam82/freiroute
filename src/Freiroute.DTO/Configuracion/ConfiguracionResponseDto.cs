@@ -54,6 +54,9 @@ public class ConfiguracionResponseDto
     [SwaggerSchema(Description = "Nombre del remitente de las notificaciones")]
     public string? NombreRemitente { get; set; }
 
+    [SwaggerSchema(Description = "Modos de transporte activos (FTL, LTL, AEREO, MARITIMO, FERROVIARIO, INTERMODAL)")]
+    public List<string> ModosTransporteActivos { get; set; } = [];
+
     [SwaggerSchema(Description = "Si el tenant completó el wizard de onboarding")]
     public bool OnboardingCompletado { get; set; }
 }

@@ -44,6 +44,7 @@ public class ConfiguracionRepository : IConfiguracionRepository
                 moneda_principal       AS MonedaPrincipal,
                 zona_horaria           AS ZonaHoraria,
                 formato_fecha          AS FormatoFecha,
+                modos_transporte_activos AS ModosTransporteActivos,
                 prefijo_embarque       AS PrefijoEmbarque,
                 consecutivo_embarque   AS ConsecutivoEmbarque,
                 prefijo_orden          AS PrefijoOrden,
@@ -125,6 +126,29 @@ public class ConfiguracionRepository : IConfiguracionRepository
         {
             EmpresaId = empresaId,
             LogoUrl = logoUrl
+        });
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Actualiza los modos de transporte activos del tenant (TEXT[]).
+    /// Dapper mapea el parámetro string[] directamente a TEXT[] de PostgreSQL
+    /// (HU-012 CA-04, migración 20260202000001 — Fix re-smoke test).
+    /// </summary>
+    public async Task<bool> UpdateModosTransporteAsync(
+        Guid empresaId, string[] modosActivos)
+    {
+        const string sql = @"
+            UPDATE empresas SET
+                modos_transporte_activos = @Modos,
+                fecha_modificacion       = NOW()
+            WHERE id = @EmpresaId
+              AND activo = true";
+
+        var rows = await _connection.ExecuteAsync(sql, new
+        {
+            EmpresaId = empresaId,
+            Modos = modosActivos
         });
         return rows > 0;
     }

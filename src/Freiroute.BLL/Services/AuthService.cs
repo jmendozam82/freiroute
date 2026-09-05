@@ -72,11 +72,18 @@ public class AuthService : IAuthService
         _httpContextAccessor = httpContextAccessor;
         _jwtSettings = jwtSettings.Value;
         _appSettings = appSettings.Value;
-        // Clave maestra para cifrar el secret TOTP (ADR-011). Si no está configurada
-        // se deriva una aleatoria en memoria (fallback de tests/desarrollo).
-        _totpEncryptionKey = string.IsNullOrWhiteSpace(configuration["Security:TotpEncryptionKey"])
-            ? RandomKeyFallback()
-            : configuration["Security:TotpEncryptionKey"]!;
+        // Clave maestra para cifrar el secret TOTP (ADR-011). OBLIGATORIA:
+        // sin ella, cada instancia scoped usaría una clave distinta y el 2FA
+        // nunca podría descifrar el secret (Fix re-smoke test — error de descifrado).
+        // Fuentes válidas: variable de entorno TOTP_ENCRYPTION_KEY o
+        // appsettings.Development.json → Security:TotpEncryptionKey.
+        var claveTotp = configuration["Security:TotpEncryptionKey"];
+        if (string.IsNullOrWhiteSpace(claveTotp))
+        {
+            throw new InvalidOperationException(
+                "La clave de cifrado TOTP no está configurada. Verificar Security:TotpEncryptionKey en la configuración.");
+        }
+        _totpEncryptionKey = claveTotp;
         _logger = logger;
     }
 
@@ -735,13 +742,6 @@ public class AuthService : IAuthService
                 Permisos = permisos.ToList()
             }
         };
-    }
-
-    /// <summary>Clave maestra TOTP de respaldo derivada en memoria (solo desarrollo/tests).</summary>
-    private static string RandomKeyFallback()
-    {
-        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
-        return Convert.ToBase64String(bytes);
     }
 
     /// <summary>Genera un código de verificación de 6 dígitos numéricos aleatorios.</summary>

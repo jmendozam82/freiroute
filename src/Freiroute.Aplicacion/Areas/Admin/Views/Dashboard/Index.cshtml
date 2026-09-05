@@ -50,28 +50,30 @@
                 <span class="fr-card-title">Empresas por estado</span>
             </div>
             <div class="fr-card-body p-0">
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-success">ACTIVE</span>
-                        <span>@Model.EmpresasPorEstado["ACTIVE"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-neutral">TRIAL</span>
-                        <span>@Model.EmpresasPorEstado["TRIAL"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-warning">PAST_DUE</span>
-                        <span>@Model.EmpresasPorEstado["PAST_DUE"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-warning">SUSPENDED</span>
-                        <span>@Model.EmpresasPorEstado["SUSPENDED"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-danger">CANCELLED</span>
-                        <span>@Model.EmpresasPorEstado["CANCELLED"]</span>
-                    </li>
-                </ul>
+                <table class="fr-table">
+                    <tbody>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-success">ACTIVE</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi="ACTIVE">@Model.EmpresasPorEstado["ACTIVE"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-neutral">TRIAL</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi="TRIAL">@Model.EmpresasPorEstado["TRIAL"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-warning">PAST_DUE</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi="PAST_DUE">@Model.EmpresasPorEstado["PAST_DUE"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-warning">SUSPENDED</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi="SUSPENDED">@Model.EmpresasPorEstado["SUSPENDED"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-danger">CANCELLED</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi="CANCELLED">@Model.EmpresasPorEstado["CANCELLED"]</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -83,20 +85,22 @@
                 <span class="fr-card-title">Empresas por plan</span>
             </div>
             <div class="fr-card-body p-0">
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-neutral">STARTER</span>
-                        <span>@Model.EmpresasPorPlan["STARTER"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-info">PROFESSIONAL</span>
-                        <span>@Model.EmpresasPorPlan["PROFESSIONAL"]</span>
-                    </li>
-                    <li class="list-group-item">
-                        <span class="fr-badge fr-badge-success">ENTERPRISE</span>
-                        <span>@Model.EmpresasPorPlan["ENTERPRISE"]</span>
-                    </li>
-                </ul>
+                <table class="fr-table">
+                    <tbody>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-neutral">STARTER</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="STARTER">@Model.EmpresasPorPlan["STARTER"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-info">PROFESSIONAL</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="PROFESSIONAL">@Model.EmpresasPorPlan["PROFESSIONAL"]</td>
+                        </tr>
+                        <tr>
+                            <td><span class="fr-badge fr-badge-success">ENTERPRISE</span></td>
+                            <td class="text-end fr-kpi-count" data-kpi-plan="ENTERPRISE">@Model.EmpresasPorPlan["ENTERPRISE"]</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -123,9 +127,9 @@
                 @foreach (var item in Model.TenantsPorVencer)
                 {
                     var dias = item.DiasParaVencimiento > 0 ? item.DiasParaVencimiento : 0;
-                    var bgClass = dias <= 7 ? "fr-bg-warning-light" : "";
-                    var bgClassDanger = dias <= 1 ? "fr-bg-danger-light" : "";
-                    <tr style="background: @(dias <= 7 ? "var(--fr-warning-light)" : "");">
+                    var filaClase = dias <= 1 ? "fr-bg-danger-light"
+                                  : dias <= 7 ? "fr-bg-warning-light" : "";
+                    <tr class="@filaClase">
                         <td>
                             <span class="fr-id-code">@item.EmpresaNombre</span>
                         </td>
@@ -152,31 +156,34 @@
 @section Scripts {
 <script>
 async function cargarDashboard() {
-    const resp = await fetch('/api/admin/dashboard',
-        { headers: { 'Authorization': 'Bearer ' + getToken() }});
-    const data = await resp.json();
-    if (data.success) renderDashboard(data.data);
+    const resp = await FrApi.get('/api/admin/dashboard');
+    FrApi.handleResponse(resp, data => {
+        if (data) renderDashboard(data);
+    });
 }
 
 function renderDashboard(data) {
-    // Actualizar KPIs
-    const kpiBlue = document.querySelector('.fr-kpi-value.kpi-blue');
-    if (kpiBlue) kpiBlue.textContent = data.TotalEmpresasActivas;
-    
-    const kpiGreen = document.querySelector('.fr-kpi-value.kpi-green');
-    if (kpiGreen) kpiGreen.textContent = data.NuevasEstesMes;
-    
-    // Actualizar MRR/ARR
-    const mrrDiv = document.querySelector('.fr-kpi-card:nth-of-type(3) .fr-kpi-value.kpi-blue');
-    if (mrrDiv) mrrDiv.textContent = '$' + data.Mrr.toLocaleString();
-    
-    const arrDiv = document.querySelector('.fr-kpi-card:nth-of-type(4) .fr-kpi-value.kpi-green');
-    if (arrDiv) arrDiv.textContent = '$' + data.Arr.toLocaleString();
-    
+    // Actualizar KPIs (propiedades camelCase del JSON de la API)
+    const kpiBlue  = document.querySelectorAll('.fr-kpi-value.kpi-blue');
+    const kpiGreen = document.querySelectorAll('.fr-kpi-value.kpi-green');
+    if (kpiBlue[0])  kpiBlue[0].textContent  = data.totalEmpresasActivas ?? '0';
+    if (kpiGreen[0]) kpiGreen[0].textContent = data.nuevasEstesMes ?? '0';
+    if (kpiBlue[1])  kpiBlue[1].textContent  = '$' + (data.mrr ?? 0).toLocaleString();
+    if (kpiGreen[1]) kpiGreen[1].textContent = '$' + (data.arr ?? 0).toLocaleString();
+
     // Actualizar empresas por estado
-    const estadoKeys = ['ACTIVE', 'TRIAL', 'PAST_DUE', 'SUSPENDED', 'CANCELLED'];
-    const estadoCounts = data.EmpresasPorEstado;
-    // ... rendering logic
+    const estado = data.empresasPorEstado || {};
+    document.querySelectorAll('[data-kpi]').forEach(td => {
+        const key = td.dataset.kpi;
+        if (estado[key] !== undefined) td.textContent = estado[key];
+    });
+
+    // Actualizar empresas por plan
+    const plan = data.empresasPorPlan || {};
+    document.querySelectorAll('[data-kpi-plan]').forEach(td => {
+        const key = td.dataset.kpiPlan;
+        if (plan[key] !== undefined) td.textContent = plan[key];
+    });
 }
 </script>
 }

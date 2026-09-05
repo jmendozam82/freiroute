@@ -13,7 +13,7 @@ namespace Freiroute.BLL.Tests.Services;
 
 /// <summary>
 /// Tests del wizard de onboarding multi-paso (HU-012, ADR-010).
-/// Cubre el avance por pasos, el join de modos de transporte (CA-04),
+/// Cubre el avance por pasos, la persistencia de modos de transporte (CA-04),
 /// el máximo de invitaciones (CA-06) y la finalización (CA-08).
 /// </summary>
 public class OnboardingServiceTests
@@ -69,14 +69,20 @@ public class OnboardingServiceTests
         ok.Should().BeTrue();
         _empresas.Verify(r => r.UpdateAsync(It.Is<Empresa>(e =>
             e.Nombre == "Trans Nicaragua SA" && e.OnboardingPasoActual == 2)), Times.Once);
+
+        // Fix re-smoke test: el avance del wizard se persiste explícitamente en BD
+        // (onboarding_paso_actual = 2) de forma independiente del UPDATE masivo.
+        _empresas.Verify(r => r.ActualizarOnboardingAsync(id, 2, false), Times.Once);
     }
 
     [Fact]
-    public async Task GuardarPaso3Async_UneModosDeTransporte_YAvanza()
+    public async Task GuardarPaso3Async_PersisteModosActivos_YAvanza()
     {
         var id = Guid.NewGuid();
         _empresas.Setup(r => r.GetByIdAsync(id)).ReturnsAsync(EmpresaEn(id, 3));
         _empresas.Setup(r => r.UpdateAsync(It.IsAny<Empresa>())).ReturnsAsync(true);
+        _config.Setup(r => r.UpdateModosTransporteAsync(id, It.IsAny<string[]>()))
+            .ReturnsAsync(true);
 
         await _service.GuardarPaso3Async(
             new OnboardingPaso3RequestDto
@@ -84,8 +90,17 @@ public class OnboardingServiceTests
                 Moneda = "NIO", ModosTransporteActivos = ["FTL", "LTL", "AEREO"]
             }, id);
 
+        // Fix re-smoke test: los modos se persisten en empresas.modos_transporte_activos
+        // (TEXT[]) vía repositorio de config — ya no se serializan como string de la entidad.
+        _config.Verify(r => r.UpdateModosTransporteAsync(
+            id,
+            It.Is<string[]>(m =>
+                m.Length == 3 &&
+                m.Contains("FTL") && m.Contains("LTL") && m.Contains("AEREO"))),
+            Times.Once);
+
         _empresas.Verify(r => r.UpdateAsync(It.Is<Empresa>(e =>
-            e.ModosTransporte == "FTL,LTL,AEREO" && e.MonedaPrincipal == "NIO" &&
+            e.MonedaPrincipal == "NIO" &&
             e.OnboardingPasoActual == 4)), Times.Once);
     }
 
@@ -145,6 +160,10 @@ public class OnboardingServiceTests
         ok.Should().BeTrue();
         _empresas.Verify(r => r.UpdateAsync(It.Is<Empresa>(e =>
             e.OnboardingCompletado && e.OnboardingPasoActual == 5)), Times.Once);
+
+        // Fix re-smoke test: CompletarAsync garantiza el estado final en BD
+        // (onboarding_paso_actual = 5 y onboarding_completado = true).
+        _empresas.Verify(r => r.ActualizarOnboardingAsync(id, 5, true), Times.Once);
     }
 
     [Fact]

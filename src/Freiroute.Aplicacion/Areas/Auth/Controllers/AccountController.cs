@@ -47,7 +47,7 @@ public class AccountController : Controller
     // ── POST: Login (AJAX) ─────────────────────────────────────────
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginRequestDto request, string? returnUrl = null)
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
     {
         try
         {

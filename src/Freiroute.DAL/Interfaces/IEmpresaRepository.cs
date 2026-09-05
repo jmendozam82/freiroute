@@ -30,6 +30,13 @@ public interface IEmpresaRepository
     /// </summary>
     Task<bool> UpdatePlanIdAsync(Guid empresaId, Guid planId);
 
+    /// <summary>
+    /// Persiste el avance del wizard de onboarding (HU-012). Escribe
+    /// onboarding_paso_actual y onboarding_completado — Fix re-smoke test:
+    /// el progreso debe sobrevivir a cada paso, no solo al UPDATE masivo.
+    /// </summary>
+    Task<bool> ActualizarOnboardingAsync(Guid empresaId, int pasoActual, bool completado);
+
     /// <summary>Soft delete: SET activo = false WHERE id = @Id.</summary>
     Task<bool> DeactivateAsync(Guid id);
 }

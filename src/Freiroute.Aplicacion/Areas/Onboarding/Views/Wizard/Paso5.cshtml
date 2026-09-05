@@ -2,6 +2,8 @@
     ViewData["Paso"] = 5;
     ViewData["Porcentaje"] = 100;
     Layout = "~/Areas/Onboarding/Views/_LayoutOnboarding.cshtml";
+    var perfiles = (ViewData["Perfiles"] as IEnumerable<PerfilResponseDto>)
+                   ?? Enumerable.Empty<PerfilResponseDto>();
 }
 
 <div class="fr-card">
@@ -27,9 +29,10 @@
                         <select name="invitaciones[@i].perfilId"
                                 class="fr-form-control">
                             <option value="">-- Perfil --</option>
-                            <option value="ADMIN">ADMIN</option>
-                            <option value="OPERADOR">OPERADOR</option>
-                            <option value="CONDUCTOR">CONDUCTOR</option>
+                            @foreach (var perfil in perfiles)
+                            {
+                                <option value="@perfil.Id">@perfil.Nombre</option>
+                            }
                         </select>
                     </div>
                     <div class="col-md-1 d-flex align-items-center">
@@ -105,47 +108,66 @@
         });
     });
 
+    // Redirigir al dashboard tras completar el onboarding
+    const redirectAlDashboard = () => {
+        setTimeout(() => window.location.href = '/Admin/Dashboard/Index', 1200);
+    };
+
     // Navegación
     document.getElementById('btnAnterior')
         .addEventListener('click', () => window.location.href = '/onboarding/paso/4');
 
     document.getElementById('btnSaltar')
         .addEventListener('click', async () => {
-            const resp = await FrApi.post('/api/onboarding/completar', {});
+            const btn = document.getElementById('btnSaltar');
+            btn.style.opacity = '0.6';
+            const resp = await FrApi.post('/onboarding/completar', {});
             if (resp?.success) {
-                FrToast.success('¡Configuración completada! Bienvenido a Freiroute');
-                setTimeout(() => window.location.href = '/dashboard', 1500);
+                FrToast.success('Configuración completada. ¡Bienvenido a Freiroute!');
             } else {
-                window.location.href = '/dashboard';
+                FrToast.error(resp?.message || 'Error al completar la configuración');
             }
+            btn.style.opacity = '1';
+            redirectAlDashboard();
         });
 
     document.getElementById('btnFinalizar').addEventListener('click', async () => {
         const btn = document.getElementById('btnFinalizar');
         btn.disabled = true;
-        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i> Guardando...';
 
         const invitaciones = [];
         document.querySelectorAll('.fila-invitacion').forEach(fila => {
             const email = fila.querySelector('input[type="email"]')?.value?.trim();
-            const perfil = fila.querySelector('select')?.value;
-            if (email && perfil) {
-                invitaciones.push({ Email: email, PerfilId: perfil });
+            const perfilId = fila.querySelector('select')?.value;
+            if (email && perfilId) {
+                invitaciones.push({ email: email, perfilId: perfilId });
             }
         });
 
-        const resp = await FrApi.post('/api/onboarding/paso/5', {
+        // 1. Guardar invitaciones (paso 5).
+        const resp = await FrApi.post('/onboarding/paso/5/guardar', {
             invitaciones: invitaciones
         });
 
-        if (resp?.success) {
-            FrToast.success('¡Configuración completada! Bienvenido a Freiroute');
-            setTimeout(() => window.location.href = '/dashboard', 1500);
-        } else {
+        if (!resp?.success) {
             FrToast.error(resp?.message || 'Error al guardar');
             btn.disabled = false;
             btn.innerHTML = 'Finalizar configuración <i class="ti ti-check"></i>';
+            return;
         }
+
+        // 2. Marcar el onboarding como completado.
+        const finResp = await FrApi.post('/onboarding/completar', {});
+        if (!finResp?.success) {
+            FrToast.error(finResp?.message || 'Error al completar la configuración');
+            btn.disabled = false;
+            btn.innerHTML = 'Finalizar configuración <i class="ti ti-check"></i>';
+            return;
+        }
+
+        FrToast.success('Configuración completada. ¡Bienvenido a Freiroute!');
+        redirectAlDashboard();
     });
 </script>
 }

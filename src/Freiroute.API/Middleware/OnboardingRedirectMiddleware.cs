@@ -61,8 +61,10 @@ public class OnboardingRedirectMiddleware
         }
 
         // 5. Redirigir al paso 1 del wizard.
+        // Fix re-smoke test: ruta por path (/onboarding/paso/1) coherente con el
+        // JS de las vistas del wizard — antes usaba query param (?paso=1).
         context.Response.StatusCode = StatusCodes.Status307TemporaryRedirect;
-        context.Response.Headers.Location = "/onboarding?paso=1";
+        context.Response.Headers.Location = "/onboarding/paso/1";
         await context.Response.CompleteAsync();
     }
 

@@ -455,6 +455,59 @@ public class UsuarioServiceTests
         ex.WithMessage("*Super Admin*");
     }
 
+    [Fact]
+    public async Task CreateAsync_CuandoExcedeLimitePlan_LanzaBusinessExceptionAntesDeCrear()
+    {
+        // Fix re-smoke test #3: verificar el límite de usuarios del plan ANTES de
+        // crear (HU-013 CA-08). Antes solo se verificaba en ReactivarAsync.
+        ConfigurarPerfilValido();
+
+        _usuarioRepository
+            .Setup(r => r.GetByEmailAsync(It.IsAny<string>(), EmpresaId))
+            .ReturnsAsync((Usuario?)null);
+
+        _planLimiteService
+            .Setup(r => r.VerificarLimiteUsuariosAsync(EmpresaId))
+            .ThrowsAsync(new BusinessException("Límite de usuarios del plan alcanzado"));
+
+        var act = async () => await _service.CreateAsync(new UsuarioRequestDto
+        {
+            PerfilId = PerfilId,
+            NombreCompleto = "Juan",
+            Email = "juan@transnic.com",
+            TipoUsuario = TipoUsuario.OPERADOR
+        }, EmpresaId);
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*Límite*");
+
+        _usuarioRepository.Verify(
+            r => r.CreateAsync(It.IsAny<Usuario>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InvitarAsync_CuandoExcedeLimitePlan_LanzaBusinessExceptionAntesDeEnviar()
+    {
+        // Fix re-smoke test #3: verificar el límite de usuarios del plan al inicio
+        // de la invitación (HU-013 CA-08), no solo al reactivar.
+        _planLimiteService
+            .Setup(r => r.VerificarLimiteUsuariosAsync(EmpresaId))
+            .ThrowsAsync(new BusinessException("Límite de usuarios del plan alcanzado"));
+
+        var act = async () => await _service.InvitarAsync(
+            new InvitacionRequestDto { Email = "nuevo@transnic.com", PerfilId = PerfilId },
+            EmpresaId, Guid.NewGuid());
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*Límite*");
+
+        _emailService.Verify(
+            e => e.EnviarAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()),
+            Times.Never);
+        _invitacionRepository.Verify(
+            r => r.CreateAsync(It.IsAny<Invitacion>()), Times.Never);
+    }
+
     // ── Update (HU-003) ────────────────────────────────────────────
 
     [Fact]

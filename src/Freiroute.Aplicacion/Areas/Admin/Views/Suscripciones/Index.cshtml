@@ -83,14 +83,13 @@
             <tbody>
             @foreach (var item in Model.Items)
             {
-                string rowBg = "";
-                if (item.Estado == "PAST_DUE") rowBg = "var(--fr-warning-light)";
-                else if (item.Estado == "SUSPENDED") rowBg = "var(--fr-danger-light)";
+                string rowClase = item.Estado == "PAST_DUE" ? "fr-bg-warning-light"
+                               : item.Estado == "SUSPENDED" ? "fr-bg-danger-light" : "";
 
                 int dias = item.DiasParaVencimiento;
                 string diasTexto = dias >= 0 ? $"{dias} días" : "Vencido";
 
-                <tr style="@(string.IsNullOrEmpty(rowBg) ? "" : $"background:{rowBg};")">
+                <tr class="@rowClase">
                     <td>
                         <span class="fr-id-code">@item.EmpresaNombre</span>
                     </td>
@@ -211,7 +210,8 @@
         btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Guardando...';
 
         const form = e.target;
-        const resp = await FrApi.post('/api/admin/suscripciones/pago', {
+        const suscripcionId = form.querySelector('[name="SuscripcionId"]').value;
+        const resp = await FrApi.post(`/api/admin/suscripciones/${suscripcionId}/pago`, {
             SuscripcionId: form.querySelector('[name="SuscripcionId"]').value,
             Monto:         form.querySelector('[name="Monto"]').value,
             Moneda:        form.querySelector('[name="Moneda"]').value,

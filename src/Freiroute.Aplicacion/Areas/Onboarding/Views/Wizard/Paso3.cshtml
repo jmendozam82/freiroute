@@ -71,19 +71,11 @@
                 @foreach (var (codigo, icono, nombreCorto, descripcion) in modos)
                 {
                     <div class="col-md-4 col-6">
-                        <div class="modo-card" data-modo="@codigo"
-                             style="border:2px solid var(--fr-border); border-radius:10px;
-                                    padding:16px; cursor:pointer; text-align:center;
-                                    transition:all .15s; background:var(--fr-surface-card)">
-                            <i class="ti @icono"
-                               style="font-size:28px; color:var(--fr-text-muted)"></i>
-                            <div style="font-size:13px; font-weight:600; margin-top:8px;
-                                        color:var(--fr-text-primary)">
-                                @nombreCorto
-                            </div>
-                            <div style="font-size:10px; color:var(--fr-text-muted); margin-top:2px">
-                                @descripcion
-                            </div>
+                        <div class="modo-card" data-modo="@codigo" role="button"
+                             aria-pressed="false" tabIndex="0">
+                            <i class="ti @icono"></i>
+                            <div class="modo-card-titulo">@nombreCorto</div>
+                            <div class="modo-card-descripcion">@descripcion</div>
                         </div>
                     </div>
                 }
@@ -149,16 +141,18 @@
 
 @section Scripts {
 <script>
-    // Toggle visual de modo seleccionado
+    // Toggle visual de modo seleccionado (clase CSS .modo-activo)
     document.querySelectorAll('.modo-card').forEach(card => {
-        card.addEventListener('click', () => {
+        const toggle = () => {
             const activo = card.classList.toggle('modo-activo');
-            card.style.borderColor = activo
-                ? 'var(--fr-action-blue)' : 'var(--fr-border)';
-            card.style.background = activo
-                ? 'var(--fr-blue-tint)' : 'var(--fr-surface-card)';
-            card.querySelector('i').style.color = activo
-                ? 'var(--fr-action-blue)' : 'var(--fr-text-muted)';
+            card.setAttribute('aria-pressed', activo ? 'true' : 'false');
+        };
+        card.addEventListener('click', toggle);
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggle();
+            }
         });
     });
 
@@ -196,7 +190,11 @@
             return;
         }
 
-        const resp = await FrApi.put('/api/onboarding/paso/3', {
+        const btn = document.getElementById('btnContinuar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i> Guardando...';
+
+        const resp = await FrApi.post('/onboarding/paso/3/guardar', {
             modosTransporteActivos: modos,
             moneda:           document.getElementById('moneda').value,
             zonaHoraria:      document.getElementById('zonaHoraria').value,
@@ -206,9 +204,12 @@
         });
 
         if (resp?.success) {
-            window.location.href = '/onboarding/paso/4';
+            FrToast.success('Paso 3 guardado');
+            setTimeout(() => window.location.href = '/onboarding/paso/4', 500);
         } else {
             FrToast.error(resp?.message || 'Error al guardar');
+            btn.disabled = false;
+            btn.innerHTML = 'Continuar <i class="ti ti-arrow-right"></i>';
         }
     });
 </script>

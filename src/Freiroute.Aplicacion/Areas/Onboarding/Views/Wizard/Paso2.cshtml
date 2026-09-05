@@ -19,18 +19,18 @@
                         background:var(--fr-surface-card);
                         border:2px dashed var(--fr-border);
                         border-radius:10px; cursor:pointer"
-                 id="logoDropZone">
+                 id="logoDropZone" role="button" aria-label="Seleccionar archivo de logo">
                 <i class="ti ti-photo" style="font-size:32px; color:var(--fr-text-muted)"></i>
                 <p style="margin:8px 0 0; font-size:13px; color:var(--fr-text-secondary)">
                     Arrastra un archivo o haz clic para seleccionar
                 </p>
                 <p style="font-size:11px; color:var(--fr-text-muted)">
-                    PNG o SVG, máximo 2 MB
+                    PNG, SVG, JPEG o WebP, máximo 2 MB
                 </p>
-                <img id="logoPreview" src="" alt="Preview logo"
+                <img id="logoPreview" src="" alt="Preview del logo"
                      style="max-width:150px; margin-top:8px; display:none" />
             </div>
-            <input type="file" id="logoInput" accept="image/png,image/svg+xml"
+            <input type="file" id="logoInput" accept="image/png,image/svg+xml,image/jpeg,image/webp"
                    style="display:none" />
         </div>
 
@@ -88,7 +88,7 @@
                          style="width:28px; height:28px; border-radius:6px;
                                 background:var(--fr-navy-primary); display:flex; align-items:center;
                                 justify-content:center; margin:0 10px; flex-shrink:0">
-                        <span style="color:#fff; font-size:10px; font-weight:700">FR</span>
+                        <span style="color:var(--fr-text-inverse); font-size:10px; font-weight:700">FR</span>
                     </div>
                     <span style="color:var(--fr-text-primary); font-weight:700;
                                  font-size:13px">Freiroute</span>
@@ -166,21 +166,42 @@
         .addEventListener('click', () => window.location.href = '/onboarding/paso/1');
 
     document.getElementById('btnContinuar').addEventListener('click', async () => {
-        const resp = await FrApi.put('/api/onboarding/paso/2', {
-            colorPrimario:   document.getElementById('colorPrimario').value,
-            colorSecundario: document.getElementById('colorSecundario').value
-        });
-        if (resp?.success) {
-            // Subir logo si existe
-            const file = logoInput.files[0];
-            if (file) {
-                const fd = new FormData();
-                fd.append('logo', file);
-                await FrApi.upload('/api/onboarding/paso/2/logo', fd);
+        const btn = document.getElementById('btnContinuar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i> Guardando...';
+
+        // 1. Subir el logo primero (si hay archivo) y obtener la URL firmada.
+        let logoUrl = '';
+        const file = logoInput.files[0];
+        if (file) {
+            const fd = new FormData();
+            fd.append('archivo', file);
+            const upResp = await FrApi.upload('/onboarding/paso/2/logo', fd);
+            if (!upResp?.success) {
+                FrToast.error(upResp?.message || 'Error al subir el logo');
+                btn.disabled = false;
+                btn.innerHTML = 'Continuar <i class="ti ti-arrow-right"></i>';
+                return;
             }
-            window.location.href = '/onboarding/paso/3';
+            logoUrl = upResp.data || '';
+            logoPreview.src = logoUrl;
+            logoPreview.style.display = 'block';
+        }
+
+        // 2. Guardar colores + URL del logo.
+        const resp = await FrApi.post('/onboarding/paso/2/guardar', {
+            colorPrimario:   document.getElementById('colorPrimario').value,
+            colorSecundario: document.getElementById('colorSecundario').value,
+            logoUrl:         logoUrl
+        });
+
+        if (resp?.success) {
+            FrToast.success('Paso 2 guardado');
+            setTimeout(() => window.location.href = '/onboarding/paso/3', 500);
         } else {
             FrToast.error(resp?.message || 'Error al guardar');
+            btn.disabled = false;
+            btn.innerHTML = 'Continuar <i class="ti ti-arrow-right"></i>';
         }
     });
 </script>

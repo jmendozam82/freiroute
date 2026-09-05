@@ -212,6 +212,7 @@ public class ConfiguracionService : IConfiguracionService
         FormatoFecha = e.FormatoFecha,
         EmailRemitente = e.EmailRemitente,
         NombreRemitente = e.NombreRemitente,
+        ModosTransporteActivos = e.ModosTransporteActivos?.ToList() ?? [],
         OnboardingCompletado = e.OnboardingCompletado
     };
 

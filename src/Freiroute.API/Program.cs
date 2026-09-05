@@ -133,6 +133,18 @@ public class Program
     /// </summary>
     public static WebApplication CreateApp(WebApplicationBuilder builder)
     {
+        // CONFIGURACIÓN REQUERIDA: la clave maestra de cifrado TOTP (ADR-011) debe
+        // existir antes de arrancar. Sin ella, AuthService usaría claves distintas
+        // por instancia scoped y el 2FA sería imposible (Fix re-smoke test #5).
+        var totpKey = builder.Configuration["Security:TotpEncryptionKey"];
+        if (string.IsNullOrWhiteSpace(totpKey))
+        {
+            throw new InvalidOperationException(
+                "CONFIGURACIÓN REQUERIDA: Security:TotpEncryptionKey no está definida. " +
+                "Configure la variable de entorno TOTP_ENCRYPTION_KEY o " +
+                "appsettings.Development.json (Security:TotpEncryptionKey) antes de arrancar.");
+        }
+
         var app = builder.Build();
 
         // 1. Manejo global de excepciones — SIEMPRE el primero del pipeline,

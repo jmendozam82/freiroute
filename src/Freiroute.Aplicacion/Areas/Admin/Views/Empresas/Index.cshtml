@@ -94,12 +94,11 @@
             <tbody>
             @foreach (var item in Model.Items)
             {
-                // Determinar clases de fila por estado
-                string rowBg = "";
-                if (item.Estado == "PAST_DUE") rowBg = "var(--fr-warning-light)";
-                else if (item.Estado == "SUSPENDED") rowBg = "var(--fr-danger-light)";
+                // Clases de fila por estado (DS: sin style="" con colores)
+                string rowClase = item.Estado == "PAST_DUE" ? "fr-bg-warning-light"
+                               : item.Estado == "SUSPENDED" ? "fr-bg-danger-light" : "";
 
-                <tr style="background: @rowBg;">
+                <tr class="@rowClase">
                     <td>
                         <span class="fr-id-code">@item.Nombre</span>
                         <small class="text-muted">@item.Pais</small>

@@ -46,6 +46,14 @@ app.MapControllerRoute(
     name: "areas",
     pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
 
+// Ruta del wizard de onboarding (Fix re-smoke test #6): /onboarding → Paso1 y
+// /onboarding/{action}/{id}. Las rutas por path /onboarding/paso/N se sirven
+// con [Route] en WizardController (coherente con el JS de las vistas).
+app.MapControllerRoute(
+    name: "onboarding",
+    pattern: "onboarding/{action=Paso1}/{id?}",
+    defaults: new { area = "Onboarding", controller = "Wizard" });
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

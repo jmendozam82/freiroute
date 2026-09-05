@@ -66,7 +66,7 @@ public class OnboardingService : IOnboardingService
                 Moneda = empresa.MonedaPrincipal,
                 empresa.ZonaHoraria,
                 empresa.FormatoFecha,
-                ModosTransporteActivos = DeserializarModos(empresa.ModosTransporte),
+                ModosTransporteActivos = empresa.ModosTransporteActivos?.ToList() ?? [],
                 empresa.PrefijoEmbarque,
                 empresa.PrefijoOrden
             }
@@ -88,6 +88,10 @@ public class OnboardingService : IOnboardingService
 
         var ok = await _empresaRepository.UpdateAsync(empresa);
         await AuditarPaso(empresaId, "PASO_1", "Datos de la empresa guardados");
+
+        // Fix re-smoke test: persistir el avance del wizard de forma explícita
+        // (la BD debe reflejar el paso actual aunque el UPDATE masivo no lo haga).
+        await PersistirAvanceAsync(empresaId, 2);
         return ok;
     }
 
@@ -107,6 +111,8 @@ public class OnboardingService : IOnboardingService
 
         var ok = await _empresaRepository.UpdateAsync(empresa);
         await AuditarPaso(empresaId, "PASO_2", "Identidad visual guardada");
+
+        await PersistirAvanceAsync(empresaId, 3);
         return ok;
     }
 
@@ -118,14 +124,20 @@ public class OnboardingService : IOnboardingService
         empresa.MonedaPrincipal = dto.Moneda;
         empresa.ZonaHoraria = dto.ZonaHoraria;
         empresa.FormatoFecha = dto.FormatoFecha;
-        empresa.ModosTransporte = string.Join(",", dto.ModosTransporteActivos);
         empresa.PrefijoEmbarque = dto.PrefijoEmbarque;
         empresa.PrefijoOrden = dto.PrefijoOrden;
+
+        // Fix re-smoke test: persistir modos de transporte en
+        // empresas.modos_transporte_activos (TEXT[]) vía repositorio de config.
+        await _configRepository.UpdateModosTransporteAsync(
+            empresaId, dto.ModosTransporteActivos.ToArray());
 
         AvanzarPaso(empresa, 4);
 
         var ok = await _empresaRepository.UpdateAsync(empresa);
         await AuditarPaso(empresaId, "PASO_3", "Configuración operativa guardada");
+
+        await PersistirAvanceAsync(empresaId, 4);
         return ok;
     }
 
@@ -167,6 +179,8 @@ public class OnboardingService : IOnboardingService
         AvanzarPaso(empresa, 5);
         var ok = await _empresaRepository.UpdateAsync(empresa);
         await AuditarPaso(empresaId, "PASO_4", "Primer administrador configurado");
+
+        await PersistirAvanceAsync(empresaId, 5);
         return ok;
     }
 
@@ -202,6 +216,10 @@ public class OnboardingService : IOnboardingService
         empresa.FechaModificacion = DateTime.UtcNow;
 
         var ok = await _empresaRepository.UpdateAsync(empresa);
+
+        // Fix re-smoke test: garantizar el estado final en BD aunque el UPDATE
+        // masivo de la entidad no lo persista (onboarding_completado=true).
+        await _empresaRepository.ActualizarOnboardingAsync(empresaId, TotalPasos, true);
 
         await _auditoria.RegistrarAsync(
             "onboarding", AccionAuditoria.UPDATE, empresaId, null,
@@ -267,16 +285,19 @@ public class OnboardingService : IOnboardingService
         empresa.FechaModificacion = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Persiste el avance del wizard de forma explícita (Fix re-smoke test).
+    /// Los pasos solo avanzan en orden (nunca retroceden), por lo que el paso
+    /// objetivo ya es el máximo. No marca onboarding_completado: eso lo hace
+    /// CompletarAsync.
+    /// </summary>
+    private Task PersistirAvanceAsync(Guid empresaId, int paso)
+        => _empresaRepository.ActualizarOnboardingAsync(empresaId, paso, false);
+
     private async Task AuditarPaso(Guid empresaId, string paso, string detalle)
     {
         await _auditoria.RegistrarAsync(
             "onboarding", AccionAuditoria.UPDATE, empresaId, null,
             "onboarding", empresaId, new { paso, detalle });
     }
-
-    private static List<string> DeserializarModos(string? modos) =>
-        string.IsNullOrWhiteSpace(modos)
-            ? []
-            : modos.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(m => m.Trim()).ToList();
 }

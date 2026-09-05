@@ -83,7 +83,15 @@ public class SupabaseStorageService : IStorageService
     {
         var url = $"{_baseUrl}/storage/v1/object/sign/{bucket}/{path}?expiresIn={expiresInSeconds}";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            // La API de Supabase Storage requiere el tiempo de expiración en el
+            // BODY como JSON ({"expiresIn": N}) — sin él responde 400 "body must be object".
+            Content = new StringContent(
+                $"{{\"expiresIn\": {expiresInSeconds}}}",
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _serviceRoleKey);
 
         var response = await _httpClient.SendAsync(request);

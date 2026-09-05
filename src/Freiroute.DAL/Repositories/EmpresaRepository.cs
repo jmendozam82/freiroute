@@ -32,6 +32,10 @@ public class EmpresaRepository : IEmpresaRepository
                 pais                   AS Pais,
                 ciudad                 AS Ciudad,
                 direccion              AS Direccion,
+                industria              AS Industria,
+                sitio_web              AS SitioWeb,
+                email_remitente        AS EmailRemitente,
+                nombre_remitente       AS NombreRemitente,
                 logo_url               AS LogoUrl,
                 color_primario         AS ColorPrimario,
                 color_secundario       AS ColorSecundario,
@@ -41,6 +45,7 @@ public class EmpresaRepository : IEmpresaRepository
                 zona_horaria           AS ZonaHoraria,
                 idioma                 AS Idioma,
                 formato_fecha          AS FormatoFecha,
+                modos_transporte_activos AS ModosTransporteActivos,
                 prefijo_embarque       AS PrefijoEmbarque,
                 consecutivo_embarque   AS ConsecutivoEmbarque,
                 prefijo_orden          AS PrefijoOrden,
@@ -77,6 +82,10 @@ public class EmpresaRepository : IEmpresaRepository
                 pais                   AS Pais,
                 ciudad                 AS Ciudad,
                 direccion              AS Direccion,
+                industria              AS Industria,
+                sitio_web              AS SitioWeb,
+                email_remitente        AS EmailRemitente,
+                nombre_remitente       AS NombreRemitente,
                 logo_url               AS LogoUrl,
                 color_primario         AS ColorPrimario,
                 color_secundario       AS ColorSecundario,
@@ -86,6 +95,7 @@ public class EmpresaRepository : IEmpresaRepository
                 zona_horaria           AS ZonaHoraria,
                 idioma                 AS Idioma,
                 formato_fecha          AS FormatoFecha,
+                modos_transporte_activos AS ModosTransporteActivos,
                 prefijo_embarque       AS PrefijoEmbarque,
                 consecutivo_embarque   AS ConsecutivoEmbarque,
                 prefijo_orden          AS PrefijoOrden,
@@ -118,6 +128,10 @@ public class EmpresaRepository : IEmpresaRepository
                 pais                   AS Pais,
                 ciudad                 AS Ciudad,
                 direccion              AS Direccion,
+                industria              AS Industria,
+                sitio_web              AS SitioWeb,
+                email_remitente        AS EmailRemitente,
+                nombre_remitente       AS NombreRemitente,
                 logo_url               AS LogoUrl,
                 color_primario         AS ColorPrimario,
                 color_secundario       AS ColorSecundario,
@@ -127,6 +141,7 @@ public class EmpresaRepository : IEmpresaRepository
                 zona_horaria           AS ZonaHoraria,
                 idioma                 AS Idioma,
                 formato_fecha          AS FormatoFecha,
+                modos_transporte_activos AS ModosTransporteActivos,
                 prefijo_embarque       AS PrefijoEmbarque,
                 consecutivo_embarque   AS ConsecutivoEmbarque,
                 prefijo_orden          AS PrefijoOrden,
@@ -213,6 +228,10 @@ public class EmpresaRepository : IEmpresaRepository
                 pais                 = @Pais,
                 ciudad               = @Ciudad,
                 direccion            = @Direccion,
+                industria            = @Industria,
+                sitio_web            = @SitioWeb,
+                email_remitente      = @EmailRemitente,
+                nombre_remitente     = @NombreRemitente,
                 logo_url             = @LogoUrl,
                 color_primario       = @ColorPrimario,
                 color_secundario     = @ColorSecundario,
@@ -222,6 +241,8 @@ public class EmpresaRepository : IEmpresaRepository
                 zona_horaria         = @ZonaHoraria,
                 idioma               = @Idioma,
                 formato_fecha        = @FormatoFecha,
+                onboarding_paso_actual = @OnboardingPasoActual,
+                onboarding_completado  = @OnboardingCompletado,
                 prefijo_embarque     = @PrefijoEmbarque,
                 consecutivo_embarque = @ConsecutivoEmbarque,
                 prefijo_orden        = @PrefijoOrden,
@@ -248,6 +269,27 @@ public class EmpresaRepository : IEmpresaRepository
 
         var rows = await _connection.ExecuteAsync(sql,
             new { EmpresaId = empresaId, PlanId = planId });
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Persiste el avance del wizard de onboarding (HU-012 / Fix re-smoke test).
+    /// Escribe onboarding_paso_actual y onboarding_completado de forma quirúrgica,
+    /// sin depender del UPDATE masivo de la entidad.
+    /// </summary>
+    public async Task<bool> ActualizarOnboardingAsync(
+        Guid empresaId, int pasoActual, bool completado)
+    {
+        const string sql = @"
+            UPDATE empresas SET
+                onboarding_paso_actual = @PasoActual,
+                onboarding_completado  = @Completado,
+                fecha_modificacion     = NOW()
+            WHERE id = @EmpresaId
+              AND activo = true";
+
+        var rows = await _connection.ExecuteAsync(sql,
+            new { EmpresaId = empresaId, PasoActual = pasoActual, Completado = completado });
         return rows > 0;
     }
 
