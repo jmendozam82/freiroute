@@ -60,6 +60,7 @@ public class SupabaseStorageService : IStorageService
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(
             string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _serviceRoleKey);
+        request.Headers.Add("apikey", _serviceRoleKey);
         request.Headers.Add("x-upsert", "false");
 
         var response = await _httpClient.SendAsync(request);
@@ -93,6 +94,7 @@ public class SupabaseStorageService : IStorageService
                 "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _serviceRoleKey);
+        request.Headers.Add("apikey", _serviceRoleKey);
 
         var response = await _httpClient.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
@@ -108,9 +110,14 @@ public class SupabaseStorageService : IStorageService
         {
             using var doc = JsonDocument.Parse(body);
             var signedPath = doc.RootElement.GetProperty("signedURL").GetString();
-            return string.IsNullOrWhiteSpace(signedPath)
-                ? null
-                : $"{_baseUrl}{signedPath}";
+            if (string.IsNullOrWhiteSpace(signedPath)) return null;
+            
+            // Supabase API often returns a path starting with /object/... instead of /storage/v1/object/...
+            if (!signedPath.StartsWith("/storage/v1"))
+            {
+                signedPath = $"/storage/v1{signedPath}";
+            }
+            return $"{_baseUrl}{signedPath}";
         }
         catch (Exception ex)
         {
@@ -126,6 +133,7 @@ public class SupabaseStorageService : IStorageService
 
         using var request = new HttpRequestMessage(HttpMethod.Delete, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _serviceRoleKey);
+        request.Headers.Add("apikey", _serviceRoleKey);
 
         var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)

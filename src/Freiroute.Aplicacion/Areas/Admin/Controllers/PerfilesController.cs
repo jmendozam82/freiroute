@@ -81,7 +81,29 @@ public class PerfilesController : BaseAdminController
         }
 
         var permisos = await _permisoService.GetByPerfilAsync(id, EmpresaId);
-        ViewData["Perfil"] = perfil;
-        return View(permisos);
+        ViewData["Permisos"] = permisos;
+        return View(perfil);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Edit(Guid id)
+    {
+        ViewData["Title"] = "Editar Perfil";
+        ViewData["ActiveMenu"] = "perfiles";
+
+        var perfil = await _perfilService.GetByIdAsync(id, EmpresaId);
+        if (perfil is null)
+        {
+            return NotFound();
+        }
+
+        var dto = new PerfilRequestDto
+        {
+            Nombre = perfil.Nombre,
+            TipoPerfil = perfil.TipoPerfil,
+            Descripcion = perfil.Descripcion
+        };
+
+        return View(dto);
     }
 }

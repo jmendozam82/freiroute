@@ -19,14 +19,16 @@ namespace Freiroute.BLL.Tests.Services;
 public class AuditoriaServiceTests
 {
     private readonly Mock<IAuditoriaRepository> _repository;
+    private readonly Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor> _httpContextAccessor;
     private readonly Mock<ILogger<AuditoriaService>> _logger;
     private readonly AuditoriaService _service;
 
     public AuditoriaServiceTests()
     {
         _repository = new Mock<IAuditoriaRepository>(MockBehavior.Strict);
+        _httpContextAccessor = new Mock<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
         _logger = new Mock<ILogger<AuditoriaService>>();
-        _service = new AuditoriaService(_repository.Object, _logger.Object);
+        _service = new AuditoriaService(_repository.Object, _httpContextAccessor.Object, _logger.Object);
     }
 
     [Fact]

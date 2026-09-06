@@ -64,8 +64,8 @@ public static class DependencyInjection
 
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
-        // Sprint 1: stubs (envío de email y Supabase Auth reales van en Sprint 2).
-        services.AddScoped<IEmailService, EmailServiceStub>();
+        // Sprint 1: stubs (Supabase Auth reales van en Sprint 2).
+        services.AddHttpClient<IEmailService, ResendEmailService>();
         services.AddScoped<ISupabaseAuthService, SupabaseAuthServiceStub>();
         // Transversal: la auditoría se inyecta en todos los demás servicios.
         services.AddScoped<IAuditoriaService, AuditoriaService>();

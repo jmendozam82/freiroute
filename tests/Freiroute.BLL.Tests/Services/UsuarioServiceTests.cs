@@ -336,15 +336,15 @@ public class UsuarioServiceTests
         ConfigurarPerfilPorId(PerfilId);
 
         _usuarioRepository
-            .Setup(r => r.GetAllAsync(EmpresaId))
+            .Setup(r => r.GetAllAsync(EmpresaId, It.IsAny<bool>()))
             .ReturnsAsync(usuarios);
 
-        var result = (await _service.GetAllAsync(EmpresaId)).ToList();
+        var result = (await _service.GetAllAsync(EmpresaId, It.IsAny<bool>())).ToList();
 
         result.Should().HaveCount(2);
         result.Should().OnlyContain(u => u.PerfilNombre == "Operador");
 
-        _usuarioRepository.Verify(r => r.GetAllAsync(EmpresaId), Times.Once);
+        _usuarioRepository.Verify(r => r.GetAllAsync(EmpresaId, It.IsAny<bool>()), Times.Once);
     }
 
     [Fact]

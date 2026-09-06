@@ -8,8 +8,8 @@ namespace Freiroute.BLL.Interfaces;
 /// </summary>
 public interface IUsuarioService
 {
-    /// <summary>Obtiene los usuarios activos de la empresa.</summary>
-    Task<IEnumerable<UsuarioResponseDto>> GetAllAsync(Guid empresaId);
+    /// <summary>Obtiene los usuarios de la empresa. Por defecto solo los activos.</summary>
+    Task<IEnumerable<UsuarioResponseDto>> GetAllAsync(Guid empresaId, bool incluirInactivos = false);
 
     /// <summary>Obtiene un usuario por Id dentro de la empresa.</summary>
     Task<UsuarioResponseDto?> GetByIdAsync(Guid id, Guid empresaId);
@@ -22,6 +22,9 @@ public interface IUsuarioService
 
     /// <summary>Actualiza un usuario activo de la empresa.</summary>
     Task<UsuarioResponseDto> UpdateAsync(Guid id, UsuarioRequestDto dto, Guid empresaId);
+
+    /// <summary>Actualiza solo la URL de la foto de perfil.</summary>
+    Task UpdateFotoAsync(Guid id, Guid empresaId, string fotoUrl);
 
     /// <summary>Soft delete de un usuario. Nunca elimina físicamente.</summary>
     Task<bool> DeactivateAsync(Guid id, Guid empresaId);

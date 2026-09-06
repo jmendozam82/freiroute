@@ -122,12 +122,12 @@ public class EmpresaService : IEmpresaService
             await _empresaRepository.UpdatePlanIdAsync(empresaId, plan.Id);
 
             // 8. Usuario admin del tenant + email de bienvenida con contraseña temporal.
-            await CrearUsuarioAdminAsync(empresaId, dto.EmailAdmin, dto.Nombre);
+            var adminId = await CrearUsuarioAdminAsync(empresaId, dto.EmailAdmin, dto.Nombre);
 
             // 9. Auditoría (CA-05). El tenant de auditoría es la empresa raíz
             //    (el SUPER_ADMIN opera sin un tenant propio distinto al de Freiroute).
             await _auditoria.RegistrarAsync(
-                "empresas", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, null,
+                "empresas", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, adminId,
                 nameof(Empresa), empresaId,
                 new { nombre = dto.Nombre, emailAdmin = dto.EmailAdmin, plan = plan.Codigo });
 
@@ -167,10 +167,10 @@ public class EmpresaService : IEmpresaService
         return empresa is null ? null : MapToResponseDto(empresa);
     }
 
-    /// <summary>Obtiene todas las empresas activas (panel Super Admin — sin filtro de tenant).</summary>
-    public async Task<IEnumerable<EmpresaResponseDto>> GetAllAsync()
+    /// <summary>Obtiene todas las empresas (panel Super Admin — sin filtro de tenant).</summary>
+    public async Task<IEnumerable<EmpresaResponseDto>> GetAllAsync(bool incluirInactivos = false)
     {
-        var empresas = await _empresaRepository.GetAllAsync();
+        var empresas = await _empresaRepository.GetAllAsync(incluirInactivos);
         return empresas.Select(MapToResponseDto);
     }
 
@@ -230,6 +230,33 @@ public class EmpresaService : IEmpresaService
             nameof(Empresa), id, new { nombre = existente.Nombre });
 
         return true;
+    }
+
+    public async Task<EmpresaResponseDto> ReactivarAsync(Guid id)
+    {
+        var existente = await _empresaRepository.GetByIdIncluyendoInactivosAsync(id);
+        if (existente == null)
+        {
+            throw new NotFoundException(nameof(Empresa), id);
+        }
+
+        if (existente.Activo)
+        {
+            throw new BusinessException("La empresa ya está activa.");
+        }
+
+        var ok = await _empresaRepository.ReactivarAsync(id);
+        if (!ok)
+        {
+            throw new NotFoundException(nameof(Empresa), id);
+        }
+
+        await _auditoria.RegistrarAsync(
+            "empresas", AccionAuditoria.REACTIVAR, IdsSistema.EmpresaRaizId, null,
+            nameof(Empresa), id, new { nombre = existente.Nombre });
+
+        var actualizada = await _empresaRepository.GetByIdAsync(id);
+        return MapToResponseDto(actualizada!);
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
@@ -333,7 +360,7 @@ public class EmpresaService : IEmpresaService
     /// Supabase Auth (stub en Sprint 1). Envía el email de bienvenida con la
     /// contraseña temporal (Fix smoke test — orquestación de tenant).
     /// </summary>
-    private async Task CrearUsuarioAdminAsync(Guid empresaId, string emailAdmin, string nombreEmpresa)
+    private async Task<Guid> CrearUsuarioAdminAsync(Guid empresaId, string emailAdmin, string nombreEmpresa)
     {
         // Perfil ADMIN del tenant recién creado (perfiles base, CA-02).
         var perfilAdmin = await _perfilRepository.GetByTipoAsync(TipoPerfil.ADMIN, empresaId);
@@ -362,7 +389,7 @@ public class EmpresaService : IEmpresaService
             Activo = true
         };
 
-        await _usuarioRepository.CreateAsync(usuarioAdmin);
+        var usuarioId = await _usuarioRepository.CreateAsync(usuarioAdmin);
 
         // Email de bienvenida con la contraseña temporal (CA-03).
         await _emailService.EnviarAsync(
@@ -373,6 +400,8 @@ public class EmpresaService : IEmpresaService
             $"Email: <strong>{emailAdmin}</strong><br>" +
             $"Contraseña temporal: <strong>{passwordTemporal}</strong></p>" +
             "<p>Te recomendamos cambiar tu contraseña al ingresar por primera vez.</p>");
+
+        return usuarioId;
     }
 
     /// <summary>Genera una contraseña temporal: Fr + 4 dígitos + ! (política: mayúscula, número, especial).</summary>

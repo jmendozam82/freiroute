@@ -15,6 +15,9 @@ public interface IPlanRepository
     /// <summary>Obtiene un plan por su Id.</summary>
     Task<Plan?> GetByIdAsync(Guid id);
 
+    /// <summary>Obtiene un plan por Id, incluyendo si está inactivo.</summary>
+    Task<Plan?> GetByIdIncluyendoInactivosAsync(Guid id);
+
     /// <summary>Obtiene un plan por su código único (STARTER, PROFESSIONAL, ENTERPRISE).</summary>
     Task<Plan?> GetByCodigoAsync(string codigo);
 
@@ -26,6 +29,9 @@ public interface IPlanRepository
 
     /// <summary>Soft delete de un plan: SET activo = false WHERE id = @Id.</summary>
     Task<bool> DeactivateAsync(Guid id);
+
+    /// <summary>Reactiva un plan previamente desactivado: SET activo = true WHERE id = @Id.</summary>
+    Task<bool> ReactivarAsync(Guid id);
 
     /// <summary>
     /// Cuenta las empresas activas suscritas a este plan.

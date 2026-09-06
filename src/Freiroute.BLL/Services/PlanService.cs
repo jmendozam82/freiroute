@@ -57,7 +57,7 @@ public class PlanService : IPlanService
     }
 
     /// <summary>Crea un plan nuevo (HU-010 CA-01).</summary>
-    public async Task<PlanResponseDto> CreateAsync(PlanRequestDto dto)
+    public async Task<PlanResponseDto> CreateAsync(PlanRequestDto dto, Guid? usuarioId = null)
     {
         var validation = await _validator.ValidateAsync(dto);
         if (!validation.IsValid)
@@ -76,7 +76,7 @@ public class PlanService : IPlanService
         var planId = await _planRepository.CreateAsync(plan);
 
         await _auditoria.RegistrarAsync(
-            "planes", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, null,
+            "planes", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, usuarioId,
             nameof(Plan), planId, new { dto.Codigo, dto.Nombre });
 
         var created = await _planRepository.GetByIdAsync(planId);
@@ -84,7 +84,7 @@ public class PlanService : IPlanService
     }
 
     /// <summary>Actualiza los datos de un plan existente (HU-010 CA-02).</summary>
-    public async Task<PlanResponseDto> UpdateAsync(Guid id, PlanRequestDto dto)
+    public async Task<PlanResponseDto> UpdateAsync(Guid id, PlanRequestDto dto, Guid? usuarioId = null)
     {
         var validation = await _validator.ValidateAsync(dto);
         if (!validation.IsValid)
@@ -115,7 +115,7 @@ public class PlanService : IPlanService
         }
 
         await _auditoria.RegistrarAsync(
-            "planes", AccionAuditoria.UPDATE, IdsSistema.EmpresaRaizId, null,
+            "planes", AccionAuditoria.UPDATE, IdsSistema.EmpresaRaizId, usuarioId,
             nameof(Plan), id, new { dto.Codigo, dto.Nombre });
 
         var updated = await _planRepository.GetByIdAsync(id);
@@ -126,7 +126,7 @@ public class PlanService : IPlanService
     /// Desactiva un plan. Lanza BusinessException si el plan tiene empresas
     /// activas suscritas (HU-010 CA-04).
     /// </summary>
-    public async Task<bool> DeactivateAsync(Guid id)
+    public async Task<bool> DeactivateAsync(Guid id, Guid? usuarioId = null)
     {
         var existente = await _planRepository.GetByIdAsync(id);
         if (existente is null)
@@ -149,10 +149,37 @@ public class PlanService : IPlanService
         }
 
         await _auditoria.RegistrarAsync(
-            "planes", AccionAuditoria.DEACTIVATE, IdsSistema.EmpresaRaizId, null,
-            nameof(Plan), id, new { existente.Codigo });
+            "planes", AccionAuditoria.DEACTIVATE, IdsSistema.EmpresaRaizId, usuarioId,
+            nameof(Plan), id, new { nombre = existente.Nombre });
 
         return true;
+    }
+
+    public async Task<PlanResponseDto> ReactivarAsync(Guid id, Guid? usuarioId = null)
+    {
+        var existente = await _planRepository.GetByIdIncluyendoInactivosAsync(id);
+        if (existente == null)
+        {
+            throw new NotFoundException(nameof(Plan), id);
+        }
+
+        if (existente.Activo)
+        {
+            throw new BusinessException("El plan ya está activo.");
+        }
+
+        var ok = await _planRepository.ReactivarAsync(id);
+        if (!ok)
+        {
+            throw new NotFoundException(nameof(Plan), id);
+        }
+
+        await _auditoria.RegistrarAsync(
+            "planes", AccionAuditoria.REACTIVAR, IdsSistema.EmpresaRaizId, usuarioId,
+            nameof(Plan), id, new { nombre = existente.Nombre });
+
+        var actualizada = await _planRepository.GetByIdAsync(id);
+        return MapToResponseDto(actualizada!);
     }
 
     private static Plan MapToEntity(PlanRequestDto dto) => new()

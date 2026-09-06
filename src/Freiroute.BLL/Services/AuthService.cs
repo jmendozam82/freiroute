@@ -213,7 +213,8 @@ public class AuthService : IAuthService
         // 8. Generar access token + refresh token (hash persistido en sesiones).
         var accessToken = _jwtService.GenerateAccessToken(
             usuario.Id, usuario.EmpresaId, usuario.PerfilId,
-            usuario.TipoUsuario, usuario.NombreCompleto, permisos);
+            usuario.TipoUsuario, usuario.NombreCompleto, permisos,
+            empresa?.LogoUrl);
 
         var refreshToken = await CrearSesionAsync(usuario);
 

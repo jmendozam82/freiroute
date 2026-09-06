@@ -23,6 +23,15 @@
     </div>
 </div>
 
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success mt-3">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger mt-3">@TempData["Error"]</div>
+}
+
 <!-- Tabla -->
 <div class="fr-table-wrapper">
     @if (Model == null || !Model.Any())
@@ -91,15 +100,33 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1">
-                            <a asp-area="Admin" asp-controller="Planes" asp-action="Edit" asp-route-id="@item.Id"
-                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
-                                <i class="ti ti-pencil"></i>
-                            </a>
-                            <button class="fr-btn fr-btn-ghost fr-btn-sm"
-                                    @(item.EmpresasSuscritas > 0 ? "disabled" : "")
-                                    title="Desactivar si no tiene empresas suscritas">
-                                <i class="ti ti-trash"></i>
-                            </button>
+                            @if (item.Activo)
+                            {
+                                <a asp-area="Admin" asp-controller="Planes" asp-action="Edit" asp-route-id="@item.Id"
+                                   class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </a>
+                                <form asp-area="Admin" asp-controller="Planes" asp-action="Deactivate" asp-route-id="@item.Id" method="post" style="display:inline" onsubmit="return confirm('¿Está seguro de desactivar este plan?');">
+                                    <button type="submit" class="fr-btn fr-btn-ghost fr-btn-sm text-danger"
+                                            @(item.EmpresasSuscritas > 0 ? "disabled" : "")
+                                            title="Desactivar si no tiene empresas suscritas">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm" disabled
+                                        title="No disponible para planes inactivos" aria-label="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </button>
+                                <form asp-area="Admin" asp-controller="Planes" asp-action="Reactivate" asp-route-id="@item.Id" method="post" style="display:inline" onsubmit="return confirm('¿Está seguro de reactivar este plan?');">
+                                    <button type="submit" class="fr-btn fr-btn-success fr-btn-sm text-white"
+                                            title="Reactivar">
+                                        <i class="ti ti-check"></i>
+                                    </button>
+                                </form>
+                            }
                         </div>
                     </td>
                 </tr>

@@ -114,20 +114,39 @@
                     <td>@item.FechaCreacion.ToString("dd/MM/yyyy")</td>
                     <td>
                         <div class="d-flex gap-1">
-                            <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.Id"
-                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle" aria-label="Ver detalle">
-                                <i class="ti ti-eye"></i>
-                            </a>
-                            <a asp-area="Admin" asp-controller="Empresas" asp-action="Edit" asp-route-id="@item.Id"
-                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
-                                <i class="ti ti-pencil"></i>
-                            </a>
-                            <button class="fr-btn fr-btn-ghost fr-btn-sm"
-                                    data-fr-deactivate="/api/empresas/@item.Id/deactivate"
-                                    data-fr-nombre="@item.Nombre"
-                                    title="Desactivar" aria-label="Desactivar">
-                                <i class="ti ti-trash" style="color:var(--fr-danger)"></i>
-                            </button>
+                            @if (item.Activo)
+                            {
+                                <a asp-area="Admin" asp-controller="Empresas" asp-action="Detail" asp-route-id="@item.Id"
+                                   class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle" aria-label="Ver detalle">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                                <a asp-area="Admin" asp-controller="Empresas" asp-action="Edit" asp-route-id="@item.Id"
+                                   class="fr-btn fr-btn-ghost fr-btn-sm" title="Editar" aria-label="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </a>
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        data-fr-deactivate="/api/empresas/@item.Id/deactivate"
+                                        data-fr-nombre="@item.Nombre"
+                                        title="Desactivar" aria-label="Desactivar">
+                                    <i class="ti ti-trash" style="color:var(--fr-danger)"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm" disabled
+                                        title="No disponible para empresas inactivas" aria-label="Ver detalle">
+                                    <i class="ti ti-eye"></i>
+                                </button>
+                                <button class="fr-btn fr-btn-ghost fr-btn-sm" disabled
+                                        title="No disponible para empresas inactivas" aria-label="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </button>
+                                <button class="fr-btn fr-btn-success fr-btn-sm text-white"
+                                        onclick="reactivarEmpresa('@item.Id', '@item.Nombre')"
+                                        title="Reactivar" aria-label="Reactivar">
+                                    <i class="ti ti-check"></i>
+                                </button>
+                            }
                         </div>
                     </td>
                 </tr>
@@ -160,5 +179,18 @@
 <script>
 function exportarEmpresasCSV() {
     window.location.href = '/api/admin/empresas/export';
+}
+
+async function reactivarEmpresa(id, nombre) {
+    if (confirm(`¿Estás seguro que deseas reactivar la empresa ${nombre}?`)) {
+        try {
+            const response = await FrApi.patch(`/api/empresas/${id}/reactivate`);
+            FrApi.handleResponse(response, () => {
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        } catch (error) {
+            FrToast.error('Error al reactivar: ' + error.message);
+        }
+    }
 }
 </script>

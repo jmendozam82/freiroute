@@ -8,8 +8,8 @@ namespace Freiroute.DAL.Interfaces;
 /// </summary>
 public interface IUsuarioRepository
 {
-    /// <summary>Obtiene los usuarios activos de una empresa.</summary>
-    Task<IEnumerable<Usuario>> GetAllAsync(Guid empresaId);
+    /// <summary>Obtiene los usuarios de una empresa. Por defecto solo los activos.</summary>
+    Task<IEnumerable<Usuario>> GetAllAsync(Guid empresaId, bool incluirInactivos = false);
 
     /// <summary>Obtiene un usuario activo por Id dentro de la empresa.</summary>
     Task<Usuario?> GetByIdAsync(Guid id, Guid empresaId);

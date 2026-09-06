@@ -31,7 +31,7 @@ public class EmpresasController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<EmpresaResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<IEnumerable<EmpresaResponseDto>>>> GetAll()
     {
-        var empresas = await _empresaService.GetAllAsync();
+        var empresas = await _empresaService.GetAllAsync(incluirInactivos: true);
         return Ok(ApiResponse<IEnumerable<EmpresaResponseDto>>.Ok(empresas));
     }
 
@@ -76,5 +76,14 @@ public class EmpresasController : ControllerBase
     {
         await _empresaService.DeactivateAsync(id);
         return Ok(ApiResponse<string>.Ok(string.Empty, "Empresa desactivada"));
+    }
+
+    /// <summary>Reactiva una empresa previamente desactivada.</summary>
+    [HttpPatch("{id:guid}/reactivate")]
+    [RequirePermission(ModuloPermiso.Configuracion, PermissionType.Update)]
+    public async Task<IActionResult> Reactivate(Guid id)
+    {
+        await _empresaService.ReactivarAsync(id);
+        return Ok(ApiResponse<string>.Ok(string.Empty, "Empresa reactivada"));
     }
 }

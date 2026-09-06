@@ -68,7 +68,7 @@ public class EmpresasControllerTests : IDisposable
     public async Task GetAll_ConTokenSuperAdmin_Retorna200()
     {
         _factory.EmpresaService
-            .Setup(s => s.GetAllAsync())
+            .Setup(s => s.GetAllAsync(It.IsAny<bool>()))
             .ReturnsAsync(new List<EmpresaResponseDto> { EmpresaDto(), EmpresaDto() });
 
         var client = _factory.CrearClientConToken(JwtTestHelper.TokenSuperAdmin);

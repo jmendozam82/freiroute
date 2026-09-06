@@ -54,7 +54,7 @@ public class AdminDashboardServiceTests
     {
         var id1 = Guid.NewGuid();
         var id2 = Guid.NewGuid();
-        _empresas.Setup(r => r.GetAllAsync()).ReturnsAsync([EmpresaActiva(id1), EmpresaActiva(id2)]);
+        _empresas.Setup(r => r.GetAllAsync(It.IsAny<bool>())).ReturnsAsync([EmpresaActiva(id1), EmpresaActiva(id2)]);
         _pagos.Setup(r => r.GetMrrAsync()).ReturnsAsync(2000m);
         _susc.Setup(r => r.GetProximasAVencerAsync(15)).ReturnsAsync([]);
 
@@ -94,7 +94,7 @@ public class AdminDashboardServiceTests
     {
         var empresa = EmpresaActiva(Guid.NewGuid());
         _empresas.Setup(r => r.GetByIdAsync(empresa.Id)).ReturnsAsync(empresa);
-        _usuarios.Setup(r => r.GetAllAsync(empresa.Id)).ReturnsAsync(
+        _usuarios.Setup(r => r.GetAllAsync(empresa.Id, It.IsAny<bool>())).ReturnsAsync(
             [new Usuario { Id = Guid.NewGuid(), TipoUsuario = TipoUsuario.OPERADOR, Estado = EstadoUsuario.SUSPENDED }]);
 
         var act = async () => await _service.ImpersonarAsync(empresa.Id, Guid.NewGuid());
@@ -113,11 +113,11 @@ public class AdminDashboardServiceTests
             Estado = EstadoUsuario.ACTIVE, NombreCompleto = "Admin", Email = "a@b.com"
         };
         _empresas.Setup(r => r.GetByIdAsync(empresa.Id)).ReturnsAsync(empresa);
-        _usuarios.Setup(r => r.GetAllAsync(empresa.Id)).ReturnsAsync([admin]);
+        _usuarios.Setup(r => r.GetAllAsync(empresa.Id, It.IsAny<bool>())).ReturnsAsync([admin]);
         _permisos.Setup(r => r.GetByPerfilAsync(admin.PerfilId, empresa.Id)).ReturnsAsync([]);
         _jwt.Setup(r => r.GenerateImpersonationToken(It.IsAny<Guid>(), It.IsAny<Guid>(),
                 It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>(),
-                It.IsAny<Guid>(), It.IsAny<int>()))
+                It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<int>()))
             .Returns("imp-token");
         _usuarios.Setup(r => r.GetByIdAsync(superAdminId, IdsSistema.EmpresaRaizId))
             .ReturnsAsync(new Usuario { Id = superAdminId });
@@ -219,7 +219,7 @@ public class AdminDashboardServiceTests
         var suscId = Guid.NewGuid();
 
         var empresa = EmpresaActiva(empresaId);
-        _empresas.Setup(r => r.GetAllAsync()).ReturnsAsync([empresa]);
+        _empresas.Setup(r => r.GetAllAsync(It.IsAny<bool>())).ReturnsAsync([empresa]);
         _pagos.Setup(p => p.GetMrrAsync()).ReturnsAsync(500m);
 
         _susc.Setup(s => s.GetProximasAVencerAsync(15)).ReturnsAsync([

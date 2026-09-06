@@ -5,8 +5,9 @@
 }
 
 <!-- Breadcrumb -->
-<nav class="fr-breadcrumb" aria-label="breadcrumb">
-    <a href="/">Inicio</a>
+<div class="fr-container-centered">
+    <nav class="fr-breadcrumb" aria-label="breadcrumb">
+        <a href="/">Inicio</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span>Nuevo Plan</span>
 </nav>
@@ -18,13 +19,14 @@
     </div>
 </div>
 
-<div class="fr-card" style="max-width:900px">
+<div class="fr-card">
     <div class="fr-card-header">
         <span class="fr-card-title">Datos del plan</span>
     </div>
     <div class="fr-card-body">
         <form id="frPlanForm" method="post" novalidate>
             @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
             <div class="row g-3 mb-4">
                 <!-- Nombre y Código en filas separadas para mejor disposición -->
@@ -167,104 +169,80 @@
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Órdenes" id="modOrdenes" />
-                                <label class="form-check-label" for="modOrdenes">
-                                    Órdenes
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="ordenes" id="modOrdenes" />
+                                <label class="form-check-label" for="modOrdenes">Órdenes</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Embarques" id="modEmbarques" />
-                                <label class="form-check-label" for="modEmbarques">
-                                    Embarques
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="embarques" id="modEmbarques" />
+                                <label class="form-check-label" for="modEmbarques">Embarques</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Carriers" id="modCarriers" />
-                                <label class="form-check-label" for="modCarriers">
-                                    Carriers
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="carriers" id="modCarriers" />
+                                <label class="form-check-label" for="modCarriers">Carriers</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Rutas" id="modRutas" />
-                                <label class="form-check-label" for="modRutas">
-                                    Rutas
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="rutas" id="modRutas" />
+                                <label class="form-check-label" for="modRutas">Rutas</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Track&Trace" id="modTrackTrace" />
-                                <label class="form-check-label" for="modTrackTrace">
-                                    Track&Trace
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="track_trace" id="modTrackTrace" />
+                                <label class="form-check-label" for="modTrackTrace">Track&Trace</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Documentos" id="modDocumentos" />
-                                <label class="form-check-label" for="modDocumentos">
-                                    Documentos
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="documentos" id="modDocumentos" />
+                                <label class="form-check-label" for="modDocumentos">Documentos</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Flota" id="modFlota" />
-                                <label class="form-check-label" for="modFlota">
-                                    Flota
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="flota" id="modFlota" />
+                                <label class="form-check-label" for="modFlota">Flota</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Analytics" id="modAnalytics" />
-                                <label class="form-check-label" for="modAnalytics">
-                                    Analytics
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="analytics" id="modAnalytics" />
+                                <label class="form-check-label" for="modAnalytics">Analytics</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Facturación" id="modFacturacion" />
-                                <label class="form-check-label" for="modFacturacion">
-                                    Facturación
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="facturacion" id="modFacturacion" />
+                                <label class="form-check-label" for="modFacturacion">Facturación</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Clientes" id="modClientes" />
-                                <label class="form-check-label" for="modClientes">
-                                    Clientes
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="clientes" id="modClientes" />
+                                <label class="form-check-label" for="modClientes">Clientes</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Usuarios" id="modUsuarios" />
-                                <label class="form-check-label" for="modUsuarios">
-                                    Usuarios
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="usuarios" id="modUsuarios" />
+                                <label class="form-check-label" for="modUsuarios">Usuarios</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Configuración" id="modConfiguracion" />
-                                <label class="form-check-label" for="modConfiguracion">
-                                    Configuración
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="configuracion" id="modConfiguracion" />
+                                <label class="form-check-label" for="modConfiguracion">Configuración</label>
                             </div>
                         </div>
                     </div>
@@ -285,8 +263,10 @@
         </form>
     </div>
 </div>
+</div>
 
 @section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 <script>
 function toggleLimiteUsuarios(checkbox) {
     const inputs = [

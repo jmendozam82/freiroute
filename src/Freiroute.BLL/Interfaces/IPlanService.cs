@@ -15,14 +15,17 @@ public interface IPlanService
     Task<PlanResponseDto?> GetByIdAsync(Guid id);
 
     /// <summary>Crea un plan nuevo. Por defecto busca es_publico = true.</summary>
-    Task<PlanResponseDto> CreateAsync(PlanRequestDto dto);
+    Task<PlanResponseDto> CreateAsync(PlanRequestDto dto, Guid? usuarioId = null);
 
     /// <summary>Actualiza los datos de un plan existente.</summary>
-    Task<PlanResponseDto> UpdateAsync(Guid id, PlanRequestDto dto);
+    Task<PlanResponseDto> UpdateAsync(Guid id, PlanRequestDto dto, Guid? usuarioId = null);
 
     /// <summary>
     /// Desactiva un plan. Lanza BusinessException si el plan tiene empresas
     /// activas suscritas (HU-010 CA-04).
     /// </summary>
-    Task<bool> DeactivateAsync(Guid id);
+    Task<bool> DeactivateAsync(Guid id, Guid? usuarioId = null);
+
+    /// <summary>Reactiva un plan previamente desactivado.</summary>
+    Task<PlanResponseDto> ReactivarAsync(Guid id, Guid? usuarioId = null);
 }

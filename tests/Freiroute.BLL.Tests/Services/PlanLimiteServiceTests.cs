@@ -50,7 +50,7 @@ public class PlanLimiteServiceTests
         _empresas.Setup(r => r.GetByIdAsync(empresaId)).ReturnsAsync(EmpresaConPlan(empresaId, planId, "STARTER"));
         _planes.Setup(r => r.GetByIdAsync(planId)).ReturnsAsync(Plan(planId, "STARTER", 5));
         // 5 usuarios activos → se alcanza el límite.
-        _usuarios.Setup(r => r.GetAllAsync(empresaId)).ReturnsAsync(
+        _usuarios.Setup(r => r.GetAllAsync(empresaId, It.IsAny<bool>())).ReturnsAsync(
             Enumerable.Range(0, 5).Select(_ => new Usuario { Id = Guid.NewGuid(), Estado = EstadoUsuario.ACTIVE }));
         // Plan superior PROFESSIONAL existe.
         _planes.Setup(r => r.GetAllAsync(true)).ReturnsAsync(
@@ -68,7 +68,7 @@ public class PlanLimiteServiceTests
         var empresaId = Guid.NewGuid();
         _empresas.Setup(r => r.GetByIdAsync(empresaId)).ReturnsAsync(EmpresaConPlan(empresaId, planId, "PROFESSIONAL"));
         _planes.Setup(r => r.GetByIdAsync(planId)).ReturnsAsync(Plan(planId, "PROFESSIONAL", 20));
-        _usuarios.Setup(r => r.GetAllAsync(empresaId)).ReturnsAsync(
+        _usuarios.Setup(r => r.GetAllAsync(empresaId, It.IsAny<bool>())).ReturnsAsync(
             Enumerable.Range(0, 3).Select(_ => new Usuario { Id = Guid.NewGuid() }));
 
         var act = async () => await _service.VerificarLimiteUsuariosAsync(empresaId);

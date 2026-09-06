@@ -1,0 +1,122 @@
+@model Freiroute.DTO.Auth.Verificar2faRequestDto
+@{
+    ViewData["Title"] = "Verificación 2FA";
+    ViewData["HideSidebar"] = true;
+}
+
+<div class="fr-auth-split">
+    <!-- ── Panel izquierdo (40% navy Freiroute) ─────────────────── -->
+    <div class="fr-auth-split-left">
+        <div class="fr-auth-split-brand">
+            <div class="fr-logo-mark">FR</div>
+            <div>
+                <div class="fr-logo-text">Freiroute</div>
+                <div class="fr-logo-tag">Transportation Management System</div>
+            </div>
+        </div>
+
+        <div class="fr-auth-split-hero">
+            <h1>Seguridad ante todo.</h1>
+            <p>Ingresa tu código de autenticación de dos factores para continuar.</p>
+        </div>
+    </div>
+
+    <!-- ── Panel derecho (60% blanco) ───────────────────────────── -->
+    <div class="fr-auth-split-right">
+        <div class="fr-auth-split-card">
+            <h1 class="fr-auth-title" style="text-align:left">Verificación de 2 Pasos</h1>
+            <p class="fr-auth-subtitle" style="text-align:left">Ingresa el código de 6 dígitos de tu aplicación de autenticación.</p>
+
+            <form id="verifyForm" method="post" novalidate>
+                @Html.AntiForgeryToken()
+                <!-- El token temporal se inyecta por JS desde sessionStorage -->
+                <input type="hidden" id="TempToken" name="TempToken" />
+
+                <div class="mb-4">
+                    <label asp-for="Codigo" class="fr-form-label fr-form-required">Código 2FA</label>
+                    <input asp-for="Codigo" type="text" class="fr-form-control"
+                           placeholder="000000"
+                           autocomplete="one-time-code"
+                           maxlength="6"
+                           data-val="true"
+                           data-val-required="El código es obligatorio" />
+                    <span asp-validation-for="Codigo" class="fr-form-error"></span>
+                </div>
+
+                <button type="submit" class="fr-btn fr-btn-primary w-100 justify-content-center" id="btnVerify" style="padding:11px 16px">
+                    <i class="ti ti-shield-check"></i>
+                    Verificar
+                </button>
+            </form>
+            
+            <div style="text-align:center;font-size:12px;margin-top:20px;">
+                <a href="/Auth/Account/Login" style="color:var(--fr-text-muted);text-decoration:none;">
+                    <i class="ti ti-arrow-left"></i> Volver al inicio de sesión
+                </a>
+            </div>
+
+            <div style="text-align:center;font-size:11px;color:var(--fr-text-muted);margin-top:28px">
+                &copy; 2026 Freiroute TMS — Todos los derechos reservados
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#verifyForm');
+
+    // Recuperar el tempToken desde sessionStorage
+    const tempToken = sessionStorage.getItem('fr_temp_token');
+    if (!tempToken) {
+        FrToast.error("Sesión de verificación inválida o expirada.");
+        setTimeout(() => window.location.href = '/Auth/Account/Login', 2000);
+    } else {
+        document.getElementById('TempToken').value = tempToken;
+    }
+
+    $('#verifyForm').on('submit', async function (e) {
+        e.preventDefault();
+        if (!$(this).valid()) {
+            return;
+        }
+
+        const btn = document.getElementById('btnVerify');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Verificando...';
+
+        const data = {
+            tempToken: $('#TempToken').val(),
+            codigo: $('#Codigo').val()
+        };
+
+        try {
+            const resp = await FrApi.post('@Url.Action("Verify2fa", "Account", new { area = "Auth" })', data);
+
+            if (resp.success) {
+                // Flujo normal — guardar JWT y redirigir
+                sessionStorage.setItem('fr_token', resp.data.accessToken);
+                sessionStorage.removeItem('fr_temp_token'); // Limpiar token temporal
+                
+                FrToast.success('Verificación exitosa. Redirigiendo...');
+                
+                setTimeout(() => {
+                    const tipo = resp.data?.usuario?.tipoUsuario;
+                    window.location.href = tipo === 'SUPER_ADMIN' ? '/Admin' : '/';
+                }, 800);
+            } else {
+                if (resp.errors?.length) {
+                    resp.errors.forEach(err => FrToast.error(err));
+                } else {
+                    FrToast.error(resp.message || 'Código inválido');
+                }
+            }
+        } catch (err) {
+            FrToast.error('No se pudo conectar con el servidor');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-shield-check"></i> Verificar';
+    });
+</script>
+}

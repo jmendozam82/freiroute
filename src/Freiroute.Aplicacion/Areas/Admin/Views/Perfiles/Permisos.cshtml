@@ -169,12 +169,14 @@ else
 
         const payload = {
             perfilId: '@Model.Id',
-            modulos: Object.keys(modulos).map(m => ({
-                modulo: m,
-                puedeLeer: modulos[m].leer,
-                puedeCrear: modulos[m].crear,
-                puedeActualizar: modulos[m].actualizar
-            }))
+            modulos: Object.keys(modulos)
+                .filter(m => modulos[m].leer || modulos[m].crear || modulos[m].actualizar)
+                .map(m => ({
+                    modulo: m,
+                    puedeLeer: modulos[m].leer,
+                    puedeCrear: modulos[m].crear,
+                    puedeActualizar: modulos[m].actualizar
+                }))
         };
 
         const resp = await FrApi.put('/api/perfiles/@Model.Id/permisos', payload);

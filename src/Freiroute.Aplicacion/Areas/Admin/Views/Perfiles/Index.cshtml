@@ -57,11 +57,25 @@
 <div class="fr-table-wrapper">
     @if (!Model.Items.Any())
     {
-        <div class="fr-empty">
-            <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
-            <div class="fr-empty-title">No hay perfiles registrados</div>
-            <div class="fr-empty-text">Crea el primero usando el botón "Nuevo Perfil"</div>
-        </div>
+        if (Model.TotalItems > 0)
+        {
+            <div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+                <div class="fr-empty-title">Página sin resultados</div>
+                <div class="fr-empty-text">No hay perfiles en esta página.</div>
+                <div class="mt-3">
+                    <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index" class="fr-btn fr-btn-primary">Volver a la primera página</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-inbox"></i></div>
+                <div class="fr-empty-title">No hay perfiles registrados</div>
+                <div class="fr-empty-text">Crea el primero usando el botón "Nuevo Perfil"</div>
+            </div>
+        }
     }
     else
     {
@@ -140,16 +154,31 @@
                 de @Model.TotalItems registros
             </span>
             <div class="d-flex gap-2">
-                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
-                   asp-route-page="@(Model.PageNumber - 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
-                   class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
-                    ← Anterior
-                </a>
-                <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
-                   asp-route-page="@(Model.PageNumber + 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
-                   class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
-                    Siguiente →
-                </a>
+                @if (Model.HasPreviousPage)
+                {
+                    <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
+                       asp-route-page="@(Model.PageNumber - 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
+                       class="fr-page-btn">
+                        ← Anterior
+                    </a>
+                }
+                else
+                {
+                    <span class="fr-page-btn disabled" style="pointer-events: none; opacity: 0.5;">← Anterior</span>
+                }
+                
+                @if (Model.HasNextPage)
+                {
+                    <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index"
+                       asp-route-page="@(Model.PageNumber + 1)" asp-route-q="@ViewData["Q"]" asp-route-tipo="@ViewData["Tipo"]"
+                       class="fr-page-btn">
+                        Siguiente →
+                    </a>
+                }
+                else
+                {
+                    <span class="fr-page-btn disabled" style="pointer-events: none; opacity: 0.5;">Siguiente →</span>
+                }
             </div>
         </div>
     }

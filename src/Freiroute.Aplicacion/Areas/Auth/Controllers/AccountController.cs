@@ -79,6 +79,11 @@ public class AccountController : Controller
 
             return Ok(ApiResponse<LoginResponseDto>.Ok(result, "Inicio de sesión exitoso"));
         }
+        catch (Freiroute.Utility.Exceptions.Requires2faException ex)
+        {
+            // Retorna HTTP 202 (Accepted) para que el frontend (FrApi) lo intercepte e inicie el flujo de 2FA.
+            return StatusCode(202, ApiResponse<object>.Ok(new { requires2fa = true, tempToken = ex.TempToken }));
+        }
         catch (Freiroute.Utility.Exceptions.BusinessException ex)
         {
             return UnprocessableEntity(ApiResponse<LoginResponseDto>.Fail(ex.Message));
@@ -136,6 +141,58 @@ public class AccountController : Controller
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    // ── GET: Verify2fa ───────────────────────────────────────────
+    [HttpGet]
+    public IActionResult Verify2fa()
+    {
+        return View();
+    }
+
+    // ── POST: Verify2fa (AJAX) ───────────────────────────────────
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Verify2fa([FromBody] Verificar2faRequestDto request)
+    {
+        try
+        {
+            var result = await _authService.Verificar2faAsync(request);
+
+            // Construir los claims desde el access token JWT real
+            var claims = DecodeJwtClaims(result.AccessToken);
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            // Guardar el refresh token en cookie para logout
+            Response.Cookies.Append("fr_refresh_token", result.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                Secure = false,
+                Expires = DateTime.UtcNow.AddDays(30)
+            });
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTime.UtcNow.AddHours(8)
+                });
+
+            return Ok(ApiResponse<LoginResponseDto>.Ok(result, "Verificación exitosa"));
+        }
+        catch (Freiroute.Utility.Exceptions.BusinessException ex)
+        {
+            return UnprocessableEntity(ApiResponse<LoginResponseDto>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<LoginResponseDto>.Fail("Error en la verificación 2FA: " + ex.Message));
         }
     }
 

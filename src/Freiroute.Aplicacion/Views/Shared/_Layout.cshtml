@@ -1,4 +1,4 @@
-﻿@* Freiroute.Aplicacion/Views/Shared/_Layout.cshtml *@
+@* Freiroute.Aplicacion/Views/Shared/_Layout.cshtml *@
 @using Freiroute.Aplicacion.Helpers
 @{
     var hideSidebar = ViewData["HideSidebar"] is true;
@@ -37,7 +37,14 @@ else
         <!-- ── Sidebar ──────────────────────────────────────────── -->
         <aside class="fr-sidebar" id="frSidebar">
             <a class="fr-sidebar-logo" href="/">
-                <div class="fr-logo-mark">FR</div>
+                @if (!string.IsNullOrEmpty(User.FindFirst("logo_url")?.Value))
+                {
+                    <img src="@User.FindFirst("logo_url")?.Value" alt="Logo" class="fr-logo-img" style="max-height:32px; max-width:32px; object-fit:contain; border-radius:4px;" />
+                }
+                else
+                {
+                    <div class="fr-logo-mark">FR</div>
+                }
                 <div>
                     <div class="fr-logo-text">Freiroute</div>
                     <div class="fr-logo-tag">TMS · @ViewData["TenantNombre"]</div>

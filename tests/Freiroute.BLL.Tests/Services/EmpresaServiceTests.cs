@@ -243,7 +243,7 @@ public class EmpresaServiceTests
 
         _auditoria.Verify(
             a => a.RegistrarAsync(
-                "empresas", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, null,
+                "empresas", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, It.IsAny<Guid?>(),
                 nameof(Empresa), It.IsAny<Guid>(),
                 It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()),
             Times.Once);
@@ -418,16 +418,16 @@ public class EmpresaServiceTests
         };
 
         _empresaRepository
-            .Setup(r => r.GetAllAsync())
+            .Setup(r => r.GetAllAsync(It.IsAny<bool>()))
             .ReturnsAsync(empresas);
 
-        var result = (await _service.GetAllAsync()).ToList();
+        var result = (await _service.GetAllAsync(It.IsAny<bool>())).ToList();
 
         result.Should().HaveCount(2);
         result.Should().OnlyContain(e => !string.IsNullOrEmpty(e.Nombre));
 
         // No recibe empresa_id — se llama a GetAllAsync sin filtro de tenant.
-        _empresaRepository.Verify(r => r.GetAllAsync(), Times.Once);
+        _empresaRepository.Verify(r => r.GetAllAsync(It.IsAny<bool>()), Times.Once);
     }
 
     [Fact]
@@ -598,10 +598,10 @@ public class EmpresaServiceTests
         };
 
         _empresaRepository
-            .Setup(r => r.GetAllAsync())
+            .Setup(r => r.GetAllAsync(It.IsAny<bool>()))
             .ReturnsAsync(empresas);
 
-        var result = (await _service.GetAllAsync()).ToList();
+        var result = (await _service.GetAllAsync(It.IsAny<bool>())).ToList();
 
         result.Should().HaveCount(2);
         result.Should().OnlyContain(e => !string.IsNullOrEmpty(e.Nombre));

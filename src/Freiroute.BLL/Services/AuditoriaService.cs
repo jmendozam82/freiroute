@@ -4,6 +4,7 @@ using Freiroute.DAL.Interfaces;
 using Freiroute.DTO.Auditoria;
 using Freiroute.Entity;
 using Freiroute.Utility.Pagination;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Freiroute.BLL.Services;
@@ -18,13 +19,16 @@ namespace Freiroute.BLL.Services;
 public class AuditoriaService : IAuditoriaService
 {
     private readonly IAuditoriaRepository _repository;
+    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AuditoriaService> _logger;
 
     public AuditoriaService(
         IAuditoriaRepository repository,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<AuditoriaService> logger)
     {
         _repository = repository;
+        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
@@ -45,6 +49,13 @@ public class AuditoriaService : IAuditoriaService
     {
         try
         {
+            var context = _httpContextAccessor.HttpContext;
+            if (context != null)
+            {
+                ipAddress ??= context.Connection.RemoteIpAddress?.ToString();
+                userAgent ??= context.Request.Headers.UserAgent.ToString();
+            }
+
             var auditoria = new AuditoriaActividad
             {
                 EmpresaId = empresaId,
@@ -53,8 +64,8 @@ public class AuditoriaService : IAuditoriaService
                 Accion = accion,
                 EntidadTipo = entidadTipo,
                 EntidadId = entidadId,
-                IpAddress = ipAddress,
-                UserAgent = userAgent,
+                IpAddress = string.IsNullOrWhiteSpace(ipAddress) ? null : ipAddress,
+                UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
                 Detalles = detalles is null
                     ? null
                     : JsonSerializer.Serialize(detalles),

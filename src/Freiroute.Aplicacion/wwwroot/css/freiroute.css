@@ -219,6 +219,11 @@ body {
   min-height: calc(100vh - var(--fr-topbar-height));
 }
 
+.fr-container-centered {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 /* ── Page header ──────────────────────────────────────────── */
 .fr-page-header {
   display: flex; align-items: flex-start;

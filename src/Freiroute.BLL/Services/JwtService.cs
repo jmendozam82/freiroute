@@ -31,7 +31,8 @@ public class JwtService : IJwtService
         Guid perfilId,
         string tipoUsuario,
         string nombre,
-        IEnumerable<string> permisos)
+        IEnumerable<string> permisos,
+        string? logoUrl = null)
     {
         var claims = new List<Claim>
         {
@@ -41,6 +42,11 @@ public class JwtService : IJwtService
             new("tipo_usuario", tipoUsuario),
             new("nombre", nombre)
         };
+
+        if (!string.IsNullOrEmpty(logoUrl))
+        {
+            claims.Add(new Claim("logo_url", logoUrl));
+        }
 
         // Un claim "permisos" por permiso → RequirePermissionAttribute los lee
         // con User.FindAll("permisos") (HU-006 CA-05: el cambio aplica sin
@@ -78,6 +84,7 @@ public class JwtService : IJwtService
         string nombre,
         IEnumerable<string> permisos,
         Guid impersonadoPor,
+        string? logoUrl = null,
         int expiryHours = 8)
     {
         var key = new SymmetricSecurityKey(
@@ -93,6 +100,11 @@ public class JwtService : IJwtService
             new("nombre", nombre),
             new("impersonado_por", impersonadoPor.ToString())
         };
+
+        if (!string.IsNullOrEmpty(logoUrl))
+        {
+            claims.Add(new Claim("logo_url", logoUrl));
+        }
 
         foreach (var permiso in permisos)
         {

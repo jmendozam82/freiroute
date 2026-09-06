@@ -75,6 +75,32 @@ public class PlanRepository : IPlanRepository
         return await _connection.QueryFirstOrDefaultAsync<Plan>(sql, new { Id = id });
     }
 
+    /// <summary>Obtiene un plan por Id, incluyendo si está inactivo.</summary>
+    public async Task<Plan?> GetByIdIncluyendoInactivosAsync(Guid id)
+    {
+        const string sql = @"
+            SELECT
+                id                   AS Id,
+                nombre               AS Nombre,
+                codigo               AS Codigo,
+                descripcion          AS Descripcion,
+                limite_usuarios      AS LimiteUsuarios,
+                limite_embarques_mes AS LimiteEmbarquesMes,
+                limite_storage_gb    AS LimiteStorageGb,
+                precio_mensual       AS PrecioMensual,
+                precio_anual         AS PrecioAnual,
+                moneda               AS Moneda,
+                modulos_disponibles  AS ModulosDisponibles,
+                es_publico           AS EsPublico,
+                activo               AS Activo,
+                fecha_creacion       AS FechaCreacion,
+                fecha_modificacion   AS FechaModificacion
+            FROM planes
+            WHERE id = @Id";
+
+        return await _connection.QueryFirstOrDefaultAsync<Plan>(sql, new { Id = id });
+    }
+
     /// <summary>Obtiene un plan por su código único (STARTER, PROFESSIONAL, ENTERPRISE).</summary>
     public async Task<Plan?> GetByCodigoAsync(string codigo)
     {
@@ -178,6 +204,19 @@ public class PlanRepository : IPlanRepository
         const string sql = @"
             UPDATE planes
             SET activo = false
+            WHERE id = @Id";
+
+        var rows = await _connection.ExecuteAsync(sql, new { Id = id });
+        return rows > 0;
+    }
+
+    /// <summary>Reactiva un plan previamente desactivado: SET activo = true WHERE id = @Id.</summary>
+    public async Task<bool> ReactivarAsync(Guid id)
+    {
+        const string sql = @"
+            UPDATE planes
+            SET activo = true,
+                fecha_modificacion = NOW()
             WHERE id = @Id";
 
         var rows = await _connection.ExecuteAsync(sql, new { Id = id });

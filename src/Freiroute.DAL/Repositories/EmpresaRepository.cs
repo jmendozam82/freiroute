@@ -65,6 +65,51 @@ public class EmpresaRepository : IEmpresaRepository
         return await _connection.QueryFirstOrDefaultAsync<Empresa>(sql, new { Id = id });
     }
 
+    /// <summary>Obtiene una empresa por Id, incluyendo inactivos.</summary>
+    public async Task<Empresa?> GetByIdIncluyendoInactivosAsync(Guid id)
+    {
+        const string sql = @"
+            SELECT
+                id                     AS Id,
+                nombre                 AS Nombre,
+                ruc_nit                AS RucNit,
+                email_admin            AS EmailAdmin,
+                telefono               AS Telefono,
+                pais                   AS Pais,
+                ciudad                 AS Ciudad,
+                direccion              AS Direccion,
+                industria              AS Industria,
+                sitio_web              AS SitioWeb,
+                email_remitente        AS EmailRemitente,
+                nombre_remitente       AS NombreRemitente,
+                logo_url               AS LogoUrl,
+                color_primario         AS ColorPrimario,
+                color_secundario       AS ColorSecundario,
+                plan_suscripcion       AS PlanSuscripcion,
+                estado                 AS Estado,
+                moneda_principal       AS MonedaPrincipal,
+                zona_horaria           AS ZonaHoraria,
+                idioma                 AS Idioma,
+                formato_fecha          AS FormatoFecha,
+                modos_transporte_activos AS ModosTransporteActivos,
+                prefijo_embarque       AS PrefijoEmbarque,
+                consecutivo_embarque   AS ConsecutivoEmbarque,
+                prefijo_orden          AS PrefijoOrden,
+                consecutivo_orden      AS ConsecutivoOrden,
+                prefijo_carta_porte    AS PrefijoCartaPorte,
+                consecutivo_carta_porte AS ConsecutivoCartaPorte,
+                plan_id                AS PlanId,
+                onboarding_paso_actual AS OnboardingPasoActual,
+                onboarding_completado  AS OnboardingCompletado,
+                activo                 AS Activo,
+                fecha_creacion         AS FechaCreacion,
+                fecha_modificacion     AS FechaModificacion
+            FROM empresas
+            WHERE id = @Id";
+
+        return await _connection.QueryFirstOrDefaultAsync<Empresa>(sql, new { Id = id });
+    }
+
     /// <summary>
     /// Obtiene una empresa por el email de su administrador.
     /// HU-001 CA-06: valida unicidad global — NO filtra por activo para que
@@ -115,10 +160,10 @@ public class EmpresaRepository : IEmpresaRepository
         return await _connection.QueryFirstOrDefaultAsync<Empresa>(sql, new { EmailAdmin = emailAdmin });
     }
 
-    /// <summary>Obtiene todas las empresas activas (panel Super Admin), ordenadas por nombre.</summary>
-    public async Task<IEnumerable<Empresa>> GetAllAsync()
+    /// <summary>Obtiene las empresas (panel Super Admin). Por defecto solo activas.</summary>
+    public async Task<IEnumerable<Empresa>> GetAllAsync(bool incluirInactivos = false)
     {
-        const string sql = @"
+        var sql = @"
             SELECT
                 id                     AS Id,
                 nombre                 AS Nombre,
@@ -154,9 +199,14 @@ public class EmpresaRepository : IEmpresaRepository
                 activo                 AS Activo,
                 fecha_creacion         AS FechaCreacion,
                 fecha_modificacion     AS FechaModificacion
-            FROM empresas
-            WHERE activo = true
-            ORDER BY nombre ASC";
+            FROM empresas";
+
+        if (!incluirInactivos)
+        {
+            sql += " WHERE activo = true";
+        }
+
+        sql += " ORDER BY nombre ASC";
 
         return await _connection.QueryAsync<Empresa>(sql);
     }
@@ -299,6 +349,20 @@ public class EmpresaRepository : IEmpresaRepository
         const string sql = @"
             UPDATE empresas
             SET activo = false
+            WHERE id = @Id";
+
+        var rows = await _connection.ExecuteAsync(sql, new { Id = id });
+        return rows > 0;
+    }
+
+    /// <summary>Reactiva una empresa: SET activo = true, estado = 'ACTIVE' WHERE id = @Id.</summary>
+    public async Task<bool> ReactivarAsync(Guid id)
+    {
+        const string sql = @"
+            UPDATE empresas
+            SET activo = true,
+                estado = 'ACTIVE',
+                fecha_modificacion = NOW()
             WHERE id = @Id";
 
         var rows = await _connection.ExecuteAsync(sql, new { Id = id });

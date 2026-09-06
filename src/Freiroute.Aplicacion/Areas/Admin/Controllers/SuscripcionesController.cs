@@ -1,4 +1,5 @@
 using Freiroute.Aplicacion.Areas.Admin.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Freiroute.BLL.Interfaces;
@@ -8,6 +9,7 @@ namespace Freiroute.Aplicacion.Areas.Admin.Controllers;
 /// <summary>
 /// Controlador MVC para gestión de suscripciones del SaaS (Super Admin).
 /// </summary>
+[Authorize(Roles = "SUPER_ADMIN")]
 public class SuscripcionesController : BaseAdminController
 {
     private readonly ISuscripcionService _suscripcionService;

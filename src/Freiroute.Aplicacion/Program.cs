@@ -27,6 +27,12 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
+// Interceptar errores de API y devolver JSON en lugar de HTML (DeveloperExceptionPage)
+app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), appBuilder =>
+{
+    appBuilder.UseMiddleware<Freiroute.API.Middleware.GlobalExceptionMiddleware>();
+});
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -41,6 +47,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseMiddleware<Freiroute.Aplicacion.Middleware.OnboardingRedirectMiddleware>();
 
 app.MapControllerRoute(
     name: "areas",

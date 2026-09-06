@@ -108,17 +108,13 @@ public class PerfilService : IPerfilService
             throw new NotFoundException(nameof(Perfil), id);
         }
 
-        var perfil = new Perfil
-        {
-            Id = id,
-            Nombre = dto.Nombre,
-            Descripcion = dto.Descripcion,
-            TipoPerfil = string.IsNullOrWhiteSpace(dto.TipoPerfil)
-                ? TipoPerfil.CUSTOM
-                : dto.TipoPerfil
-        };
+        existente.Nombre = dto.Nombre;
+        existente.Descripcion = dto.Descripcion;
+        existente.TipoPerfil = string.IsNullOrWhiteSpace(dto.TipoPerfil)
+            ? TipoPerfil.CUSTOM
+            : dto.TipoPerfil;
 
-        var ok = await _perfilRepository.UpdateAsync(perfil);
+        var ok = await _perfilRepository.UpdateAsync(existente);
         if (!ok)
         {
             throw new NotFoundException(nameof(Perfil), id);

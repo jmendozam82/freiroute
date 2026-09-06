@@ -19,7 +19,8 @@ public interface IJwtService
         Guid perfilId,
         string tipoUsuario,
         string nombre,
-        IEnumerable<string> permisos);
+        IEnumerable<string> permisos,
+        string? logoUrl = null);
 
     /// <summary>
     /// Genera un access token de impersonación de tenant (HU-009 CA-05).
@@ -33,6 +34,7 @@ public interface IJwtService
         string nombre,
         IEnumerable<string> permisos,
         Guid impersonadoPor,
+        string? logoUrl = null,
         int expiryHours = 8);
 
     /// <summary>

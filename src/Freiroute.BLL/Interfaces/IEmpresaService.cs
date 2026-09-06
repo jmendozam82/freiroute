@@ -16,12 +16,15 @@ public interface IEmpresaService
     /// <summary>Obtiene una empresa por su Id.</summary>
     Task<EmpresaResponseDto?> GetByIdAsync(Guid id);
 
-    /// <summary>Obtiene todas las empresas activas (panel Super Admin).</summary>
-    Task<IEnumerable<EmpresaResponseDto>> GetAllAsync();
+    /// <summary>Obtiene las empresas (panel Super Admin). Por defecto solo las activas.</summary>
+    Task<IEnumerable<EmpresaResponseDto>> GetAllAsync(bool incluirInactivos = false);
 
     /// <summary>Actualiza los datos de una empresa.</summary>
     Task<EmpresaResponseDto> UpdateAsync(Guid id, EmpresaRequestDto dto);
 
     /// <summary>Soft delete de una empresa. Solo desactiva; nunca elimina.</summary>
     Task<bool> DeactivateAsync(Guid id);
+
+    /// <summary>Reactiva una empresa previamente desactivada.</summary>
+    Task<EmpresaResponseDto> ReactivarAsync(Guid id);
 }

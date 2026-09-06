@@ -5,8 +5,9 @@
 }
 
 <!-- Breadcrumb -->
-<nav class="fr-breadcrumb" aria-label="breadcrumb">
-    <a href="/">Inicio</a>
+<div class="fr-container-centered">
+    <nav class="fr-breadcrumb" aria-label="breadcrumb">
+        <a href="/">Inicio</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span>Editar Plan</span>
 </nav>
@@ -18,15 +19,15 @@
     </div>
 </div>
 
-<div class="fr-card" style="max-width:900px">
+<div class="fr-card">
     <div class="fr-card-header">
         <span class="fr-card-title">Editar Plan</span>
     </div>
     <div class="fr-card-body">
         <form id="frPlanForm" method="post" novalidate>
             @Html.AntiForgeryToken()
-
-            <input type="hidden" id="planId" value="@ViewData["PlanId"]" />
+            <input type="hidden" name="id" value="@ViewData["PlanId"]" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
             <div class="row g-3 mb-4">
                 <div class="col-12">
@@ -160,104 +161,80 @@
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Órdenes" id="modOrdenes" @((ViewData["ModOrdenes"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modOrdenes">
-                                    Órdenes
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="ordenes" id="modOrdenes" @(Model.ModulosDisponibles.Contains("ordenes") ? "checked" : "") />
+                                <label class="form-check-label" for="modOrdenes">Órdenes</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Embarques" id="modEmbarques" @((ViewData["ModEmbarques"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modEmbarques">
-                                    Embarques
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="embarques" id="modEmbarques" @(Model.ModulosDisponibles.Contains("embarques") ? "checked" : "") />
+                                <label class="form-check-label" for="modEmbarques">Embarques</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Carriers" id="modCarriers" @((ViewData["ModCarriers"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modCarriers">
-                                    Carriers
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="carriers" id="modCarriers" @(Model.ModulosDisponibles.Contains("carriers") ? "checked" : "") />
+                                <label class="form-check-label" for="modCarriers">Carriers</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Rutas" id="modRutas" @((ViewData["ModRutas"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modRutas">
-                                    Rutas
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="rutas" id="modRutas" @(Model.ModulosDisponibles.Contains("rutas") ? "checked" : "") />
+                                <label class="form-check-label" for="modRutas">Rutas</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Track&Trace" id="modTrackTrace" @((ViewData["ModTrackTrace"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modTrackTrace">
-                                    Track&Trace
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="track_trace" id="modTrackTrace" @(Model.ModulosDisponibles.Contains("track_trace") ? "checked" : "") />
+                                <label class="form-check-label" for="modTrackTrace">Track&Trace</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Documentos" id="modDocumentos" @((ViewData["ModDocumentos"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modDocumentos">
-                                    Documentos
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="documentos" id="modDocumentos" @(Model.ModulosDisponibles.Contains("documentos") ? "checked" : "") />
+                                <label class="form-check-label" for="modDocumentos">Documentos</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Flota" id="modFlota" @((ViewData["ModFlota"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modFlota">
-                                    Flota
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="flota" id="modFlota" @(Model.ModulosDisponibles.Contains("flota") ? "checked" : "") />
+                                <label class="form-check-label" for="modFlota">Flota</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Analytics" id="modAnalytics" @((ViewData["ModAnalytics"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modAnalytics">
-                                    Analytics
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="analytics" id="modAnalytics" @(Model.ModulosDisponibles.Contains("analytics") ? "checked" : "") />
+                                <label class="form-check-label" for="modAnalytics">Analytics</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Facturación" id="modFacturacion" @((ViewData["ModFacturacion"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modFacturacion">
-                                    Facturación
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="facturacion" id="modFacturacion" @(Model.ModulosDisponibles.Contains("facturacion") ? "checked" : "") />
+                                <label class="form-check-label" for="modFacturacion">Facturación</label>
                             </div>
                         </div>
                     </div>
                     <div class="row g-2">
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Clientes" id="modClientes" @((ViewData["ModClientes"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modClientes">
-                                    Clientes
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="clientes" id="modClientes" @(Model.ModulosDisponibles.Contains("clientes") ? "checked" : "") />
+                                <label class="form-check-label" for="modClientes">Clientes</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Usuarios" id="modUsuarios" @((ViewData["ModUsuarios"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modUsuarios">
-                                    Usuarios
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="usuarios" id="modUsuarios" @(Model.ModulosDisponibles.Contains("usuarios") ? "checked" : "") />
+                                <label class="form-check-label" for="modUsuarios">Usuarios</label>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="form-check">
-                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="Configuración" id="modConfiguracion" @((ViewData["ModConfiguracion"] as bool?) == true ? "checked" : "") />
-                                <label class="form-check-label" for="modConfiguracion">
-                                    Configuración
-                                </label>
+                                <input type="checkbox" class="form-check-input" name="ModulosDisponibles" value="configuracion" id="modConfiguracion" @(Model.ModulosDisponibles.Contains("configuracion") ? "checked" : "") />
+                                <label class="form-check-label" for="modConfiguracion">Configuración</label>
                             </div>
                         </div>
                     </div>
@@ -278,8 +255,10 @@
         </form>
     </div>
 </div>
+</div>
 
 @section Scripts {
+    <partial name="_ValidationScriptsPartial" />
 <script>
 function toggleLimiteUsuariosEdit(checkbox) {
     const inputs = [

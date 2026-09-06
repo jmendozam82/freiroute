@@ -308,7 +308,7 @@ public class AdminControllerTests : IDisposable
         var request = PlanRequest();
         var creado = PlanDto(codigo: "PROFESSIONAL");
         _factory.PlanService
-            .Setup(s => s.CreateAsync(It.IsAny<PlanRequestDto>()))
+            .Setup(s => s.CreateAsync(It.IsAny<PlanRequestDto>(), It.IsAny<Guid?>()))
             .ReturnsAsync(creado);
 
         var client = _factory.CrearClientConToken(SuperAdminToken);
@@ -325,7 +325,7 @@ public class AdminControllerTests : IDisposable
     {
         var request = PlanRequest();
         _factory.PlanService
-            .Setup(s => s.CreateAsync(It.IsAny<PlanRequestDto>()))
+            .Setup(s => s.CreateAsync(It.IsAny<PlanRequestDto>(), It.IsAny<Guid?>()))
             .ThrowsAsync(new BusinessException("Ya existe un plan con el código PROFESSIONAL"));
 
         var client = _factory.CrearClientConToken(SuperAdminToken);
@@ -346,7 +346,7 @@ public class AdminControllerTests : IDisposable
         var request = PlanRequest();
         var actualizado = PlanDto(planId, "PROFESSIONAL");
         _factory.PlanService
-            .Setup(s => s.UpdateAsync(planId, It.IsAny<PlanRequestDto>()))
+            .Setup(s => s.UpdateAsync(planId, It.IsAny<PlanRequestDto>(), It.IsAny<Guid?>()))
             .ReturnsAsync(actualizado);
 
         var client = _factory.CrearClientConToken(SuperAdminToken);
@@ -364,7 +364,7 @@ public class AdminControllerTests : IDisposable
         var planId = Guid.NewGuid();
         var request = PlanRequest();
         _factory.PlanService
-            .Setup(s => s.UpdateAsync(planId, It.IsAny<PlanRequestDto>()))
+            .Setup(s => s.UpdateAsync(planId, It.IsAny<PlanRequestDto>(), It.IsAny<Guid?>()))
             .ThrowsAsync(new NotFoundException(nameof(Freiroute.Entity.Plan), planId));
 
         var client = _factory.CrearClientConToken(SuperAdminToken);
@@ -381,7 +381,7 @@ public class AdminControllerTests : IDisposable
     {
         var planId = Guid.NewGuid();
         _factory.PlanService
-            .Setup(s => s.DeactivateAsync(planId))
+            .Setup(s => s.DeactivateAsync(planId, It.IsAny<Guid?>()))
             .ReturnsAsync(true);
 
         var client = _factory.CrearClientConToken(SuperAdminToken);
@@ -398,7 +398,7 @@ public class AdminControllerTests : IDisposable
     {
         var planId = Guid.NewGuid();
         _factory.PlanService
-            .Setup(s => s.DeactivateAsync(planId))
+            .Setup(s => s.DeactivateAsync(planId, It.IsAny<Guid?>()))
             .ThrowsAsync(new BusinessException(
                 "No se puede desactivar el plan porque tiene empresas activas suscritas"));
 

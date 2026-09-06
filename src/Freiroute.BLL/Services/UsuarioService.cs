@@ -61,10 +61,10 @@ public class UsuarioService : IUsuarioService
 
     // ── Consultas (HU-003) ─────────────────────────────────────────
 
-    /// <summary>Obtiene los usuarios activos de la empresa con el nombre de su perfil.</summary>
-    public async Task<IEnumerable<UsuarioResponseDto>> GetAllAsync(Guid empresaId)
+    /// <summary>Obtiene los usuarios de la empresa. Por defecto solo los activos.</summary>
+    public async Task<IEnumerable<UsuarioResponseDto>> GetAllAsync(Guid empresaId, bool incluirInactivos = false)
     {
-        var usuarios = await _usuarioRepository.GetAllAsync(empresaId);
+        var usuarios = await _usuarioRepository.GetAllAsync(empresaId, incluirInactivos);
         return await MapUsuariosAsync(empresaId, usuarios);
     }
 
@@ -156,6 +156,17 @@ public class UsuarioService : IUsuarioService
             nameof(Usuario), id, new { dto.Email, perfilId = dto.PerfilId });
 
         return await MapUsuarioAsync(empresaId, existente);
+    }
+
+    /// <summary>Actualiza solo la URL de la foto de perfil.</summary>
+    public async Task UpdateFotoAsync(Guid id, Guid empresaId, string fotoUrl)
+    {
+        var existente = await _usuarioRepository.GetByIdAsync(id, empresaId);
+        if (existente is null)
+            throw new NotFoundException(nameof(Usuario), id);
+            
+        existente.FotoUrl = fotoUrl;
+        await _usuarioRepository.UpdateAsync(existente);
     }
 
     /// <summary>Soft delete de un usuario. Nunca elimina físicamente (CA-09).</summary>

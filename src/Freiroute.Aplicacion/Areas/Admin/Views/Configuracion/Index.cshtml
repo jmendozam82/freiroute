@@ -18,13 +18,231 @@
 
 <div class="fr-card">
     <div class="fr-card-body">
-        <div class="fr-empty">
-            <div class="fr-empty-icon"><i class="ti ti-settings"></i></div>
-            <div class="fr-empty-title">Configuración en preparación</div>
-            <div class="fr-empty-text">
-                La personalización del tenant (colores, logo, parámetros) se completará
-                en un próximo sprint.
+        
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="configTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab" aria-controls="datos" aria-selected="true">
+                    Datos Generales
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="logo-tab" data-bs-toggle="tab" data-bs-target="#logo" type="button" role="tab" aria-controls="logo" aria-selected="false">
+                    Identidad Visual
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="numeracion-tab" data-bs-toggle="tab" data-bs-target="#numeracion" type="button" role="tab" aria-controls="numeracion" aria-selected="false">
+                    Numeración
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div class="tab-content" id="configTabsContent">
+            
+            <!-- TAB 1: DATOS GENERALES -->
+            <div class="tab-pane fade show active" id="datos" role="tabpanel" aria-labelledby="datos-tab">
+                <form id="formDatos" onsubmit="window.configuracion.guardarGeneral(event)">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre Legal <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="nombre" id="cfg_nombre" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">RUC / NIT</label>
+                            <input type="text" class="form-control" name="rucNit" id="cfg_rucNit" />
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Dirección Fiscal</label>
+                            <input type="text" class="form-control" name="direccion" id="cfg_direccion" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="text" class="form-control" name="telefono" id="cfg_telefono" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Industria</label>
+                            <input type="text" class="form-control" name="industria" id="cfg_industria" />
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Sitio Web</label>
+                            <input type="url" class="form-control" name="sitioWeb" id="cfg_sitioWeb" />
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3">Preferencias del Sistema</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Moneda Principal <span class="text-danger">*</span></label>
+                            <select class="form-select" name="moneda" id="cfg_moneda" required>
+                                <option value="USD">Dólar Estadounidense (USD)</option>
+                                <option value="EUR">Euro (EUR)</option>
+                                <option value="NIO">Córdoba (NIO)</option>
+                                <option value="MXN">Peso Mexicano (MXN)</option>
+                                <option value="COP">Peso Colombiano (COP)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Zona Horaria <span class="text-danger">*</span></label>
+                            <select class="form-select" name="zonaHoraria" id="cfg_zonaHoraria" required>
+                                <option value="America/Managua">America/Managua</option>
+                                <option value="America/Mexico_City">America/Mexico_City</option>
+                                <option value="America/Bogota">America/Bogota</option>
+                                <option value="America/New_York">America/New_York</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Formato de Fecha <span class="text-danger">*</span></label>
+                            <select class="form-select" name="formatoFecha" id="cfg_formatoFecha" required>
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="YYYY/MM/DD">YYYY/MM/DD</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Email y Notificaciones</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre del Remitente</label>
+                            <input type="text" class="form-control" name="nombreRemitente" id="cfg_nombreRemitente" placeholder="Ej: Operaciones Freiroute" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email de Respuestas (Reply-To)</label>
+                            <input type="email" class="form-control" name="emailRemitente" id="cfg_emailRemitente" placeholder="Ej: soporte@miempresa.com" />
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-primary" id="btnGuardarGeneral">
+                            <i class="ti ti-device-floppy me-1"></i> Guardar Datos Generales
+                        </button>
+                    </div>
+                </form>
             </div>
+
+            <!-- TAB 2: IDENTIDAD VISUAL -->
+            <div class="tab-pane fade" id="logo" role="tabpanel" aria-labelledby="logo-tab">
+                <div class="row">
+                    <div class="col-md-5">
+                        <h5 class="mb-3">Logo de la Empresa</h5>
+                        <p class="text-muted small mb-4">Sube el logotipo de tu empresa. Se recomienda un archivo PNG o SVG con fondo transparente. Tamaño máximo: 2MB.</p>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Vista Previa Actual</label>
+                            <div class="p-3 border rounded text-center bg-light" style="min-height: 120px; display: flex; align-items: center; justify-content: center;">
+                                <img id="logoPreviewActual" src="" alt="Logo Actual" style="max-height: 60px; display: none;" />
+                                <span id="logoEmptyText" class="text-muted">Ningún logo cargado</span>
+                            </div>
+                        </div>
+
+                        <form id="formLogo" onsubmit="window.configuracion.subirLogo(event)">
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar Nuevo Logo</label>
+                                <input class="form-control" type="file" id="inputFileLogo" accept="image/png, image/jpeg, image/svg+xml" required>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-outline-danger me-2" onclick="window.configuracion.eliminarLogo()" id="btnEliminarLogo" style="display:none;">
+                                    <i class="ti ti-trash me-1"></i> Eliminar
+                                </button>
+                                <button type="submit" class="btn btn-primary" id="btnGuardarLogo">
+                                    <i class="ti ti-upload me-1"></i> Subir Logo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="col-md-6 offset-md-1">
+                        <h5 class="mb-3">Colores Institucionales</h5>
+                        <p class="text-muted small mb-4">El color primario se utiliza para la barra lateral (sidebar). El color secundario para los botones y acentos.</p>
+                        
+                        <form id="formColores" onsubmit="window.configuracion.guardarColores(event)">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Color Primario</label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="color" class="form-control form-control-color me-2" id="cfg_colorPrimario" name="colorPrimario" value="#0B2545" title="Elegir color">
+                                        <span class="text-muted small" id="hexPrimario">#0B2545</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Color Secundario</label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="color" class="form-control form-control-color me-2" id="cfg_colorSecundario" name="colorSecundario" value="#1A73E8" title="Elegir color">
+                                        <span class="text-muted small" id="hexSecundario">#1A73E8</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary" id="btnGuardarColores">
+                                    <i class="ti ti-palette me-1"></i> Guardar Colores
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: NUMERACION -->
+            <div class="tab-pane fade" id="numeracion" role="tabpanel" aria-labelledby="numeracion-tab">
+                <form id="formNumeracion" onsubmit="window.configuracion.guardarNumeracion(event)">
+                    <p class="text-muted mb-4">Configura los prefijos para los distintos documentos operativos del sistema. Los números consecutivos son generados automáticamente y no pueden ser modificados por seguridad y auditoría.</p>
+                    
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-md-4 fw-semibold">Documento</div>
+                        <div class="col-md-4 fw-semibold">Prefijo (Ej: ORD-)</div>
+                        <div class="col-md-4 fw-semibold text-muted">Consecutivo Actual</div>
+                    </div>
+                    
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label mb-0">Órdenes de Cliente</label>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="prefijoOrden" id="num_prefijoOrden" placeholder="ORD" />
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-light text-dark font-monospace px-3 py-2 border" id="num_secOrden">1</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label mb-0">Embarques / Cargas</label>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="prefijoEmbarque" id="num_prefijoEmbarque" placeholder="SHP" />
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-light text-dark font-monospace px-3 py-2 border" id="num_secEmbarque">1</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label mb-0">Cartas de Porte (POD)</label>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="prefijoCartaPorte" id="num_prefijoCartaPorte" placeholder="CP" />
+                        </div>
+                        <div class="col-md-4">
+                            <span class="badge bg-light text-dark font-monospace px-3 py-2 border" id="num_secCartaPorte">1</span>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="submit" class="btn btn-primary" id="btnGuardarNumeracion">
+                            <i class="ti ti-device-floppy me-1"></i> Guardar Numeración
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/admin/configuracion.js"></script>
+}

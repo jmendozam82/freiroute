@@ -147,7 +147,7 @@
                 // Guardar TempToken en sessionStorage
                 sessionStorage.setItem('fr_temp_token', resp.data.tempToken);
                 // Redirigir a la vista de verificación 2FA
-                window.location.href = '/account/verify2fa';
+                window.location.href = '@Url.Action("Verify2fa", "Account", new { area = "Auth" })';
             } else if (resp.success) {
                 // Flujo normal — guardar JWT y redirigir
                 sessionStorage.setItem('fr_token', resp.data.accessToken);

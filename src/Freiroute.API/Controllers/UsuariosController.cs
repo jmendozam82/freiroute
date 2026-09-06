@@ -34,7 +34,7 @@ public class UsuariosController : ControllerBase
     public async Task<ActionResult<ApiResponse<IEnumerable<UsuarioResponseDto>>>> GetAll()
     {
         var empresaId = User.GetTenantEfectivo(HttpContext);
-        var usuarios = await _usuarioService.GetAllAsync(empresaId);
+        var usuarios = await _usuarioService.GetAllAsync(empresaId, incluirInactivos: true);
         return Ok(ApiResponse<IEnumerable<UsuarioResponseDto>>.Ok(usuarios));
     }
 

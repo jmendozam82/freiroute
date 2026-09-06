@@ -4,8 +4,9 @@
     ViewData["ActiveMenu"] = "perfiles";
 }
 
-<nav class="fr-breadcrumb" aria-label="breadcrumb">
-    <a href="/">Inicio</a>
+<div class="fr-container-centered">
+    <nav class="fr-breadcrumb" aria-label="breadcrumb">
+        <a href="/">Inicio</a>
     <span class="fr-breadcrumb-sep">/</span>
     <a asp-area="Admin" asp-controller="Perfiles" asp-action="Index">Perfiles</a>
     <span class="fr-breadcrumb-sep">/</span>
@@ -19,7 +20,7 @@
     </div>
 </div>
 
-<div class="fr-card" style="max-width:560px">
+<div class="fr-card">
     <div class="fr-card-header">
         <span class="fr-card-title">Datos del Perfil</span>
     </div>
@@ -69,6 +70,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 
 @section Scripts {

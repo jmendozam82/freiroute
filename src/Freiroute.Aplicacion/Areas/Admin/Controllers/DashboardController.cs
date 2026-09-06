@@ -1,4 +1,5 @@
 using Freiroute.Aplicacion.Areas.Admin.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Freiroute.Aplicacion.Areas.Admin.Controllers;
@@ -8,6 +9,7 @@ namespace Freiroute.Aplicacion.Areas.Admin.Controllers;
 /// Muestra KPIs, empresas por estado/plan y tenants por vencer.
 /// Las métricas se cargan via AJAX desde /api/admin/dashboard.
 /// </summary>
+[Authorize(Roles = "SUPER_ADMIN")]
 public class DashboardController : BaseAdminController
 {
     public IActionResult Index()

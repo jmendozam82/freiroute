@@ -20,10 +20,10 @@ public class UsuarioRepository : IUsuarioRepository
         _connection = connection;
     }
 
-    /// <summary>Obtiene los usuarios activos de una empresa.</summary>
-    public async Task<IEnumerable<Usuario>> GetAllAsync(Guid empresaId)
+    /// <summary>Obtiene los usuarios de una empresa. Por defecto solo activos.</summary>
+    public async Task<IEnumerable<Usuario>> GetAllAsync(Guid empresaId, bool incluirInactivos = false)
     {
-        const string sql = @"
+        var sql = @"
             SELECT
                 id                 AS Id,
                 empresa_id         AS EmpresaId,
@@ -44,9 +44,14 @@ public class UsuarioRepository : IUsuarioRepository
                 fecha_creacion     AS FechaCreacion,
                 fecha_modificacion AS FechaModificacion
             FROM usuarios
-            WHERE empresa_id = @EmpresaId
-              AND activo = true
-            ORDER BY nombre_completo ASC";
+            WHERE empresa_id = @EmpresaId";
+
+        if (!incluirInactivos)
+        {
+            sql += " AND activo = true";
+        }
+
+        sql += " ORDER BY nombre_completo ASC";
 
         return await _connection.QueryAsync<Usuario>(sql, new { EmpresaId = empresaId });
     }

@@ -56,7 +56,7 @@ public class UsuariosControllerTests : IDisposable
     public async Task GetAll_ConPermiso_Retorna200()
     {
         _factory.UsuarioService
-            .Setup(s => s.GetAllAsync(It.IsAny<Guid>()))
+            .Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<bool>()))
             .ReturnsAsync(new List<UsuarioResponseDto> { UsuarioDto() });
 
         var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura); // usuarios:read
