@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Freiroute.API.Attributes;
 using Freiroute.API.Extensions;
 using Freiroute.BLL.Interfaces;
@@ -21,10 +23,14 @@ namespace Freiroute.API.Controllers;
 public class UbicacionesController : ControllerBase
 {
     private readonly IUbicacionService _ubicacionService;
+    private readonly IAuditoriaService _auditoriaService;
 
-    public UbicacionesController(IUbicacionService ubicacionService)
+    public UbicacionesController(
+        IUbicacionService ubicacionService,
+        IAuditoriaService auditoriaService)
     {
         _ubicacionService = ubicacionService;
+        _auditoriaService = auditoriaService;
     }
 
     /// <summary>Lista paginada de ubicaciones con filtros por tipo y texto.</summary>
@@ -124,5 +130,75 @@ public class UbicacionesController : ControllerBase
         using var stream = archivo.OpenReadStream();
         var importados = await _ubicacionService.ImportarCsvAsync(stream, empresaId);
         return Ok(ApiResponse<int>.Ok(importados, $"{importados} ubicaciones importadas"));
+    }
+
+    /// <summary>
+    /// Exporta todas las ubicaciones activas del tenant a CSV con BOM UTF-8
+    /// (HU-015 CA-06, ADR-017: separador ';'). Todo acceso queda auditado (EXPORT).
+    /// </summary>
+    [HttpGet("exportar")]
+    [RequirePermission(ModuloPermiso.Configuracion, PermissionType.Read)]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Exportar()
+    {
+        var empresaId = User.GetTenantEfectivo(HttpContext);
+        var ubicaciones = await _ubicacionService.GetAllAsync(
+            empresaId, tipo: null, q: null, page: 1, pageSize: int.MaxValue);
+
+        var csv = GenerarCsvUbicaciones(ubicaciones.Items);
+        var bytes = Encoding.UTF8.GetPreamble()
+            .Concat(Encoding.UTF8.GetBytes(csv))
+            .ToArray();
+
+        await _auditoriaService.RegistrarAsync(
+            "ubicaciones", AccionAuditoria.EXPORT, empresaId, User.GetUsuarioId(),
+            "Ubicacion", null,
+            new { formato = "csv", filas = ubicaciones.TotalItems });
+
+        return File(bytes, "text/csv; charset=utf-8",
+            $"ubicaciones_{DateTime.Today:yyyyMMdd}.csv");
+    }
+
+    private static string GenerarCsvUbicaciones(IEnumerable<UbicacionResponseDto> ubicaciones)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Nombre;Código;Tipo;Dirección;País;Departamento;Ciudad;Latitud;Longitud;Georeferenciada;ContactoNombre;ContactoTeléfono;TiempoServicioMin");
+
+        foreach (var u in ubicaciones)
+        {
+            // Los valores que contengan ';', '"' o saltos de línea van entre
+            // comillas dobles; el ';' es el separador (consistente con ImportarCsvAsync).
+            sb.AppendLine(string.Join(";",
+                CsvEscape(u.Nombre),
+                CsvEscape(u.Codigo),
+                CsvEscape(u.Tipo),
+                CsvEscape(u.Direccion),
+                CsvEscape(u.Pais),
+                CsvEscape(u.Departamento),
+                CsvEscape(u.Ciudad),
+                CsvEscape(u.Latitud?.ToString(CultureInfo.InvariantCulture)),
+                CsvEscape(u.Longitud?.ToString(CultureInfo.InvariantCulture)),
+                CsvEscape(u.Georeferenciada.ToString().ToLowerInvariant()),
+                CsvEscape(u.ContactoNombre),
+                CsvEscape(u.ContactoTelefono),
+                CsvEscape(u.TiempoServicioMin.ToString(CultureInfo.InvariantCulture))));
+        }
+
+        return sb.ToString();
+    }
+
+    private static string CsvEscape(string? value)
+    {
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        if (value.Contains(';') || value.Contains('"') || value.Contains('\n'))
+        {
+            return "\"" + value.Replace("\"", "\"\"") + "\"";
+        }
+
+        return value;
     }
 }

@@ -112,6 +112,16 @@ public class UnidadMedidaService : IUnidadMedidaService
         var unidad = await _unidadRepository.GetByIdAsync(id, empresaId)
                      ?? throw new NotFoundException("unidades_medida", id);
 
+        // HU-018 CA-06: no se puede desactivar una unidad referenciada por
+        // tipos de mercancía (formal en Sprint 3: ContarReferenciasAsync retorna 0).
+        var referencias = await _unidadRepository.ContarReferenciasAsync(id, empresaId);
+        if (referencias > 0)
+        {
+            throw new BusinessException(
+                $"No se puede desactivar esta unidad de medida porque está siendo utilizada por {referencias} tipo(s) de mercancía. Actualiza los tipos de mercancía primero.",
+                "UNIDAD_EN_USO");
+        }
+
         var ok = await _unidadRepository.DeactivateAsync(id, empresaId);
 
         await _auditoria.RegistrarAsync(

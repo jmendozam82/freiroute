@@ -32,6 +32,12 @@ public interface IUnidadMedidaRepository
     Task<bool> DeactivateAsync(Guid id, Guid empresaId);
 
     /// <summary>
+    /// Cuenta los tipos de mercancía que referencian esta unidad (HU-018 CA-06).
+    /// Sprint 3: tipos_mercancia aún no tiene FK a unidades_medida → retorna 0.
+    /// </summary>
+    Task<int> ContarReferenciasAsync(Guid unidadId, Guid empresaId);
+
+    /// <summary>
     /// Copia las unidades estándar de la empresa raíz (plantilla)
     /// al nuevo tenant al crearlo (HU-018 CA-02, seeds del spec).
     /// </summary>

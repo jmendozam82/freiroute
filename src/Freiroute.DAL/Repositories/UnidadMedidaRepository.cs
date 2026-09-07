@@ -164,6 +164,19 @@ public class UnidadMedidaRepository : IUnidadMedidaRepository
     }
 
     /// <summary>
+    /// Cuenta los tipos de mercancía que referencian esta unidad (HU-018 CA-06).
+    /// </summary>
+    public async Task<int> ContarReferenciasAsync(Guid unidadId, Guid empresaId)
+    {
+        // TODO Sprint 4: Cuando las líneas de orden referencien unidades_medida
+        // (unidad_medida_id), actualizar esta query para contar las referencias reales.
+        // Sprint 3: tipos_mercancia no tiene FK a unidades_medida → la validación
+        // es formal (retorna 0, no bloquea) — HU-018 CA-06.
+        await Task.CompletedTask;
+        return 0;
+    }
+
+    /// <summary>
     /// Copia las unidades estándar de la empresa raíz (plantilla) al nuevo
     /// tenant. Insert ... Select con ON CONFLICT DO NOTHING: idempotente
     /// (HU-018 CA-02). Solo replica unidades activas de la plantilla.
