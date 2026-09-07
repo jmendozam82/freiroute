@@ -69,6 +69,13 @@
                 <i class="ti ti-settings fr-icon"></i>
                 <span>Configuración</span>
             </a>
+            @{
+                var auditoriaActive = ViewContext.RouteData.Values["controller"]?.ToString() == "Auditoria";
+            }
+            <a asp-area="Admin" asp-controller="Auditoria" asp-action="Index" class="fr-sidebar-item @(auditoriaActive ? "active" : "")">
+                <i class="ti ti-clipboard-data fr-icon"></i>
+                <span>Auditoría</span>
+            </a>
         </nav>
 
         <!-- Footer del sidebar -->

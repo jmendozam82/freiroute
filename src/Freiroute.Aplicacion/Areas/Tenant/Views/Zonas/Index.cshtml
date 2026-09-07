@@ -1,0 +1,247 @@
+@{
+    ViewData["Title"] = "Zonas de entrega";
+    ViewData["ActiveMenu"] = "zonas";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Catálogos</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Zonas de entrega</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Zonas de entrega</h1>
+        <div class="fr-page-subtitle">Cobertura geográfica por polígono, códigos postales, ciudades o departamentos</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnVerificarPunto" aria-label="Verificar punto en zonas">
+            <i class="ti ti-crosshair"></i> Verificar punto
+        </button>
+        <a asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nueva zona
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Listado de zonas -->
+    <div class="col-xl-4">
+        <div class="fr-table-wrapper">
+            <div class="fr-table-responsive">
+                <table class="fr-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Zona</th>
+                            <th>Definición</th>
+                            <th class="text-center">Ubi.</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaZonas">
+                        <tr>
+                            <td colspan="5">
+                                <div class="fr-empty">
+                                    <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                    <div class="fr-empty-title">Cargando zonas...</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapa con polígonos coloreados (CA-03) -->
+    <div class="col-xl-8">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Mapa de zonas</div>
+                <span class="fr-form-hint">Haga clic en el mapa para verificar a qué zona pertenece el punto</span>
+            </div>
+            <div class="fr-card-body p-0">
+                <div id="mapaZonas" class="fr-map" aria-label="Mapa de zonas de entrega"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: gestionar ubicaciones de una zona (CA-04) -->
+<div class="modal fade" id="modalZonaUbicaciones" tabindex="-1" aria-labelledby="modalZonaUbicacionesTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalZonaUbicacionesTitle">Ubicaciones de la zona</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">Seleccione las ubicaciones que pertenecen a esta zona. Al guardar se reemplaza la asignación completa.</p>
+                <div id="listaUbicacionesZona" class="d-flex flex-column gap-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnGuardarUbicacionesZona">
+                    <i class="ti ti-device-floppy"></i> Guardar asignación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+}
+
+@section Scripts {
+<script>
+    const LABEL_DEFINICION = {
+        'POLIGONO': 'Polígono', 'CODIGOS_POSTALES': 'Cód. postales',
+        'CIUDADES': 'Ciudades', 'DEPARTAMENTOS': 'Departamentos', 'PAISES': 'Países'
+    };
+
+    let zonas = [];
+    let zonaModalActual = null;
+    let mapa;
+    let capasZonas = L.layerGroup();
+    let verificandoPunto = false;
+
+    async function cargarZonas() {
+        const resp = await FrApi.get('/api/zonas-entrega');
+        if (!resp || !resp.success) return;
+        zonas = resp.data || [];
+        pintarTabla();
+        pintarMapa();
+    }
+
+    function pintarTabla() {
+        const tbody = document.getElementById('tablaZonas');
+        if (!zonas.length) {
+            tbody.innerHTML = `
+                <tr><td colspan="5">
+                    <div class="fr-empty">
+                        <div class="fr-empty-icon"><i class="ti ti-map-2"></i></div>
+                        <div class="fr-empty-title">No hay zonas definidas</div>
+                        <div class="fr-empty-text">Crea la primera zona de entrega para asignar cobertura.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = zonas.map(z => `
+            <tr>
+                <td><span class="fr-id-code">${z.codigo}</span></td>
+                <td>
+                    <span class="d-inline-block rounded-circle me-2" style="width:10px;height:10px;background:${z.colorHex}"></span>
+                    ${z.nombre}
+                </td>
+                <td>${LABEL_DEFINICION[z.tipoDefinicion] || z.tipoDefinicion}</td>
+                <td class="text-center">${z.totalUbicaciones}</td>
+                <td class="text-end">
+                    <div class="d-inline-flex gap-1">
+                        <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm"
+                                onclick="abrirModalUbicaciones('${z.id}')" title="Gestionar ubicaciones"
+                                aria-label="Gestionar ubicaciones de ${z.nombre}">
+                            <i class="ti ti-link"></i>
+                        </button>
+                        <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                                data-fr-deactivate="/api/zonas-entrega/${z.id}/deactivate"
+                                data-fr-nombre="${z.nombre}" title="Desactivar"
+                                aria-label="Desactivar ${z.nombre}">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`).join('');
+    }
+
+    function pintarMapa() {
+        mapa = L.map('mapaZonas').setView([12.87, -85.21], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(mapa);
+        capasZonas.addTo(mapa);
+
+        zonas.forEach(z => {
+            if (!z.poligonoGeojson) return;
+            try {
+                const geo = JSON.parse(z.poligonoGeojson);
+                L.geoJSON(geo, {
+                    style: { color: z.colorHex, weight: 2, fillColor: z.colorHex, fillOpacity: 0.18 },
+                    onEachFeature: (f, layer) => layer.bindPopup(`<b>${z.nombre}</b>`)
+                }).addTo(capasZonas);
+            } catch (e) { /* GeoJSON inválido se omite */ }
+        });
+
+        mapa.on('click', async e => {
+            if (!verificandoPunto) return;
+            const resp = await FrApi.post('/api/zonas-entrega/verificar-pertenencia',
+                { latitud: e.latlng.lat, longitud: e.latlng.lng });
+            verificandoPunto = false;
+            toggleVerificarPunto(false);
+            if (!resp || !resp.success) return;
+            const match = resp.data || [];
+            if (match.length === 0) {
+                FrToast.warning('El punto no cae dentro de ninguna zona definida');
+            } else {
+                FrToast.success(`El punto pertenece a: ${match.map(z => z.nombre).join(', ')}`);
+            }
+        });
+    }
+
+    function toggleVerificarPunto(activo) {
+        verificandoPunto = activo;
+        const btn = document.getElementById('btnVerificarPunto');
+        btn.classList.toggle('fr-btn-primary', activo);
+        btn.classList.toggle('fr-btn-ghost', !activo);
+        btn.innerHTML = activo
+            ? '<i class="ti ti-crosshair"></i> Haga clic en el mapa...'
+            : '<i class="ti ti-crosshair"></i> Verificar punto';
+    }
+
+    document.getElementById('btnVerificarPunto').addEventListener('click', () =>
+        toggleVerificarPunto(!verificandoPunto));
+
+    // ── Modal: gestionar ubicaciones (CA-04) ───────────────────
+    async function abrirModalUbicaciones(id) {
+        zonaModalActual = id;
+        const zona = zonas.find(z => z.id === id);
+        document.getElementById('modalZonaUbicacionesTitle').textContent =
+            `Ubicaciones — ${zona ? zona.nombre : id}`;
+        document.getElementById('listaUbicacionesZona').innerHTML =
+            '<div class="fr-empty"><div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div><div class="fr-empty-title">Cargando ubicaciones...</div></div>';
+        FrModal.show('modalZonaUbicaciones');
+
+        const resp = await FrApi.get('/api/ubicaciones?page=1&pageSize=500');
+        if (!resp || !resp.success) return;
+        const ubicaciones = (resp.data.items || []).filter(u => u.activo);
+        document.getElementById('listaUbicacionesZona').innerHTML =
+            ubicaciones.length === 0
+                ? '<div class="fr-empty"><div class="fr-empty-title">No hay ubicaciones activas</div><div class="fr-empty-text">Registre ubicaciones en el catálogo de Ubicaciones.</div></div>'
+                : ubicaciones.map(u => `
+                    <label class="d-flex align-items-center gap-2 fr-card p-2">
+                        <input type="checkbox" class="fr-check chk-zona-ubicacion" data-id="${u.id}" />
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">${u.nombre}</div>
+                            <div class="text-muted">${u.ciudad || '—'} · ${u.tipo}</div>
+                        </div>
+                    </label>`).join('');
+    }
+
+    document.getElementById('btnGuardarUbicacionesZona').addEventListener('click', async () => {
+        if (!zonaModalActual) return;
+        const seleccionadas = [...document.querySelectorAll('.chk-zona-ubicacion:checked')]
+            .map(c => c.dataset.id);
+        const resp = await FrApi.post(`/api/zonas-entrega/${zonaModalActual}/ubicaciones`, seleccionadas);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Ubicaciones asignadas a la zona');
+            FrModal.hide('modalZonaUbicaciones');
+            cargarZonas();
+        });
+    });
+
+    cargarZonas();
+</script>
+}

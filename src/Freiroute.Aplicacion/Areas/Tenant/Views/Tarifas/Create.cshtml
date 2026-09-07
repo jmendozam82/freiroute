@@ -1,0 +1,279 @@
+@{
+    ViewData["Title"] = "Nueva tarifa base";
+    ViewData["ActiveMenu"] = "tarifas";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Tarifas base</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Nueva tarifa</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Nueva tarifa base</h1>
+        <div class="fr-page-subtitle">Si existe una tarifa vigente para la misma combinación, la BLL cierra su vigencia (ADR-015)</div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body">
+        <form id="frTarifaForm" novalidate>
+            <div class="form-section-title">Identificación y ruta</div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="fr-form-label fr-form-required" for="inputNombre">Nombre</label>
+                    <input type="text" id="inputNombre" class="fr-form-control" placeholder="Ej: FTL Managua → León"
+                           data-val="true" data-val-required="El nombre es obligatorio"
+                           data-val-maxlength="Máximo 150 caracteres" data-val-maxlength-max="150" />
+                    <span class="fr-form-error" data-valmsg-for="Nombre"></span>
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label" for="inputCodigo">Código</label>
+                    <input type="text" id="inputCodigo" class="fr-form-control" placeholder="Ej: FTL-MGA-LEO"
+                           data-val-maxlength="Máximo 30 caracteres" data-val-maxlength-max="30" />
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label fr-form-required" for="selectZonaOrigen">Zona de origen</label>
+                    <select id="selectZonaOrigen" class="fr-form-control"
+                            data-val="true" data-val-required="Seleccione la zona de origen"></select>
+                    <span class="fr-form-error" data-valmsg-for="ZonaOrigenId"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label fr-form-required" for="selectZonaDestino">Zona de destino</label>
+                    <select id="selectZonaDestino" class="fr-form-control"
+                            data-val="true" data-val-required="Seleccione la zona de destino"></select>
+                    <span class="fr-form-error" data-valmsg-for="ZonaDestinoId"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Condiciones del servicio</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectModo">Modo de transporte</label>
+                    <select id="selectModo" class="fr-form-control">
+                        <option value="FTL">FTL — Camión completo</option>
+                        <option value="LTL">LTL — Carga parcial</option>
+                        <option value="AEREO">Aéreo</option>
+                        <option value="MARITIMO">Marítimo</option>
+                        <option value="FERROVIARIO">Ferroviario</option>
+                        <option value="INTERMODAL">Intermodal</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectServicio">Tipo de servicio</label>
+                    <select id="selectServicio" class="fr-form-control">
+                        <option value="ESTANDAR">Estándar</option>
+                        <option value="EXPRESS">Express</option>
+                        <option value="PROGRAMADO">Programado</option>
+                        <option value="REFRIGERADO">Refrigerado</option>
+                        <option value="PELIGROSO">Peligroso</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label" for="selectTipoTarifa">Tipo de tarifa</label>
+                    <select id="selectTipoTarifa" class="fr-form-control">
+                        <option value="FIJO_VIAJE">Por viaje</option>
+                        <option value="POR_KG">Por kg</option>
+                        <option value="POR_M3">Por m³</option>
+                        <option value="POR_KM">Por km</option>
+                        <option value="POR_UNIDAD">Por unidad</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label fr-form-required" for="inputPrecioUnitario">Precio unitario</label>
+                    <input type="number" id="inputPrecioUnitario" min="0" step="any" class="fr-form-control"
+                           data-val="true" data-val-required="El precio es obligatorio"
+                           data-val-number="Ingrese un número válido" data-val-range="El precio no puede ser negativo" data-val-range-min="0" data-val-range-max="99999999" />
+                    <span class="fr-form-error" data-valmsg-for="PrecioUnitario"></span>
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label" for="inputPrecioMinimo">Precio mínimo</label>
+                    <input type="number" id="inputPrecioMinimo" min="0" step="any" class="fr-form-control" placeholder="Opcional" />
+                    <span class="fr-form-hint" id="hintTipoTarifa">Monto fijo por viaje</span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Vigencia</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="fr-form-label fr-form-required" for="inputFechaDesde">Vigente desde</label>
+                    <input type="date" id="inputFechaDesde" class="fr-form-control"
+                           data-val="true" data-val-required="La fecha de inicio es obligatoria" />
+                    <span class="fr-form-error" data-valmsg-for="FechaVigenciaDesde"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputFechaHasta">Vigente hasta (opcional)</label>
+                    <input type="date" id="inputFechaHasta" class="fr-form-control" />
+                    <span class="fr-form-hint">Vacío = vigente hasta nuevo aviso</span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectMoneda">Moneda</label>
+                    <select id="selectMoneda" class="fr-form-control">
+                        <option value="USD">USD — Dólar</option>
+                        <option value="NIO">NIO — Córdoba</option>
+                        <option value="EUR">EUR — Euro</option>
+                        <option value="GTQ">GTQ — Quetzal</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4 d-flex justify-content-between align-items-center">
+                <span>Recargos</span>
+                <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnAgregarRecargo">
+                    <i class="ti ti-plus"></i> Agregar recargo
+                </button>
+            </div>
+            <div id="contenedorRecargos" class="d-flex flex-column gap-2">
+                <p class="fr-form-hint mb-0">COMBUSTIBLE, PEAJE, SEGURO, MANIPULACIÓN, URGENCIA, REFRIGERACIÓN, SOBREDIMENSIÓN.</p>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i> Guardar tarifa
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frTarifaForm');
+
+    const NOMBRES_RECARGO = {
+        'COMBUSTIBLE': 'Recargo por combustible',
+        'PEAJE': 'Peaje',
+        'SEGURO': 'Seguro de carga',
+        'MANIPULACION': 'Manipulación',
+        'URGENCIA': 'Urgencia',
+        'REFRIGERACION': 'Refrigeración',
+        'SOBREDIMENSION': 'Carga sobredimensionada'
+    };
+
+    // ── Zonas (HU-016) ─────────────────────────────────────────
+    async function cargarZonas() {
+        const resp = await FrApi.get('/api/zonas-entrega');
+        if (!resp || !resp.success) return;
+        const zonas = resp.data || [];
+        const opts = zonas.map(z => `<option value="${z.id}">${z.nombre}</option>`).join('');
+        document.getElementById('selectZonaOrigen').innerHTML = '<option value="">— Seleccione —</option>' + opts;
+        document.getElementById('selectZonaDestino').innerHTML = '<option value="">— Seleccione —</option>' + opts;
+    }
+
+    // ── Hint del tipo de tarifa ─────────────────────────────────
+    const HINTS_TIPO = {
+        'FIJO_VIAJE': 'Monto fijo por viaje',
+        'POR_KG': 'Precio por kilogramo transportado',
+        'POR_M3': 'Precio por metro cúbico',
+        'POR_KM': 'Precio por kilómetro recorrido',
+        'POR_UNIDAD': 'Precio por unidad de carga'
+    };
+    document.getElementById('selectTipoTarifa').addEventListener('change', () => {
+        document.getElementById('hintTipoTarifa').textContent = HINTS_TIPO[document.getElementById('selectTipoTarifa').value];
+    });
+
+    // ── Recargos dinámicos ──────────────────────────────────────
+    function plantillaRecargo(codigo) {
+        const c = codigo || 'COMBUSTIBLE';
+        return `
+            <div class="fr-card p-2 fila-recargo">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="fr-form-label">Recargo</label>
+                        <select class="fr-form-control sel-codigo-recargo">
+                            ${Object.keys(NOMBRES_RECARGO).map(k =>
+                                `<option value="${k}" ${k === c ? 'selected' : ''}>${NOMBRES_RECARGO[k]}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="fr-form-label fr-form-required">Nombre</label>
+                        <input type="text" class="fr-form-control inp-nombre-recargo" value="${NOMBRES_RECARGO[c]}"
+                               data-val="true" data-val-required="El nombre del recargo es obligatorio" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="fr-form-label">Tipo de cálculo</label>
+                        <select class="fr-form-control sel-tipo-calculo">
+                            <option value="PORCENTAJE">% sobre base</option>
+                            <option value="MONTO_FIJO">Monto fijo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="fr-form-label fr-form-required">Valor</label>
+                        <input type="number" step="any" min="0" class="fr-form-control inp-valor-recargo" placeholder="Ej: 5"
+                               data-val="true" data-val-required="El valor del recargo es obligatorio"
+                               data-val-number="Ingrese un número válido" data-val-range="El valor no puede ser negativo" data-val-range-min="0" data-val-range-max="999999" />
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end justify-content-end">
+                        <button type="button" class="fr-btn fr-btn-danger fr-btn-sm btn-quitar-recargo" title="Quitar recargo" aria-label="Quitar recargo">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    document.getElementById('btnAgregarRecargo').addEventListener('click', () => {
+        document.getElementById('contenedorRecargos').insertAdjacentHTML('beforeend', plantillaRecargo());
+        $.validator.unobtrusive.parse('#frTarifaForm');
+    });
+
+    document.getElementById('contenedorRecargos').addEventListener('click', e => {
+        const btn = e.target.closest('.btn-quitar-recargo');
+        if (!btn) return;
+        btn.closest('.fila-recargo').remove();
+    });
+
+    document.getElementById('contenedorRecargos').addEventListener('change', e => {
+        if (!e.target.classList.contains('sel-codigo-recargo')) return;
+        const fila = e.target.closest('.fila-recargo');
+        fila.querySelector('.inp-nombre-recargo').value = NOMBRES_RECARGO[e.target.value];
+    });
+
+    // ── Guardar (client-side → POST /api/tarifas-base) ─────────
+    document.getElementById('frTarifaForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!$('#frTarifaForm').valid()) return;
+
+        const desde = document.getElementById('inputFechaDesde').value;
+        let hasta = document.getElementById('inputFechaHasta').value;
+        if (hasta && hasta < desde) {
+            FrToast.error('La fecha de fin no puede ser anterior al inicio de vigencia');
+            return;
+        }
+        hasta = hasta || null;
+
+        const recargos = [...document.querySelectorAll('.fila-recargo')].map(fila => ({
+            codigoRecargo: fila.querySelector('.sel-codigo-recargo').value,
+            nombre: fila.querySelector('.inp-nombre-recargo').value.trim(),
+            tipoCalculo: fila.querySelector('.sel-tipo-calculo').value,
+            valor: parseFloat(fila.querySelector('.inp-valor-recargo').value) || 0
+        }));
+
+        const payload = {
+            nombre: document.getElementById('inputNombre').value.trim(),
+            codigo: document.getElementById('inputCodigo').value.trim().toUpperCase() || null,
+            zonaOrigenId: document.getElementById('selectZonaOrigen').value,
+            zonaDestinoId: document.getElementById('selectZonaDestino').value,
+            modoTransporte: document.getElementById('selectModo').value,
+            tipoServicio: document.getElementById('selectServicio').value,
+            tipoTarifa: document.getElementById('selectTipoTarifa').value,
+            precioUnitario: parseFloat(document.getElementById('inputPrecioUnitario').value),
+            precioMinimo: parseFloat(document.getElementById('inputPrecioMinimo').value) || null,
+            moneda: document.getElementById('selectMoneda').value,
+            fechaVigenciaDesde: desde,
+            fechaVigenciaHasta: hasta,
+            recargos
+        };
+
+        const resp = await FrApi.post('/api/tarifas-base', payload);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Tarifa creada correctamente');
+            setTimeout(() => window.location.href = '/Tenant/Tarifas', 600);
+        });
+    });
+
+    cargarZonas();
+</script>
+}

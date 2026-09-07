@@ -1,0 +1,285 @@
+@using Freiroute.DTO.Ubicacion
+@using Freiroute.Utility.Pagination
+@model PagedResult<UbicacionResponseDto>
+@{
+    ViewData["Title"] = "Ubicaciones";
+    ViewData["ActiveMenu"] = "ubicaciones";
+    var filtroTipo = ViewData["FiltroTipo"] as string;
+    var busqueda = ViewData["Busqueda"] as string;
+    string PageUrl(int p) => Url.Action("Index", new { tipo = filtroTipo, q = busqueda, page = p })!;
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Catálogos</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Ubicaciones</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Ubicaciones</h1>
+        <div class="fr-page-subtitle">Almacenes, clientes, puertos y puntos de entrega georreferenciados</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnExportarCsv" aria-label="Exportar a CSV">
+            <i class="ti ti-download"></i> Exportar CSV
+        </button>
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnImportarCsv" aria-label="Importar desde CSV">
+            <i class="ti ti-upload"></i> Importar CSV
+        </button>
+        <a asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nueva ubicación
+        </a>
+        <input type="file" id="inputArchivoCsv" accept=".csv" hidden />
+    </div>
+</div>
+
+<div class="fr-kpi-grid">
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Ubicaciones registradas</div>
+        <div class="fr-kpi-value kpi-blue">@Model.TotalItems</div>
+        <div class="fr-kpi-delta up">Georreferenciadas en esta página: @Model.Items.Count(i => i.Georeferenciada)</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Página actual</div>
+        <div class="fr-kpi-value">@Model.PageNumber / @Model.TotalPages</div>
+        <div class="fr-kpi-delta up">@Model.PageSize registros por página</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Sin coordenadas (esta página)</div>
+        <div class="fr-kpi-value kpi-amber">@Model.Items.Count(i => !i.Georeferenciada)</div>
+        <div class="fr-kpi-delta down">Puede ajustar el pin en el mapa</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Mapa Leaflet (ADR-014) -->
+    <div class="col-xl-5">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Mapa de ubicaciones</div>
+            </div>
+            <div class="fr-card-body p-0">
+                <div id="mapaUbicaciones" class="fr-map" aria-label="Mapa de ubicaciones del tenant"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listado -->
+    <div class="col-xl-7">
+        <div class="fr-card mb-3">
+            <div class="fr-card-body">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="fr-form-label" for="fTipo">Tipo</label>
+                        <select id="fTipo" name="tipo" class="fr-form-control">
+                            <option value="">Todos los tipos</option>
+                            <option value="ALMACEN" selected="@(filtroTipo == "ALMACEN")">Almacén</option>
+                            <option value="CLIENTE" selected="@(filtroTipo == "CLIENTE")">Cliente</option>
+                            <option value="PUERTO" selected="@(filtroTipo == "PUERTO")">Puerto</option>
+                            <option value="AEROPUERTO" selected="@(filtroTipo == "AEROPUERTO")">Aeropuerto</option>
+                            <option value="TERMINAL" selected="@(filtroTipo == "TERMINAL")">Terminal</option>
+                            <option value="CRUCE_FRONTERA" selected="@(filtroTipo == "CRUCE_FRONTERA")">Cruce fronterizo</option>
+                            <option value="PUNTO_RECARGA" selected="@(filtroTipo == "PUNTO_RECARGA")">Punto de recarga</option>
+                            <option value="OTRO" selected="@(filtroTipo == "OTRO")">Otro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="fr-form-label" for="fBusqueda">Buscar</label>
+                        <input id="fBusqueda" type="text" name="q" value="@busqueda" class="fr-form-control"
+                               placeholder="Nombre, código o ciudad" aria-label="Buscar ubicación" />
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="fr-btn fr-btn-primary w-100">
+                            <i class="ti ti-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="fr-table-wrapper">
+            <div class="fr-table-responsive">
+                <table class="fr-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Ciudad</th>
+                            <th>Contacto</th>
+                            <th>Geo</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Items.Count() == 0)
+                        {
+                            <tr>
+                                <td colspan="7">
+                                    <div class="fr-empty">
+                                        <div class="fr-empty-icon"><i class="ti ti-map-pins"></i></div>
+                                        <div class="fr-empty-title">No hay ubicaciones</div>
+                                        <div class="fr-empty-text">Crea la primera ubicación o importa un CSV.</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var u in Model.Items)
+                        {
+                            <tr>
+                                <td><span class="fr-id-code">@(string.IsNullOrEmpty(u.Codigo) ? "—" : u.Codigo)</span></td>
+                                <td class="fw-semibold">@u.Nombre</td>
+                                <td><span class="fr-badge @FrBadges.TipoUbicacion(u.Tipo)">@u.TipoLabel</span></td>
+                                <td>@(string.IsNullOrEmpty(u.Ciudad) ? "—" : u.Ciudad)</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(u.ContactoNombre))
+                                    {
+                                        <div>@u.ContactoNombre</div>
+                                        <div class="text-muted">@u.ContactoTelefono</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (u.Georeferenciada)
+                                    {
+                                        <span class="fr-badge fr-badge-success">Geo OK</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fr-badge fr-badge-warning">Sin coords</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1">
+                                        <a asp-action="Edit" asp-route-id="@u.Id" class="fr-btn fr-btn-ghost fr-btn-sm"
+                                           title="Editar" aria-label="Editar @u.Nombre">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                        <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                                                data-fr-deactivate="/api/ubicaciones/@u.Id/deactivate"
+                                                data-fr-nombre="@u.Nombre"
+                                                title="Desactivar" aria-label="Desactivar @u.Nombre">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="fr-pagination">
+                <span class="fr-pagination-info">
+                    Mostrando @(Model.Items.Count() == 0 ? 0 : ((Model.PageNumber - 1) * Model.PageSize) + 1)–
+                    @((Model.PageNumber - 1) * Model.PageSize + Model.Items.Count()) de @Model.TotalItems
+                </span>
+                <div class="d-flex gap-2">
+                    @if (Model.HasPreviousPage)
+                    {
+                        <a class="fr-page-btn" href="@PageUrl(Model.PageNumber - 1)">Anterior</a>
+                    }
+                    else
+                    {
+                        <button type="button" class="fr-page-btn" disabled>Anterior</button>
+                    }
+                    @if (Model.HasNextPage)
+                    {
+                        <a class="fr-page-btn" href="@PageUrl(Model.PageNumber + 1)">Siguiente</a>
+                    }
+                    else
+                    {
+                        <button type="button" class="fr-page-btn" disabled>Siguiente</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+}
+
+@section Scripts {
+<script>
+    // ── Toast de TempData (server-side create/edit) ─────────────
+    const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
+    const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
+    if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+
+    // ── Mapa Leaflet (ADR-014) ─────────────────────────────────
+    const COLORES_TIPO = {
+        ALMACEN: '#1A73E8', CLIENTE: '#2E7D32', PUERTO: '#F57F17',
+        AEROPUERTO: '#7C3AED', CRUCE_FRONTERA: '#E53935', TERMINAL: '#64748B',
+        PUNTO_RECARGA: '#0891B2', OTRO: '#64748B'
+    };
+
+    async function cargarMapa() {
+        const resp = await FrApi.get('/api/ubicaciones/mapa');
+        if (!resp || !resp.success) return;
+
+        const mapa = L.map('mapaUbicaciones').setView([12.87, -85.21], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(mapa);
+
+        (resp.data || []).forEach(u => {
+            if (u.latitud == null || u.longitud == null) return;
+            const color = COLORES_TIPO[u.tipo] || '#64748B';
+            L.circleMarker([u.latitud, u.longitud], {
+                radius: 7, color: '#fff', weight: 2,
+                fillColor: color, fillOpacity: 0.9
+            }).addTo(mapa).bindPopup(
+                `<div style="font-weight:600">${u.nombre}</div>` +
+                `<span class="fr-badge ${FrBadge.claseTipo(u.tipo)}">${u.tipo}</span>`
+            );
+        });
+    }
+
+    // ── Importación CSV (HU-015 CA-06) ─────────────────────────
+    document.getElementById('btnImportarCsv').addEventListener('click', () =>
+        document.getElementById('inputArchivoCsv').click());
+
+    document.getElementById('inputArchivoCsv').addEventListener('change', async (e) => {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+        const fd = new FormData();
+        fd.append('archivo', archivo);
+        const resp = await FrApi.upload('/api/ubicaciones/importar', fd);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success(`Importación completada: ${resp.data} registros. Los inválidos fueron omitidos.`);
+            setTimeout(() => window.location.reload(), 1200);
+        });
+        e.target.value = '';
+    });
+
+    // ── Exportación CSV (HU-015) ───────────────────────────────
+    document.getElementById('btnExportarCsv').addEventListener('click', async () => {
+        const token = FrAuth.getToken();
+        const csrf = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        const resp = await fetch('/api/ubicaciones/exportar', {
+            headers: { 'Authorization': `Bearer ${token}`, 'RequestVerificationToken': csrf }
+        });
+        if (resp.ok) {
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ubicaciones.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+            FrToast.success('Exportación CSV lista');
+        } else {
+            FrToast.error('No se pudo exportar el CSV');
+        }
+    });
+
+    cargarMapa();
+</script>
+}

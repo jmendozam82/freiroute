@@ -1,4 +1,4 @@
-@model Freiroute.DTO.Configuracion.ConfiguracionResponseDto
+﻿@model Freiroute.DTO.Configuracion.ConfiguracionResponseDto
 @{
     ViewData["Title"] = "Configuración";
     ViewData["ActiveMenu"] = "config";
@@ -67,12 +67,12 @@
                             <label class="fr-form-label">Industria</label>
                             <select name="Industria" class="fr-form-control">
                                 <option value="">-- Seleccionar --</option>
-                                <option value="Transporte de carga" @((Model?.Industria ?? "") == "Transporte de carga" ? "selected" : "")>Transporte de carga</option>
-                                <option value="Transporte de personas" @((Model?.Industria ?? "") == "Transporte de personas" ? "selected" : "")>Transporte de personas</option>
-                                <option value="Logística" @((Model?.Industria ?? "") == "Logística" ? "selected" : "")>Logística</option>
-                                <option value="Courier" @(Model?.Industria == "Courier" ? "selected" : "")>Courier</option>
-                                <option value="Distribución" @(Model?.Industria == "Distribución" ? "selected" : "")>Distribución</option>
-                                <option value="Otro" @(Model?.Industria == "Otro" ? "selected" : "")>Otro</option>
+                                <option value="Transporte de carga" selected="@((Model?.Industria ?? "") == "Transporte de carga")">Transporte de carga</option>
+                                <option value="Transporte de personas" selected="@((Model?.Industria ?? "") == "Transporte de personas")">Transporte de personas</option>
+                                <option value="Logística" selected="@((Model?.Industria ?? "") == "Logística")">Logística</option>
+                                <option value="Courier" selected="@(Model?.Industria == "Courier")">Courier</option>
+                                <option value="Distribución" selected="@(Model?.Industria == "Distribución")">Distribución</option>
+                                <option value="Otro" selected="@(Model?.Industria == "Otro")">Otro</option>
                             </select>
                         </div>
                         <div class="col-4">
@@ -213,37 +213,37 @@
                     <div class="col-md-4">
                         <label class="fr-form-label">Moneda *</label>
                         <select name="Moneda" class="fr-form-control" required>
-                            <option value="USD" @(Model?.Moneda == "USD" ? "selected" : "")>USD — Dólar</option>
-                            <option value="EUR" @(Model?.Moneda == "EUR" ? "selected" : "")>EUR — Euro</option>
-                            <option value="GTQ" @(Model?.Moneda == "GTQ" ? "selected" : "")>GTQ — Quetzal</option>
-                            <option value="NIO" @(Model?.Moneda == "NIO" ? "selected" : "")>NIO — Córdoba</option>
-                            <option value="HNL" @(Model?.Moneda == "HNL" ? "selected" : "")>HNL — Lempira</option>
-                            <option value="CRC" @(Model?.Moneda == "CRC" ? "selected" : "")>CRC — Colón</option>
-                            <option value="MXN" @(Model?.Moneda == "MXN" ? "selected" : "")>MXN — Peso Mexicano</option>
-                            <option value="COP" @(Model?.Moneda == "COP" ? "selected" : "")>COP — Peso Colombiano</option>
-                            <option value="PEN" @(Model?.Moneda == "PEN" ? "selected" : "")>PEN — Sol Peruano</option>
-                            <option value="CLP" @(Model?.Moneda == "CLP" ? "selected" : "")>CLP — Peso Chileno</option>
+                            <option value="USD" selected="@(Model?.Moneda == "USD")">USD — Dólar</option>
+                            <option value="EUR" selected="@(Model?.Moneda == "EUR")">EUR — Euro</option>
+                            <option value="GTQ" selected="@(Model?.Moneda == "GTQ")">GTQ — Quetzal</option>
+                            <option value="NIO" selected="@(Model?.Moneda == "NIO")">NIO — Córdoba</option>
+                            <option value="HNL" selected="@(Model?.Moneda == "HNL")">HNL — Lempira</option>
+                            <option value="CRC" selected="@(Model?.Moneda == "CRC")">CRC — Colón</option>
+                            <option value="MXN" selected="@(Model?.Moneda == "MXN")">MXN — Peso Mexicano</option>
+                            <option value="COP" selected="@(Model?.Moneda == "COP")">COP — Peso Colombiano</option>
+                            <option value="PEN" selected="@(Model?.Moneda == "PEN")">PEN — Sol Peruano</option>
+                            <option value="CLP" selected="@(Model?.Moneda == "CLP")">CLP — Peso Chileno</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="fr-form-label">Zona horaria *</label>
                         <select name="ZonaHoraria" class="fr-form-control" required>
-                            <option value="America/Managua" @(Model?.ZonaHoraria == "America/Managua" ? "selected" : "")>America/Managua</option>
-                            <option value="America/Mexico_City" @(Model?.ZonaHoraria == "America/Mexico_City" ? "selected" : "")>America/Mexico_City</option>
-                            <option value="America/Bogota" @(Model?.ZonaHoraria == "America/Bogota" ? "selected" : "")>America/Bogota</option>
-                            <option value="America/Lima" @(Model?.ZonaHoraria == "America/Lima" ? "selected" : "")>America/Lima</option>
-                            <option value="America/Santiago" @(Model?.ZonaHoraria == "America/Santiago" ? "selected" : "")>America/Santiago</option>
-                            <option value="America/Buenos_Aires" @(Model?.ZonaHoraria == "America/Buenos_Aires" ? "selected" : "")>America/Buenos_Aires</option>
-                            <option value="America/Sao_Paulo" @(Model?.ZonaHoraria == "America/Sao_Paulo" ? "selected" : "")>America/Sao_Paulo</option>
-                            <option value="UTC" @(Model?.ZonaHoraria == "UTC" ? "selected" : "")>UTC</option>
+                            <option value="America/Managua" selected="@(Model?.ZonaHoraria == "America/Managua")">America/Managua</option>
+                            <option value="America/Mexico_City" selected="@(Model?.ZonaHoraria == "America/Mexico_City")">America/Mexico_City</option>
+                            <option value="America/Bogota" selected="@(Model?.ZonaHoraria == "America/Bogota")">America/Bogota</option>
+                            <option value="America/Lima" selected="@(Model?.ZonaHoraria == "America/Lima")">America/Lima</option>
+                            <option value="America/Santiago" selected="@(Model?.ZonaHoraria == "America/Santiago")">America/Santiago</option>
+                            <option value="America/Buenos_Aires" selected="@(Model?.ZonaHoraria == "America/Buenos_Aires")">America/Buenos_Aires</option>
+                            <option value="America/Sao_Paulo" selected="@(Model?.ZonaHoraria == "America/Sao_Paulo")">America/Sao_Paulo</option>
+                            <option value="UTC" selected="@(Model?.ZonaHoraria == "UTC")">UTC</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="fr-form-label">Formato de fecha *</label>
                         <select name="FormatoFecha" class="fr-form-control" required>
-                            <option value="DD/MM/YYYY" @(Model?.FormatoFecha == "DD/MM/YYYY" ? "selected" : "")>DD/MM/YYYY</option>
-                            <option value="MM/DD/YYYY" @(Model?.FormatoFecha == "MM/DD/YYYY" ? "selected" : "")>MM/DD/YYYY</option>
-                            <option value="YYYY-MM-DD" @(Model?.FormatoFecha == "YYYY-MM-DD" ? "selected" : "")>YYYY-MM-DD</option>
+                            <option value="DD/MM/YYYY" selected="@(Model?.FormatoFecha == "DD/MM/YYYY")">DD/MM/YYYY</option>
+                            <option value="MM/DD/YYYY" selected="@(Model?.FormatoFecha == "MM/DD/YYYY")">MM/DD/YYYY</option>
+                            <option value="YYYY-MM-DD" selected="@(Model?.FormatoFecha == "YYYY-MM-DD")">YYYY-MM-DD</option>
                         </select>
                     </div>
                 </div>

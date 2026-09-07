@@ -1,0 +1,220 @@
+@{
+    ViewData["Title"] = "Auditoría del sistema";
+    ViewData["ActiveMenu"] = "auditoria";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a href="/Admin/Dashboard">Administración</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Auditoría</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Auditoría del sistema</h1>
+        <div class="fr-page-subtitle">Log inmutable de actividades del tenant y del SaaS (G-02, HU-008 CA-01)</div>
+    </div>
+    <button type="button" class="fr-btn fr-btn-ghost" id="btnExportarCsv" aria-label="Exportar auditoría a CSV">
+        <i class="ti ti-download"></i> Exportar CSV
+    </button>
+</div>
+
+<div class="fr-card mb-3">
+    <div class="fr-card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="fr-form-label" for="fModulo">Módulo</label>
+                <select id="fModulo" class="fr-form-control">
+                    <option value="">Todos</option>
+                    <option value="ordenes">Ordenes</option>
+                    <option value="embarques">Embarques</option>
+                    <option value="carriers">Carriers</option>
+                    <option value="rutas">Rutas</option>
+                    <option value="track_trace">Track &amp; trace</option>
+                    <option value="documentos">Documentos</option>
+                    <option value="flota">Flota</option>
+                    <option value="analytics">Analytics</option>
+                    <option value="facturacion">Facturación</option>
+                    <option value="clientes">Clientes</option>
+                    <option value="usuarios">Usuarios</option>
+                    <option value="configuracion">Configuración</option>
+                    <option value="auth">Auth</option>
+                    <option value="super_admin">Super admin</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="fr-form-label" for="fAccion">Acción</label>
+                <select id="fAccion" class="fr-form-control">
+                    <option value="">Todas</option>
+                    <option value="LOGIN">Login</option>
+                    <option value="LOGOUT">Logout</option>
+                    <option value="LOGIN_FAILED">Login fallido</option>
+                    <option value="LOGIN_OAUTH">Login OAuth</option>
+                    <option value="CREATE">Crear</option>
+                    <option value="UPDATE">Actualizar</option>
+                    <option value="DEACTIVATE">Desactivar</option>
+                    <option value="REACTIVAR">Reactivar</option>
+                    <option value="EXPORT">Exportar</option>
+                    <option value="CAMBIO_ESTADO">Cambio de estado</option>
+                    <option value="IMPERSONACION">Impersonación</option>
+                    <option value="CAMBIAR_PLAN">Cambiar plan</option>
+                    <option value="REGISTRAR_PAGO">Registrar pago</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="fr-form-label" for="fFechaDesde">Desde</label>
+                <input type="date" id="fFechaDesde" class="fr-form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="fr-form-label" for="fFechaHasta">Hasta</label>
+                <input type="date" id="fFechaHasta" class="fr-form-control" />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="button" class="fr-btn fr-btn-primary w-100" id="btnFiltrar">
+                    <i class="ti ti-filter"></i> Filtrar
+                </button>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="button" class="fr-btn fr-btn-ghost w-100" id="btnLimpiar">
+                    Limpiar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body p-0">
+        <div class="fr-table-responsive">
+            <table class="fr-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Módulo</th>
+                        <th>Acción</th>
+                        <th>Entidad</th>
+                        <th>Usuario</th>
+                        <th>IP</th>
+                        <th>Detalles</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaAuditoria">
+                    <tr>
+                        <td colspan="7">
+                            <div class="fr-empty">
+                                <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                <div class="fr-empty-title">Cargando actividad...</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="fr-pagination">
+            <span class="fr-pagination-info" id="infoAuditoria"></span>
+            <div class="d-flex gap-2">
+                <button type="button" class="fr-page-btn" id="btnPaginaAnterior" disabled>Anterior</button>
+                <button type="button" class="fr-page-btn" id="btnPaginaSiguiente" disabled>Siguiente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const CLASES_ACCION = {
+        'LOGIN': 'fr-badge-success', 'LOGOUT': 'fr-badge-neutral', 'LOGIN_FAILED': 'fr-badge-danger',
+        'LOGIN_OAUTH': 'fr-badge-info', 'CREATE': 'fr-badge-info', 'UPDATE': 'fr-badge-warning',
+        'DEACTIVATE': 'fr-badge-danger', 'REACTIVAR': 'fr-badge-success', 'EXPORT': 'fr-badge-neutral',
+        'CAMBIO_ESTADO': 'fr-badge-warning', 'IMPERSONACION': 'fr-badge-danger',
+        'CAMBIAR_PLAN': 'fr-badge-warning', 'REGISTRAR_PAGO': 'fr-badge-success'
+    };
+
+    let page = 1, totalPages = 1, totalItems = 0;
+
+    function filtrosActuales() {
+        const params = new URLSearchParams();
+        if (document.getElementById('fModulo').value) params.set('modulo', document.getElementById('fModulo').value);
+        if (document.getElementById('fAccion').value) params.set('accion', document.getElementById('fAccion').value);
+        if (document.getElementById('fFechaDesde').value) params.set('fechaDesde', document.getElementById('fFechaDesde').value);
+        if (document.getElementById('fFechaHasta').value) params.set('fechaHasta', document.getElementById('fFechaHasta').value);
+        params.set('page', page);
+        params.set('pageSize', '20');
+        return params;
+    }
+
+    async function cargarAuditoria() {
+        const resp = await FrApi.get('/api/auditoria?' + filtrosActuales().toString());
+        if (!resp || !resp.success) return;
+        const data = resp.data;
+        totalItems = data.totalItems;
+        totalPages = data.totalPages;
+        pintarAuditoria(data.items || []);
+    }
+
+    function pintarAuditoria(items) {
+        document.getElementById('infoAuditoria').textContent =
+            totalItems ? `Mostrando ${items.length} de ${totalItems} eventos` : '';
+        document.getElementById('btnPaginaAnterior').disabled = page <= 1;
+        document.getElementById('btnPaginaSiguiente').disabled = page >= totalPages;
+
+        const tbody = document.getElementById('tablaAuditoria');
+        if (!items.length) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-clipboard-data"></i></div>
+                <div class="fr-empty-title">Sin eventos de auditoría para los filtros</div></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = items.map(a => `
+            <tr>
+                <td><div class="text-muted">${new Date(a.fechaCreacion).toLocaleString('es')}</div></td>
+                <td><span class="fr-id-code">${a.modulo}</span></td>
+                <td><span class="fr-badge ${CLASES_ACCION[a.accion] || 'fr-badge-neutral'}">${a.accion}</span></td>
+                <td>
+                    ${a.entidadTipo ? `<div>${a.entidadTipo}</div><span class="fr-id-code">${(a.entidadId || '').toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}
+                </td>
+                <td>${a.usuarioId ? `<span class="fr-id-code" title="${a.usuarioId}">${a.usuarioId.toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}</td>
+                <td>${a.ipAddress || '<span class="text-muted">—</span>'}</td>
+                <td>
+                    ${a.detalles
+                        ? `<div class="text-muted" title="${a.detalles}">${a.detalles.length > 60 ? a.detalles.slice(0, 60) + '…' : a.detalles}</div>`
+                        : '<span class="text-muted">—</span>'}
+                </td>
+            </tr>`).join('');
+    }
+
+    // ── Export CSV (Bearer header + blob, igual que catálogos) ─
+    document.getElementById('btnExportarCsv').addEventListener('click', async () => {
+        const params = filtrosActuales();
+        params.delete('page');
+        params.delete('pageSize');
+        const token = FrAuth.getToken();
+        const resp = await fetch('/api/auditoria/export?' + params.toString(), {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!resp.ok) {
+            FrToast.error('No se pudo exportar la auditoría');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'auditoria.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        FrToast.success('Exportación CSV lista');
+    });
+
+    document.getElementById('btnFiltrar').addEventListener('click', () => { page = 1; cargarAuditoria(); });
+    document.getElementById('btnLimpiar').addEventListener('click', () => {
+        ['fModulo', 'fAccion', 'fFechaDesde', 'fFechaHasta'].forEach(id => document.getElementById(id).value = '');
+        page = 1;
+        cargarAuditoria();
+    });
+    document.getElementById('btnPaginaAnterior').addEventListener('click', () => { if (page > 1) { page--; cargarAuditoria(); } });
+    document.getElementById('btnPaginaSiguiente').addEventListener('click', () => { if (page < totalPages) { page++; cargarAuditoria(); } });
+
+    cargarAuditoria();
+</script>
+}

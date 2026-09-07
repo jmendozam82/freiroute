@@ -1,0 +1,316 @@
+@model Freiroute.DTO.Cliente.ClienteRequestDto
+@{
+    ViewData["Title"] = "Editar cliente";
+    ViewData["ActiveMenu"] = "clientes";
+    var ubicaciones = ViewData["Ubicaciones"] as IEnumerable<dynamic> ?? [];
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Clientes</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Editar cliente</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Editar cliente</h1>
+        <div class="fr-page-subtitle">@Model.Nombre</div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body">
+        <form asp-action="Edit" asp-route-id="@ViewContext.RouteData.Values["id"]" method="post" id="frClienteForm" novalidate>
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
+
+            <div class="form-section-title">Datos generales</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fr-form-label fr-form-required" for="inputNombre">Nombre o razón social</label>
+                    <input type="text" id="inputNombre" name="Nombre" value="@Model.Nombre" class="fr-form-control"
+                           data-val="true" data-val-required="El nombre es obligatorio"
+                           data-val-maxlength="Máximo 200 caracteres" data-val-maxlength-max="200" />
+                    <span class="fr-form-error" data-valmsg-for="Nombre"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="fr-form-label" for="inputNombreComercial">Nombre comercial</label>
+                    <input type="text" id="inputNombreComercial" name="NombreComercial" value="@Model.NombreComercial" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectTipoDocumento">Tipo de documento</label>
+                    <select id="selectTipoDocumento" name="TipoDocumento" class="fr-form-control">
+                        <option value="RUC" selected="@(Model.TipoDocumento == "RUC")">RUC</option>
+                        <option value="NIT" selected="@(Model.TipoDocumento == "NIT")">NIT</option>
+                        <option value="CEDULA" selected="@(Model.TipoDocumento == "CEDULA")">Cédula</option>
+                        <option value="PASAPORTE" selected="@(Model.TipoDocumento == "PASAPORTE")">Pasaporte</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputRucNit">N° documento</label>
+                    <input type="text" id="inputRucNit" name="RucNit" value="@Model.RucNit" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectTipoCliente">Tipo de cliente</label>
+                    <select id="selectTipoCliente" name="TipoCliente" class="fr-form-control">
+                        <option value="REGULAR" selected="@(Model.TipoCliente == "REGULAR")">Regular</option>
+                        <option value="VIP" selected="@(Model.TipoCliente == "VIP")">VIP</option>
+                        <option value="OCASIONAL" selected="@(Model.TipoCliente == "OCASIONAL")">Ocasional</option>
+                        <option value="CORPORATIVO" selected="@(Model.TipoCliente == "CORPORATIVO")">Corporativo</option>
+                        <option value="GOBIERNO" selected="@(Model.TipoCliente == "GOBIERNO")">Gobierno</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputIndustria">Industria</label>
+                    <input type="text" id="inputIndustria" name="Industria" value="@Model.Industria" class="fr-form-control" />
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Contacto principal</div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="fr-form-label" for="inputEmail">Email</label>
+                    <input type="email" id="inputEmail" name="Email" value="@Model.Email" class="fr-form-control"
+                           data-val-email="Ingrese un email válido" />
+                    <span class="fr-form-error" data-valmsg-for="Email"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputTelefono">Teléfono</label>
+                    <input type="text" id="inputTelefono" name="Telefono" value="@Model.Telefono" class="fr-form-control" />
+                </div>
+                <div class="col-md-5">
+                    <label class="fr-form-label" for="inputSitioWeb">Sitio web</label>
+                    <input type="text" id="inputSitioWeb" name="SitioWeb" value="@Model.SitioWeb" class="fr-form-control"
+                           data-val="true" data-val-url="Ingrese una URL válida" />
+                    <span class="fr-form-error" data-valmsg-for="SitioWeb"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Domicilio fiscal y despacho</div>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="fr-form-label" for="inputDireccionFiscal">Dirección fiscal</label>
+                    <input type="text" id="inputDireccionFiscal" name="DireccionFiscal" value="@Model.DireccionFiscal" class="fr-form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label" for="inputPais">País</label>
+                    <input type="text" id="inputPais" name="Pais" value="@Model.Pais" class="fr-form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="fr-form-label" for="inputDepartamento">Departamento</label>
+                    <input type="text" id="inputDepartamento" name="Departamento" value="@Model.Departamento" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputCiudad">Ciudad</label>
+                    <input type="text" id="inputCiudad" name="Ciudad" value="@Model.Ciudad" class="fr-form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="fr-form-label" for="selectUbicacionDefecto">Ubicación de despacho por defecto</label>
+                    <select id="selectUbicacionDefecto" name="UbicacionDefectoId" class="fr-form-control">
+                        <option value="">— Sin ubicación —</option>
+                        @foreach (var u in ubicaciones)
+                        {
+                            <option value="@u.Id" selected="@(Model.UbicacionDefectoId == u.Id)">@u.Nombre@(string.IsNullOrEmpty(u.Ciudad) ? "" : $" — {u.Ciudad}")</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Crédito y SLA</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputCreditoDias">Días de crédito (0 = contado)</label>
+                    <input type="number" id="inputCreditoDias" name="CreditoDias" value="@Model.CreditoDias" min="0" class="fr-form-control"
+                           data-val="true" data-val-number="Ingrese un número entero" data-val-range="Entre 0 y 365" data-val-range-min="0" data-val-range-max="365" />
+                    <span class="fr-form-error" data-valmsg-for="CreditoDias"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputLimiteCredito">Límite de crédito</label>
+                    <input type="number" id="inputLimiteCredito" name="LimiteCredito" value="@Model.LimiteCredito" min="0" step="any" class="fr-form-control"
+                           data-val="true" data-val-number="Ingrese un número válido" data-val-range="El límite no puede ser negativo" data-val-range-min="0" data-val-range-max="999999999" />
+                    <span class="fr-form-error" data-valmsg-for="LimiteCredito"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="selectMoneda">Moneda</label>
+                    <select id="selectMoneda" name="Moneda" class="fr-form-control">
+                        <option value="USD" selected="@(Model.Moneda == "USD")">USD — Dólar</option>
+                        <option value="NIO" selected="@(Model.Moneda == "NIO")">NIO — Córdoba</option>
+                        <option value="EUR" selected="@(Model.Moneda == "EUR")">EUR — Euro</option>
+                        <option value="GTQ" selected="@(Model.Moneda == "GTQ")">GTQ — Quetzal</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="fr-form-label" for="inputSlaDiasEntrega">SLA de entrega (días, opcional)</label>
+                    <input type="number" id="inputSlaDiasEntrega" name="SlaDiasEntrega" value="@Model.SlaDiasEntrega" min="1" class="fr-form-control"
+                           data-val="true" data-val-number="Ingrese un número entero" data-val-range="SLA mínimo 1 día" data-val-range-min="1" data-val-range-max="365" />
+                    <span class="fr-form-error" data-valmsg-for="SlaDiasEntrega"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4 d-flex justify-content-between align-items-center">
+                <span>Contactos adicionales</span>
+                <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnAgregarContacto">
+                    <i class="ti ti-plus"></i> Agregar contacto
+                </button>
+            </div>
+            <div id="contenedorContactos" class="d-flex flex-column gap-3">
+                @{
+                    var idx = 0;
+                }
+                @foreach (var c in Model.Contactos)
+                {
+                    var i = idx++;
+                    <div class="fr-card p-3 fila-contacto">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label class="fr-form-label fr-form-required">Nombre</label>
+                                <input type="text" name="Contactos[@i].Nombre" value="@c.Nombre"
+                                       class="fr-form-control inp-contacto-nombre"
+                                       data-val="true" data-val-required="El nombre del contacto es obligatorio" />
+                                <span class="fr-form-error" data-valmsg-for="Contactos[@i].Nombre"></span>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="fr-form-label">Cargo</label>
+                                <input type="text" name="Contactos[@i].Cargo" value="@c.Cargo" class="fr-form-control" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="fr-form-label">Rol</label>
+                                <select name="Contactos[@i].Rol" class="fr-form-control">
+                                    <option value="GENERAL" selected="@(c.Rol == "GENERAL")">General</option>
+                                    <option value="LOGISTICA" selected="@(c.Rol == "LOGISTICA")">Logística</option>
+                                    <option value="COMPRAS" selected="@(c.Rol == "COMPRAS")">Compras</option>
+                                    <option value="FINANZAS" selected="@(c.Rol == "FINANZAS")">Finanzas</option>
+                                    <option value="RECEPCION" selected="@(c.Rol == "RECEPCION")">Recepción</option>
+                                    <option value="GERENCIA" selected="@(c.Rol == "GERENCIA")">Gerencia</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="fr-form-label">Email</label>
+                                <input type="email" name="Contactos[@i].Email" value="@c.Email"
+                                       class="fr-form-control" data-val="true" data-val-email="Email inválido" />
+                                <span class="fr-form-error" data-valmsg-for="Contactos[@i].Email"></span>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="fr-form-label">Tel.</label>
+                                <input type="text" name="Contactos[@i].Telefono" value="@c.Telefono" class="fr-form-control" />
+                            </div>
+                            <div class="col-md-1 d-flex flex-column gap-2">
+                                <span class="fr-form-label"></span>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <label class="fr-form-label d-inline-flex align-items-center gap-1 mb-0">
+                                        <input type="checkbox" name="Contactos[@i].EsPrincipal" value="true" class="fr-check chk-principal" checked="@(c.EsPrincipal)" />
+                                        <span class="text-muted">Principal</span>
+                                    </label>
+                                    <button type="button" class="fr-btn fr-btn-danger fr-btn-sm btn-quitar-contacto" title="Quitar contacto" aria-label="Quitar contacto">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i> Guardar cambios
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frClienteForm');
+
+    // ── Contactos dinámicos (mismos índices que los del servidor) ─
+    let indiceContacto = @Model.Contactos.Count;
+
+    function plantillaContacto() {
+        const i = indiceContacto++;
+        return `
+            <div class="fr-card p-3 fila-contacto">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="fr-form-label fr-form-required">Nombre</label>
+                        <input type="text" name="Contactos[${i}].Nombre" class="fr-form-control inp-contacto-nombre"
+                               data-val="true" data-val-required="El nombre del contacto es obligatorio" />
+                        <span class="fr-form-error" data-valmsg-for="Contactos[${i}].Nombre"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="fr-form-label">Cargo</label>
+                        <input type="text" name="Contactos[${i}].Cargo" class="fr-form-control" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="fr-form-label">Rol</label>
+                        <select name="Contactos[${i}].Rol" class="fr-form-control">
+                            <option value="GENERAL">General</option>
+                            <option value="LOGISTICA">Logística</option>
+                            <option value="COMPRAS">Compras</option>
+                            <option value="FINANZAS">Finanzas</option>
+                            <option value="RECEPCION">Recepción</option>
+                            <option value="GERENCIA">Gerencia</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="fr-form-label">Email</label>
+                        <input type="email" name="Contactos[${i}].Email" class="fr-form-control"
+                               data-val="true" data-val-email="Email inválido" />
+                        <span class="fr-form-error" data-valmsg-for="Contactos[${i}].Email"></span>
+                    </div>
+                    <div class="col-md-1">
+                        <label class="fr-form-label">Tel.</label>
+                        <input type="text" name="Contactos[${i}].Telefono" class="fr-form-control" />
+                    </div>
+                    <div class="col-md-1 d-flex flex-column gap-2">
+                        <span class="fr-form-label"></span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <label class="fr-form-label d-inline-flex align-items-center gap-1 mb-0">
+                                <input type="checkbox" name="Contactos[${i}].EsPrincipal" value="true" class="fr-check chk-principal" />
+                                <span class="text-muted">Principal</span>
+                            </label>
+                            <button type="button" class="fr-btn fr-btn-danger fr-btn-sm btn-quitar-contacto" title="Quitar contacto" aria-label="Quitar contacto">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    document.getElementById('btnAgregarContacto').addEventListener('click', () => {
+        const cont = document.getElementById('contenedorContactos');
+        cont.insertAdjacentHTML('beforeend', plantillaContacto());
+        $.validator.unobtrusive.parse('#frClienteForm');
+        cont.lastElementChild.querySelector('.inp-contacto-nombre')?.focus();
+    });
+
+    document.getElementById('contenedorContactos').addEventListener('click', e => {
+        const btn = e.target.closest('.btn-quitar-contacto');
+        if (!btn) return;
+        btn.closest('.fila-contacto').remove();
+    });
+
+    // Solo un contacto principal
+    document.getElementById('contenedorContactos').addEventListener('change', e => {
+        if (!e.target.classList.contains('chk-principal')) return;
+        if (e.target.checked) {
+            document.querySelectorAll('.chk-principal').forEach(c => {
+                if (c !== e.target) c.checked = false;
+            });
+        }
+    });
+
+    // Re-indexar Contactos[i] de forma contigua antes de enviar
+    document.getElementById('frClienteForm').addEventListener('submit', function () {
+        const filas = this.querySelectorAll('.fila-contacto');
+        filas.forEach((fila, i) => {
+            fila.querySelectorAll('[name^="Contactos["]').forEach(inp => {
+                inp.setAttribute('name', inp.getAttribute('name').replace(/Contactos\[\d+\]/, `Contactos[${i}]`));
+            });
+        });
+    });
+</script>
+}

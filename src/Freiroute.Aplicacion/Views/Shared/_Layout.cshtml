@@ -118,6 +118,53 @@ else
                         </a>
                     }
 
+                    @if (User.HasAnyPermission("configuracion", "clientes"))
+                    {
+                        <div class="fr-sidebar-group">Catálogos</div>
+                    }
+
+                    @if (User.HasPermission("configuracion", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "ubicaciones" ? "active" : "")">
+                            <i class="ti ti-map-pins fr-icon"></i>
+                            <span>Ubicaciones</span>
+                        </a>
+                        <a asp-area="Tenant" asp-controller="Zonas" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "zonas" ? "active" : "")">
+                            <i class="ti ti-map-2 fr-icon"></i>
+                            <span>Zonas</span>
+                        </a>
+                        <a asp-area="Tenant" asp-controller="Mercancia" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "mercancia" ? "active" : "")">
+                            <i class="ti ti-box fr-icon"></i>
+                            <span>Mercancías</span>
+                        </a>
+                        <a asp-area="Tenant" asp-controller="Unidades" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "unidades" ? "active" : "")">
+                            <i class="ti ti-ruler-2 fr-icon"></i>
+                            <span>Unidades</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("clientes", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Clientes" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "clientes" ? "active" : "")">
+                            <i class="ti ti-building-store fr-icon"></i>
+                            <span>Clientes</span>
+                        </a>
+                    }
+
+                    @if (User.HasPermission("configuracion", "READ"))
+                    {
+                        <a asp-area="Tenant" asp-controller="Tarifas" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "tarifas" ? "active" : "")">
+                            <i class="ti ti-cash-banknote fr-icon"></i>
+                            <span>Tarifas</span>
+                        </a>
+                    }
+
                     @if (User.EsSuperAdmin() || User.EsAdminTenant())
                     {
                         <div class="fr-sidebar-group">Administración</div>
@@ -135,6 +182,11 @@ else
                            class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
                             <i class="ti ti-settings fr-icon"></i>
                             <span>Configuración</span>
+                        </a>
+                        <a asp-area="Admin" asp-controller="Auditoria" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "auditoria" ? "active" : "")">
+                            <i class="ti ti-clipboard-data fr-icon"></i>
+                            <span>Auditoría</span>
                         </a>
                     }
 

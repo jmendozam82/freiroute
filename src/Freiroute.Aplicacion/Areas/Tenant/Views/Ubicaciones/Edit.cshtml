@@ -1,0 +1,193 @@
+@model Freiroute.DTO.Ubicacion.UbicacionRequestDto
+@{
+    ViewData["Title"] = "Editar ubicación";
+    ViewData["ActiveMenu"] = "ubicaciones";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Ubicaciones</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Editar ubicación</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Editar ubicación</h1>
+        <div class="fr-page-subtitle">Si la dirección cambia, el sistema re-geocodifica automáticamente</div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body">
+        <form asp-action="Edit" asp-route-id="@ViewContext.RouteData.Values["id"]" method="post" id="frUbicacionForm" novalidate>
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
+
+            <div class="form-section-title">Identificación</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Nombre" class="fr-form-control" placeholder="Ej: Bodega Central Managua"
+                           data-val="true" data-val-required="El nombre es obligatorio" data-val-maxlength="Máximo 200 caracteres" data-val-maxlength-max="200" />
+                    <span asp-validation-for="Nombre" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Codigo" class="fr-form-label"></label>
+                    <input asp-for="Codigo" class="fr-form-control" placeholder="Ej: BOD-MGA-01" />
+                    <span class="fr-form-hint">Único por empresa</span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Tipo" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="Tipo" class="fr-form-control" data-val="true" data-val-required="Seleccione un tipo">
+                        <option value="ALMACEN">Almacén</option>
+                        <option value="CLIENTE">Cliente</option>
+                        <option value="PUERTO">Puerto</option>
+                        <option value="AEROPUERTO">Aeropuerto</option>
+                        <option value="TERMINAL">Terminal</option>
+                        <option value="CRUCE_FRONTERA">Cruce fronterizo</option>
+                        <option value="PUNTO_RECARGA">Punto de recarga</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                    <span asp-validation-for="Tipo" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Dirección</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Direccion" class="fr-form-label"></label>
+                    <input asp-for="Direccion" class="fr-form-control" placeholder="Calle, número, referencia..." />
+                    <span class="fr-form-hint">Se re-geocodifica automáticamente al guardar</span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Instrucciones" class="fr-form-label"></label>
+                    <input asp-for="Instrucciones" class="fr-form-control" placeholder="Instrucciones de acceso o manejo" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Pais" class="fr-form-label"></label>
+                    <input asp-for="Pais" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Departamento" class="fr-form-label"></label>
+                    <input asp-for="Departamento" class="fr-form-control" placeholder="Ej: Managua" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Ciudad" class="fr-form-label"></label>
+                    <input asp-for="Ciudad" class="fr-form-control" placeholder="Ej: Managua" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="CodigoPostal" class="fr-form-label"></label>
+                    <input asp-for="CodigoPostal" class="fr-form-control" placeholder="Opcional" />
+                    <span class="fr-form-hint">No disponible en edición — reintroducir si aplica</span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Contacto en sitio</div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="ContactoNombre" class="fr-form-label"></label>
+                    <input asp-for="ContactoNombre" class="fr-form-control" placeholder="Nombre de la persona de contacto" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ContactoTelefono" class="fr-form-label"></label>
+                    <input asp-for="ContactoTelefono" class="fr-form-control" placeholder="+505 0000 0000" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ContactoEmail" class="fr-form-label"></label>
+                    <input asp-for="ContactoEmail" type="email" class="fr-form-control" placeholder="contacto@empresa.com"
+                           data-val-email="Ingrese un email válido" />
+                    <span asp-validation-for="ContactoEmail" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Operación</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="HorarioApertura" class="fr-form-label"></label>
+                    <input type="time" name="HorarioApertura" value="@Model.HorarioApertura" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="HorarioCierre" class="fr-form-label"></label>
+                    <input type="time" name="HorarioCierre" value="@Model.HorarioCierre" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="TiempoServicioMin" class="fr-form-label"></label>
+                    <input asp-for="TiempoServicioMin" type="number" min="0" step="5" class="fr-form-control"
+                           data-val="true" data-val-range="Entre 0 y 1440 minutos" data-val-range-min="0" data-val-range-max="1440" />
+                    <span asp-validation-for="TiempoServicioMin" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Coordenadas (ajuste manual del pin)</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Latitud" class="fr-form-label"></label>
+                    <input asp-for="Latitud" type="number" step="any" id="inputLatitud" class="fr-form-control" placeholder="12.87"
+                           data-val="true" data-val-range="La latitud debe estar entre -90 y 90" data-val-range-min="-90" data-val-range-max="90" />
+                    <span asp-validation-for="Latitud" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Longitud" class="fr-form-label"></label>
+                    <input asp-for="Longitud" type="number" step="any" id="inputLongitud" class="fr-form-control" placeholder="-85.21"
+                           data-val="true" data-val-range="La longitud debe estar entre -180 y 180" data-val-range-min="-180" data-val-range-max="180" />
+                    <span asp-validation-for="Longitud" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <span class="fr-form-hint">Arrastre el pin en el mapa para ajustar la posición (HU-015 CA-05).</span>
+                </div>
+                <div class="col-12">
+                    <div id="mapaPin" class="fr-map" aria-label="Mapa para ajustar el pin de la ubicación"></div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i> Guardar cambios
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+}
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frUbicacionForm');
+
+    // ── Mapa con pin arrastrable (CA-05) ───────────────────────
+    (function () {
+        const inputLat = document.getElementById('inputLatitud');
+        const inputLng = document.getElementById('inputLongitud');
+        const latInicial = parseFloat(inputLat.value) || 12.87;
+        const lngInicial = parseFloat(inputLng.value) || -85.21;
+
+        const mapa = L.map('mapaPin').setView([latInicial, lngInicial], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 19
+        }).addTo(mapa);
+
+        const marker = L.marker([latInicial, lngInicial], { draggable: true }).addTo(mapa);
+
+        function syncInputs(lat, lng) {
+            inputLat.value = lat.toFixed(6);
+            inputLng.value = lng.toFixed(6);
+        }
+
+        marker.on('dragend', e => {
+            const p = e.target.getLatLng();
+            syncInputs(p.lat, p.lng);
+        });
+
+        mapa.on('click', e => {
+            marker.setLatLng(e.latlng);
+            syncInputs(e.latlng.lat, e.latlng.lng);
+        });
+    })();
+</script>
+}

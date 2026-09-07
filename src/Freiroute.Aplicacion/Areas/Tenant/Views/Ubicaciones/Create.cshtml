@@ -1,0 +1,153 @@
+@model Freiroute.DTO.Ubicacion.UbicacionRequestDto
+@{
+    ViewData["Title"] = "Nueva ubicación";
+    ViewData["ActiveMenu"] = "ubicaciones";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Ubicaciones</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Nueva ubicación</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Nueva ubicación</h1>
+        <div class="fr-page-subtitle">Al guardar con dirección, el sistema geocodifica automáticamente (ADR-014)</div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body">
+        <form asp-action="Create" method="post" id="frUbicacionForm" novalidate>
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
+
+            <div class="form-section-title">Identificación</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Nombre" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Nombre" class="fr-form-control" placeholder="Ej: Bodega Central Managua"
+                           data-val="true" data-val-required="El nombre es obligatorio" data-val-maxlength="Máximo 200 caracteres" data-val-maxlength-max="200" />
+                    <span asp-validation-for="Nombre" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Codigo" class="fr-form-label"></label>
+                    <input asp-for="Codigo" class="fr-form-control" placeholder="Ej: BOD-MGA-01" />
+                    <span class="fr-form-hint">Único por empresa</span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Tipo" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="Tipo" class="fr-form-control" data-val="true" data-val-required="Seleccione un tipo">
+                        <option value="ALMACEN">Almacén</option>
+                        <option value="CLIENTE">Cliente</option>
+                        <option value="PUERTO">Puerto</option>
+                        <option value="AEROPUERTO">Aeropuerto</option>
+                        <option value="TERMINAL">Terminal</option>
+                        <option value="CRUCE_FRONTERA">Cruce fronterizo</option>
+                        <option value="PUNTO_RECARGA">Punto de recarga</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                    <span asp-validation-for="Tipo" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Dirección</div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Direccion" class="fr-form-label"></label>
+                    <input asp-for="Direccion" class="fr-form-control" placeholder="Calle, número, referencia..." />
+                    <span class="fr-form-hint">Se geocodifica automáticamente</span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Instrucciones" class="fr-form-label"></label>
+                    <input asp-for="Instrucciones" class="fr-form-control" placeholder="Instrucciones de acceso o manejo" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Pais" class="fr-form-label"></label>
+                    <input asp-for="Pais" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Departamento" class="fr-form-label"></label>
+                    <input asp-for="Departamento" class="fr-form-control" placeholder="Ej: Managua" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Ciudad" class="fr-form-label"></label>
+                    <input asp-for="Ciudad" class="fr-form-control" placeholder="Ej: Managua" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="CodigoPostal" class="fr-form-label"></label>
+                    <input asp-for="CodigoPostal" class="fr-form-control" placeholder="Opcional" />
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Contacto en sitio</div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="ContactoNombre" class="fr-form-label"></label>
+                    <input asp-for="ContactoNombre" class="fr-form-control" placeholder="Nombre de la persona de contacto" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ContactoTelefono" class="fr-form-label"></label>
+                    <input asp-for="ContactoTelefono" class="fr-form-control" placeholder="+505 0000 0000" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ContactoEmail" class="fr-form-label"></label>
+                    <input asp-for="ContactoEmail" type="email" class="fr-form-control" placeholder="contacto@empresa.com"
+                           data-val-email="Ingrese un email válido" />
+                    <span asp-validation-for="ContactoEmail" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Operación</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="HorarioApertura" class="fr-form-label"></label>
+                    <input type="time" name="HorarioApertura" value="@Model.HorarioApertura" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="HorarioCierre" class="fr-form-label"></label>
+                    <input type="time" name="HorarioCierre" value="@Model.HorarioCierre" class="fr-form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="TiempoServicioMin" class="fr-form-label"></label>
+                    <input asp-for="TiempoServicioMin" type="number" min="0" step="5" class="fr-form-control"
+                           data-val="true" data-val-range="Entre 0 y 1440 minutos" data-val-range-min="0" data-val-range-max="1440" />
+                    <span asp-validation-for="TiempoServicioMin" class="fr-form-error"></span>
+                </div>
+            </div>
+
+            <div class="form-section-title mt-4">Coordenadas manuales (opcional)</div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Latitud" class="fr-form-label"></label>
+                    <input asp-for="Latitud" type="number" step="any" class="fr-form-control" placeholder="12.87"
+                           data-val="true" data-val-range="La latitud debe estar entre -90 y 90" data-val-range-min="-90" data-val-range-max="90" />
+                    <span asp-validation-for="Latitud" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Longitud" class="fr-form-label"></label>
+                    <input asp-for="Longitud" type="number" step="any" class="fr-form-control" placeholder="-85.21"
+                           data-val="true" data-val-range="La longitud debe estar entre -180 y 180" data-val-range-min="-180" data-val-range-max="180" />
+                    <span asp-validation-for="Longitud" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <span class="fr-form-hint">Si se omite, el sistema geocodifica la dirección.</span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i> Guardar
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frUbicacionForm');
+</script>
+}

@@ -1,0 +1,263 @@
+@{
+    ViewData["Title"] = "Unidades y embalajes";
+    ViewData["ActiveMenu"] = "unidades";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Catálogos</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Unidades y embalajes</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Unidades de medida y embalajes</h1>
+        <div class="fr-page-subtitle">El conversor valida que ambas unidades pertenezcan al mismo tipo (HU-018 CA-05)</div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs fr-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-unidades-tab" data-bs-toggle="tab" data-bs-target="#tab-unidades"
+                type="button" role="tab" aria-controls="tab-unidades" aria-selected="true">
+            <i class="ti ti-ruler-2"></i> Unidades de medida
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-embalajes-tab" data-bs-toggle="tab" data-bs-target="#tab-embalajes"
+                type="button" role="tab" aria-controls="tab-embalajes" aria-selected="false">
+            <i class="ti ti-box"></i> Tipos de embalaje
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- ── Unidades de medida ─────────────────────────────────── -->
+    <div class="tab-pane fade show active" id="tab-unidades" role="tabpanel" aria-labelledby="tab-unidades-tab">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <select id="filtroTipoUnidad" class="fr-form-control w-auto" aria-label="Filtrar por tipo de unidad">
+                <option value="">Todos los tipos</option>
+                <option value="PESO">Peso</option>
+                <option value="VOLUMEN">Volumen</option>
+                <option value="LONGITUD">Longitud</option>
+                <option value="TEMPERATURA">Temperatura</option>
+            </select>
+            <span class="fr-form-hint">Modificadas por Supabase Studio / Admin (user id en tabla unidades_medida)</span>
+        </div>
+        <div class="fr-card">
+            <div class="fr-card-body p-0">
+                <div class="fr-table-responsive">
+                    <table class="fr-table">
+                        <thead>
+                            <tr>
+                                <th>Unidad</th>
+                                <th>Símbolo</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Factor</th>
+                                <th>Base</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaUnidades">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="fr-empty">
+                                        <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                        <div class="fr-empty-title">Cargando unidades...</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="fr-card mt-4">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Simulador de conversión (CA-05)</div>
+            </div>
+            <div class="fr-card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-2">
+                        <label for="inputValorConvertir" class="fr-form-label fr-form-required">Valor</label>
+                        <input type="number" id="inputValorConvertir" step="any" class="fr-form-control" value="1"
+                               data-val="true" data-val-required="Ingrese un valor" data-val-number="Ingrese un número válido" />
+                    </div>
+                    <div class="col-md-4">
+                        <label for="selectDesde" class="fr-form-label fr-form-required">Desde</label>
+                        <select id="selectDesde" class="fr-form-control" data-val="true" data-val-required="Seleccione una unidad"></select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="selectHacia" class="fr-form-label fr-form-required">Hacia</label>
+                        <select id="selectHacia" class="fr-form-control" data-val="true" data-val-required="Seleccione una unidad"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="fr-btn fr-btn-primary w-100" id="btnConvertir">
+                            <i class="ti ti-arrows-exchange-2"></i> Convertir
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3 d-none" id="bloqueResultado">
+                    <div class="fr-card p-3 d-flex align-items-center justify-content-between">
+                        <span>
+                            <span id="resultadoValor"></span>
+                            <span id="resultadoDesde"></span> =
+                            <strong id="resultadoConversion"></strong>
+                            <span id="resultadoHacia"></span>
+                        </span>
+                        <span class="fr-form-hint">Conversión validada por la BLL (mismo tipo obligatorio)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Tipos de embalaje ──────────────────────────────────── -->
+    <div class="tab-pane fade" id="tab-embalajes" role="tabpanel" aria-labelledby="tab-embalajes-tab">
+        <div class="fr-card">
+            <div class="fr-card-body p-0">
+                <div class="fr-table-responsive">
+                    <table class="fr-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Embalaje</th>
+                                <th class="text-end">Cap. kg</th>
+                                <th class="text-end">Cap. m³</th>
+                                <th>Apilable</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaEmbalajes">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="fr-empty">
+                                        <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                        <div class="fr-empty-title">Cargando embalajes...</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let unidades = [];
+
+    // ── Unidades ────────────────────────────────────────────────
+    async function cargarUnidades(tipo = '') {
+        const query = tipo ? `?tipo=${encodeURIComponent(tipo)}` : '';
+        const resp = await FrApi.get('/api/unidades-medida' + query);
+        if (!resp || !resp.success) return;
+        unidades = resp.data || [];
+        pintarUnidades();
+        poblarConvertidor();
+    }
+
+    function pintarUnidades() {
+        const tbody = document.getElementById('tablaUnidades');
+        if (!unidades.length) {
+            tbody.innerHTML = `<tr><td colspan="7"><div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-ruler-2"></i></div>
+                <div class="fr-empty-title">No hay unidades para este tipo</div></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = unidades.map(u => `
+            <tr>
+                <td class="fw-semibold">${u.nombre}</td>
+                <td><span class="fr-id-code">${u.simbolo}</span></td>
+                <td>${u.tipoLabel || u.tipo}</td>
+                <td class="text-end">${u.factorConversion}</td>
+                <td><span class="fr-id-code">${u.unidadBase}</span></td>
+                <td><span class="fr-badge ${FrBadge.claseActivo(u.activo)}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                <td class="text-end">
+                    <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                            data-fr-deactivate="/api/unidades-medida/${u.id}/deactivate"
+                            data-fr-nombre="${u.nombre}" title="Desactivar"
+                            aria-label="Desactivar ${u.nombre}">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+    }
+
+    function poblarConvertidor() {
+        const activas = unidades.filter(u => u.activo);
+        const opts = activas.map(u => `<option value="${u.simbolo}">${u.nombre} (${u.simbolo})</option>`).join('');
+        const desde = document.getElementById('selectDesde');
+        const hacia = document.getElementById('selectHacia');
+        desde.innerHTML = opts;
+        hacia.innerHTML = opts;
+        if (opts) {
+            hacia.value = desde.querySelectorAll('option')[1]?.value || desde.value;
+        }
+    }
+
+    document.getElementById('filtroTipoUnidad').addEventListener('change', e =>
+        cargarUnidades(e.target.value));
+
+    document.getElementById('btnConvertir').addEventListener('click', async () => {
+        const valor = document.getElementById('inputValorConvertir').value;
+        const desde = document.getElementById('selectDesde').value;
+        const hacia = document.getElementById('selectHacia').value;
+        if (!valor || !desde || !hacia) {
+            FrToast.error('Complete valor, unidad desde y unidad hacia');
+            return;
+        }
+        const resp = await FrApi.get(
+            `/api/unidades-medida/convertir?valor=${encodeURIComponent(valor)}&desde=${encodeURIComponent(desde)}&hacia=${encodeURIComponent(hacia)}`);
+        FrApi.handleResponse(resp, () => {
+            document.getElementById('resultadoValor').textContent = valor;
+            document.getElementById('resultadoDesde').textContent = desde;
+            document.getElementById('resultadoConversion').textContent = resp.data;
+            document.getElementById('resultadoHacia').textContent = hacia;
+            document.getElementById('bloqueResultado').classList.remove('d-none');
+        });
+    });
+
+    // ── Embalajes ───────────────────────────────────────────────
+    async function cargarEmbalajes() {
+        const resp = await FrApi.get('/api/tipos-embalaje');
+        if (!resp || !resp.success) return;
+        const embalajes = resp.data || [];
+        const tbody = document.getElementById('tablaEmbalajes');
+        if (!embalajes.length) {
+            tbody.innerHTML = `<tr><td colspan="6"><div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-box"></i></div>
+                <div class="fr-empty-title">No hay embalajes registrados</div></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = embalajes.map(e => `
+            <tr>
+                <td><span class="fr-id-code">${e.codigo}</span></td>
+                <td>
+                    <div class="fw-semibold">${e.nombre}</div>
+                    ${e.descripcion ? `<div class="text-muted">${e.descripcion}</div>` : ''}
+                </td>
+                <td class="text-end">${e.capacidadKg ?? '—'}</td>
+                <td class="text-end">${e.capacidadM3 ?? '—'}</td>
+                <td>${e.apilable
+                    ? '<span class="fr-badge fr-badge-success">Apilable</span>'
+                    : '<span class="fr-badge fr-badge-neutral">No apilable</span>'}</td>
+                <td class="text-end">
+                    <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                            data-fr-deactivate="/api/tipos-embalaje/${e.id}/deactivate"
+                            data-fr-nombre="${e.nombre}" title="Desactivar"
+                            aria-label="Desactivar ${e.nombre}">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+    }
+
+    cargarUnidades();
+    cargarEmbalajes();
+</script>
+}

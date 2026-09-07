@@ -1,0 +1,197 @@
+@{
+    ViewData["Title"] = "Tarifas base";
+    ViewData["ActiveMenu"] = "tarifas";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Catálogos</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Tarifas base</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Tarifas base</h1>
+        <div class="fr-page-subtitle">Precios por zona, modo y servicio con recargos (ADR-015). Al actualizar se cierra la vigencia anterior</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <a asp-action="Simulador" class="fr-btn fr-btn-ghost">
+            <i class="ti ti-calculator"></i> Simular costo
+        </a>
+        <a asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nueva tarifa
+        </a>
+    </div>
+</div>
+
+<div class="fr-card mb-3">
+    <div class="fr-card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="fr-form-label" for="fModo">Modo de transporte</label>
+                <select id="fModo" class="fr-form-control">
+                    <option value="">Todos los modos</option>
+                    <option value="FTL">FTL — Camión completo</option>
+                    <option value="LTL">LTL — Carga parcial</option>
+                    <option value="AEREO">Aéreo</option>
+                    <option value="MARITIMO">Marítimo</option>
+                    <option value="FERROVIARIO">Ferroviario</option>
+                    <option value="INTERMODAL">Intermodal</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label" for="fZonaOrigen">Zona de origen</label>
+                <select id="fZonaOrigen" class="fr-form-control">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label" for="fZonaDestino">Zona de destino</label>
+                <select id="fZonaDestino" class="fr-form-control">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="chkSoloVigentes" checked />
+                    <label class="form-check-label text-muted" for="chkSoloVigentes">Solo vigentes</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body p-0">
+        <div class="fr-table-responsive">
+            <table class="fr-table">
+                <thead>
+                    <tr>
+                        <th>Tarifa</th>
+                        <th>Ruta</th>
+                        <th>Modo</th>
+                        <th>Servicio</th>
+                        <th>Cálculo</th>
+                        <th class="text-end">Precio</th>
+                        <th>Vigencia</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaTarifas">
+                    <tr>
+                        <td colspan="8">
+                            <div class="fr-empty">
+                                <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                <div class="fr-empty-title">Cargando tarifas...</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="fr-pagination">
+            <span class="fr-pagination-info" id="infoTarifas"></span>
+            <div class="d-flex gap-2">
+                <button type="button" class="fr-page-btn" id="btnPaginaAnterior" disabled>Anterior</button>
+                <button type="button" class="fr-page-btn" id="btnPaginaSiguiente" disabled>Siguiente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const LABEL_SERVICIO = { 'ESTANDAR': 'Estándar', 'EXPRESS': 'Express', 'PROGRAMADO': 'Programado', 'REFRIGERADO': 'Refrigerado', 'PELIGROSO': 'Peligroso' };
+    const LABEL_TIPO_TARIFA = { 'POR_KG': '/kg', 'POR_M3': '/m³', 'POR_KM': '/km', 'FIJO_VIAJE': 'Por viaje', 'POR_UNIDAD': '/unidad' };
+
+    let page = 1, totalPages = 1, totalItems = 0;
+
+    async function cargarZonasFiltros() {
+        const resp = await FrApi.get('/api/zonas-entrega');
+        if (!resp || !resp.success) return;
+        const zonas = resp.data || [];
+        ['fZonaOrigen', 'fZonaDestino'].forEach(id => {
+            const sel = document.getElementById(id);
+            sel.innerHTML = '<option value="">Todas</option>' +
+                zonas.map(z => `<option value="${z.id}">${z.nombre}</option>`).join('');
+        });
+    }
+
+    async function cargarTarifas() {
+        const params = new URLSearchParams();
+        if (document.getElementById('fModo').value) params.set('modo', document.getElementById('fModo').value);
+        if (document.getElementById('fZonaOrigen').value) params.set('zonaOrigenId', document.getElementById('fZonaOrigen').value);
+        if (document.getElementById('fZonaDestino').value) params.set('zonaDestinoId', document.getElementById('fZonaDestino').value);
+        if (document.getElementById('chkSoloVigentes').checked) params.set('soloVigentes', 'true');
+        params.set('page', page);
+        params.set('pageSize', '20');
+
+        const resp = await FrApi.get('/api/tarifas-base?' + params.toString());
+        if (!resp || !resp.success) return;
+        const data = resp.data;
+        totalItems = data.totalItems;
+        totalPages = data.totalPages;
+        pintarTarifas(data.items || []);
+    }
+
+    function badgeVigencia(t) {
+        if (t.esVencida) return '<span class="fr-badge fr-badge-neutral">Vencida</span>';
+        if (t.esVigente) return '<span class="fr-badge fr-badge-success">Vigente</span>';
+        return '<span class="fr-badge fr-badge-warning">Programada</span>';
+    }
+
+    function pintarTarifas(items) {
+        document.getElementById('infoTarifas').textContent =
+            totalItems ? `Mostrando ${items.length} de ${totalItems} tarifas` : '';
+        document.getElementById('btnPaginaAnterior').disabled = page <= 1;
+        document.getElementById('btnPaginaSiguiente').disabled = page >= totalPages;
+
+        const tbody = document.getElementById('tablaTarifas');
+        if (!items.length) {
+            tbody.innerHTML = `<tr><td colspan="8"><div class="fr-empty">
+                <div class="fr-empty-icon"><i class="ti ti-cash-banknote"></i></div>
+                <div class="fr-empty-title">No hay tarifas para los filtros</div>
+                <div class="fr-empty-text">Cree una tarifa base o pruebe el simulador de costo.</div></div></td></tr>`;
+            return;
+        }
+        tbody.innerHTML = items.map(t => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${t.nombre}</div>
+                    ${t.codigo ? `<span class="fr-id-code">${t.codigo}</span>` : ''}
+                </td>
+                <td>${t.zonaOrigenNombre || '—'} → ${t.zonaDestinoNombre || '—'}</td>
+                <td><span class="fr-id-code">${t.modoTransporte}</span></td>
+                <td>${LABEL_SERVICIO[t.tipoServicio] || t.tipoServicio}</td>
+                <td>${LABEL_TIPO_TARIFA[t.tipoTarifa] || t.tipoTarifa}
+                    ${t.recargos && t.recargos.length
+                        ? `<div class="text-muted mt-1">+${t.recargos.length} recargo(s)</div>`
+                        : ''}
+                </td>
+                <td class="text-end">
+                    <strong>${t.moneda} ${t.precioUnitario.toLocaleString('es')}</strong>
+                    ${t.precioMinimo ? `<div class="text-muted">mín ${t.moneda} ${t.precioMinimo.toLocaleString('es')}</div>` : ''}
+                </td>
+                <td>${badgeVigencia(t)}</td>
+                <td class="text-end">
+                    <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                            data-fr-deactivate="/api/tarifas-base/${t.id}/deactivate"
+                            data-fr-nombre="${t.nombre}" title="Desactivar (cierra vigencia)"
+                            aria-label="Desactivar ${t.nombre}">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+    }
+
+    document.getElementById('btnPaginaAnterior').addEventListener('click', () => { if (page > 1) { page--; cargarTarifas(); } });
+    document.getElementById('btnPaginaSiguiente').addEventListener('click', () => { if (page < totalPages) { page++; cargarTarifas(); } });
+
+    ['fModo', 'fZonaOrigen', 'fZonaDestino'].forEach(id =>
+        document.getElementById(id).addEventListener('change', () => { page = 1; cargarTarifas(); }));
+    document.getElementById('chkSoloVigentes').addEventListener('change', () => { page = 1; cargarTarifas(); });
+
+    cargarZonasFiltros();
+    cargarTarifas();
+</script>
+}

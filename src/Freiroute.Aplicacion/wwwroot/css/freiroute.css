@@ -307,6 +307,11 @@ body {
 .fr-kpi-delta.up   { color: var(--fr-success); }
 .fr-kpi-delta.down { color: var(--fr-danger); }
 
+/* ── Utilidades de color de texto (Design System Freiroute) ─── */
+.text-fr-blue { color: var(--fr-action-blue); }
+.text-fr-cyan { color: var(--fr-cyan-accent); }
+.text-fr-navy { color: var(--fr-navy-primary); }
+
 /* ── Tablas ───────────────────────────────────────────────── */
 .fr-table-wrapper {
   background: var(--fr-surface-card);
@@ -1339,4 +1344,16 @@ body {
 
 .fr-fila-activa:hover td {
   background: #d8e9ff;
+}
+
+/* ── Mapa Leaflet (HU-015 / HU-016, ADR-014) ─────────────────── */
+.fr-map {
+  height: 450px;
+  border-radius: var(--fr-radius-md);
+  border: 1px solid var(--fr-border);
+  z-index: 0;
+}
+
+@media (max-width: 768px) {
+  .fr-map { height: 350px; min-height: 350px; }
 }

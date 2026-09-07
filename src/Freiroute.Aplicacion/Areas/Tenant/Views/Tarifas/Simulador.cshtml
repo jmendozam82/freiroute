@@ -1,0 +1,253 @@
+@{
+    ViewData["Title"] = "Simulador de costo de flete";
+    ViewData["ActiveMenu"] = "tarifas";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Tarifas base</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Simulador de costo</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Simulador de costo de flete</h1>
+        <div class="fr-page-subtitle">Estima el costo con la tarifa vigente y sus recargos (HU-020 CA-04, ADR-015)</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Parámetros del flete</div>
+            </div>
+            <div class="fr-card-body">
+                <form id="frSimuladorForm" novalidate>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="fr-form-label fr-form-required" for="selectZonaOrigen">Zona de origen</label>
+                            <select id="selectZonaOrigen" class="fr-form-control"
+                                    data-val="true" data-val-required="Seleccione la zona de origen"></select>
+                            <span class="fr-form-error" data-valmsg-for="ZonaOrigenId"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fr-form-label fr-form-required" for="selectZonaDestino">Zona de destino</label>
+                            <select id="selectZonaDestino" class="fr-form-control"
+                                    data-val="true" data-val-required="Seleccione la zona de destino"></select>
+                            <span class="fr-form-error" data-valmsg-for="ZonaDestinoId"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fr-form-label" for="selectModo">Modo de transporte</label>
+                            <select id="selectModo" class="fr-form-control">
+                                <option value="FTL">FTL — Camión completo</option>
+                                <option value="LTL">LTL — Carga parcial</option>
+                                <option value="AEREO">Aéreo</option>
+                                <option value="MARITIMO">Marítimo</option>
+                                <option value="FERROVIARIO">Ferroviario</option>
+                                <option value="INTERMODAL">Intermodal</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fr-form-label" for="selectServicio">Tipo de servicio</label>
+                            <select id="selectServicio" class="fr-form-control">
+                                <option value="ESTANDAR">Estándar</option>
+                                <option value="EXPRESS">Express</option>
+                                <option value="PROGRAMADO">Programado</option>
+                                <option value="REFRIGERADO">Refrigerado</option>
+                                <option value="PELIGROSO">Peligroso</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="fr-form-label" for="inputPesoKg">Peso (kg)</label>
+                            <input type="number" id="inputPesoKg" min="0" step="any" class="fr-form-control" value="0" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="fr-form-label" for="inputVolumenM3">Volumen (m³)</label>
+                            <input type="number" id="inputVolumenM3" min="0" step="any" class="fr-form-control" value="0" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="fr-form-label" for="inputDistanciaKm">Distancia (km)</label>
+                            <input type="number" id="inputDistanciaKm" min="0" step="any" class="fr-form-control" value="0" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fr-form-label" for="inputValorDeclarado">Valor declarado (aplica seguro)</label>
+                            <input type="number" id="inputValorDeclarado" min="0" step="any" class="fr-form-control" value="0" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fr-form-label fr-form-required" for="inputFechaPickup">Fecha de pickup</label>
+                            <input type="date" id="inputFechaPickup" class="fr-form-control"
+                                   data-val="true" data-val-required="La fecha de pickup es obligatoria" />
+                            <span class="fr-form-error" data-valmsg-for="FechaPickup"></span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-top">
+                        <button type="submit" class="fr-btn fr-btn-primary" id="btnSimular">
+                            <i class="ti ti-calculator"></i> Simular costo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Resultado de la simulación</div>
+            </div>
+            <div class="fr-card-body">
+                <div id="bloqueResultado" class="d-none">
+                    <div class="d-none" id="alertaSinTarifa"></div>
+                    <div class="d-none" id="alertaAdvertencia"></div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="fr-form-hint">Tarifa aplicada</div>
+                            <div class="fw-semibold" id="tarifaNombre">—</div>
+                        </div>
+                        <span class="fr-badge fr-badge-success" id="tarifaTipo"></span>
+                    </div>
+
+                    <div class="fr-table-responsive">
+                        <table class="fr-table">
+                            <thead>
+                                <tr>
+                                    <th>Concepto</th>
+                                    <th class="text-end">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Costo base</td>
+                                    <td class="text-end" id="rowCostoBase">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="recargosTabla" class="mt-3"></div>
+
+                    <div class="fr-card p-3 mt-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">Costo total estimado</span>
+                        <strong class="fs-4 text-fr-blue" id="costoTotal">—</strong>
+                    </div>
+                </div>
+
+                <div class="fr-empty d-none" id="bloqueVacio">
+                    <div class="fr-empty-icon"><i class="ti ti-calculator"></i></div>
+                    <div class="fr-empty-title">Sin resultados aún</div>
+                    <div class="fr-empty-text">Seleccione origen, destino y fecha para estimar el costo del flete.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    $.validator.unobtrusive.parse('#frSimuladorForm');
+    document.getElementById('inputFechaPickup').value = new Date().toISOString().slice(0, 10);
+
+    async function cargarZonas() {
+        const resp = await FrApi.get('/api/zonas-entrega');
+        if (!resp || !resp.success) return;
+        const zonas = resp.data || [];
+        const opts = zonas.map(z => `<option value="${z.id}">${z.nombre}</option>`).join('');
+        document.getElementById('selectZonaOrigen').innerHTML = '<option value="">— Seleccione —</option>' + opts;
+        document.getElementById('selectZonaDestino').innerHTML = '<option value="">— Seleccione —</option>' + opts;
+    }
+
+    function fmt(n) {
+        return new Intl.NumberFormat('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    }
+
+    document.getElementById('frSimuladorForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!$('#frSimuladorForm').valid()) return;
+
+        const payload = {
+            zonaOrigenId: document.getElementById('selectZonaOrigen').value,
+            zonaDestinoId: document.getElementById('selectZonaDestino').value,
+            modoTransporte: document.getElementById('selectModo').value,
+            tipoServicio: document.getElementById('selectServicio').value,
+            pesoKg: parseFloat(document.getElementById('inputPesoKg').value) || 0,
+            volumenM3: parseFloat(document.getElementById('inputVolumenM3').value) || 0,
+            distanciaKm: parseFloat(document.getElementById('inputDistanciaKm').value) || 0,
+            valorDeclarado: parseFloat(document.getElementById('inputValorDeclarado').value) || 0,
+            fechaPickup: document.getElementById('inputFechaPickup').value
+        };
+
+        const resp = await FrApi.post('/api/tarifas-base/simular-costo', payload);
+        if (!resp || !resp.success) {
+            FrToast.error(resp?.message || 'No se pudo simular el costo');
+            return;
+        }
+        const r = resp.data;
+        pintarResultado(r);
+    });
+
+    function pintarResultado(r) {
+        document.getElementById('bloqueVacio').classList.add('d-none');
+        const bloque = document.getElementById('bloqueResultado');
+        bloque.classList.remove('d-none');
+
+        const alertaSin = document.getElementById('alertaSinTarifa');
+        const alertaAdv = document.getElementById('alertaAdvertencia');
+
+        if (!r.tarifaEncontrada) {
+            alertaSin.classList.remove('d-none');
+            alertaSin.className = 'fr-card p-3 mb-3';
+            alertaSin.innerHTML = `
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fr-badge fr-badge-warning"><i class="ti ti-alert-triangle"></i> Sin tarifa</span>
+                    <span><strong>No existe tarifa vigente</strong> para la combinación y fecha consultadas (CA-05). Al crear una orden se mostrará esta advertencia.</span>
+                </div>`;
+            document.getElementById('tarifaNombre').textContent = '—';
+            document.getElementById('tarifaTipo').textContent = '';
+            document.getElementById('tarifaTipo').className = 'fr-badge';
+            document.getElementById('rowCostoBase').textContent = '—';
+            document.getElementById('recargosTabla').innerHTML = '';
+            document.getElementById('costoTotal').textContent = '—';
+        } else {
+            alertaSin.classList.add('d-none');
+
+            alertaAdv.classList.toggle('d-none', !r.mensajeAdvertencia);
+            if (r.mensajeAdvertencia) {
+                alertaAdv.className = 'fr-card p-3 mb-3 d-flex align-items-center gap-2';
+                alertaAdv.innerHTML = `<span class="ti ti-info-circle text-fr-cyan"></span><span>${r.mensajeAdvertencia}</span>`;
+            }
+
+            document.getElementById('tarifaNombre').textContent = r.tarifaNombre || '—';
+            const tipo = document.getElementById('tarifaTipo');
+            tipo.textContent = r.tipoTarifa;
+            tipo.className = 'fr-badge fr-badge-info';
+
+            document.getElementById('rowCostoBase').textContent = `${r.moneda} ${fmt(r.costoBase)}`;
+
+            if (r.recargosAplicados && r.recargosAplicados.length) {
+                document.getElementById('recargosTabla').innerHTML = `
+                    <div class="fr-table-responsive">
+                        <table class="fr-table">
+                            <thead><tr><th>Recargo</th><th class="text-end">Valor</th><th class="text-end">Monto</th></tr></thead>
+                            <tbody>
+                                ${r.recargosAplicados.map(rec => `
+                                    <tr>
+                                        <td>${rec.nombre}</td>
+                                        <td class="text-end">${rec.tipoCalculo === 'PORCENTAJE' ? rec.valor + '%' : r.moneda + ' ' + fmt(rec.valor)}</td>
+                                        <td class="text-end">${r.moneda} ${fmt(rec.monto)}</td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+            } else {
+                document.getElementById('recargosTabla').innerHTML = '';
+            }
+
+            document.getElementById('costoTotal').textContent = `${r.moneda} ${fmt(r.costoTotal)}`;
+        }
+    }
+
+    cargarZonas();
+</script>
+}

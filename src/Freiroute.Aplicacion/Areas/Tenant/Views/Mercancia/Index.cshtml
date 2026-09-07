@@ -1,0 +1,151 @@
+@{
+    ViewData["Title"] = "Tipos de mercancía";
+    ViewData["ActiveMenu"] = "mercancia";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Catálogos</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Tipos de mercancía</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Tipos de mercancía</h1>
+        <div class="fr-page-subtitle">Catálogo con clasificación HAZMAT ONU, HS Code y requisitos de manejo</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnImportarCsv" aria-label="Importar desde CSV">
+            <i class="ti ti-upload"></i> Importar
+        </button>
+        <input type="file" id="inputArchivoMercancia" class="d-none" accept=".csv,.xlsx" aria-hidden="true" />
+        <a asp-action="Create" class="fr-btn fr-btn-primary">
+            <i class="ti ti-plus"></i> Nueva mercancía
+        </a>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="chkSoloPeligrosas" />
+        <label class="form-check-label text-muted" for="chkSoloPeligrosas">Solo mercancías peligrosas</label>
+    </div>
+    <span id="totalMercancia" class="fr-form-hint"></span>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body p-0">
+        <div class="fr-table-responsive">
+            <table class="fr-table">
+                <thead>
+                    <tr>
+                        <th>Mercancía</th>
+                        <th>Código</th>
+                        <th>Categoría</th>
+                        <th>Clasificación</th>
+                        <th>Requisitos</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaMercancia">
+                    <tr>
+                        <td colspan="6">
+                            <div class="fr-empty">
+                                <div class="fr-empty-icon"><i class="ti ti-loader-2 fr-spin"></i></div>
+                                <div class="fr-empty-title">Cargando mercancías...</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let mercancias = [];
+
+    async function cargarMercancia() {
+        const soloPeligrosas = document.getElementById('chkSoloPeligrosas').checked;
+        const query = soloPeligrosas ? '?soloPeligrosas=true' : '';
+        const resp = await FrApi.get('/api/tipos-mercancia' + query);
+        if (!resp || !resp.success) return;
+        mercancias = resp.data || [];
+        pintarMercancia();
+    }
+
+    function requisitosHtml(m) {
+        if (!m) return '<span class="text-muted">—</span>';
+        const req = [];
+        if (m.requiereRefrigeracion) req.push('<span class="fr-badge fr-badge-info" title="Cadena de frío"><i class="ti ti-snowflake"></i> Frío</span>');
+        if (m.esFragil) req.push('<span class="fr-badge fr-badge-info" title="Frágil"><i class="ti ti-glass-full"></i> Frágil</span>');
+        if (m.esPerecedero) req.push('<span class="fr-badge fr-badge-warning" title="Perecedero"><i class="ti ti-leaf"></i> Perecedero</span>');
+        if (m.esSobredimensionado) req.push('<span class="fr-badge fr-badge-warning" title="Sobredimensionada"><i class="ti ti-arrows-maximize"></i> Over</span>');
+        if (m.requiereFumigacion) req.push('<span class="fr-badge fr-badge-success" title="Fumigación"><i class="ti ti-spray"></i> Fumig.</span>');
+        return req.length ? req.join(' ') : '<span class="text-muted">—</span>';
+    }
+
+    function pintarMercancia() {
+        document.getElementById('totalMercancia').textContent =
+            mercancias.length ? `${mercancias.length} tipo(s) de mercancía` : '';
+        const tbody = document.getElementById('tablaMercancia');
+        if (!mercancias.length) {
+            tbody.innerHTML = `
+                <tr><td colspan="6">
+                    <div class="fr-empty">
+                        <div class="fr-empty-icon"><i class="ti ti-box"></i></div>
+                        <div class="fr-empty-title">No hay mercancías registradas</div>
+                        <div class="fr-empty-text">Cree el primer tipo de mercancía del catálogo.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = mercancias.map(m => `
+            <tr>
+                <td>
+                    <div class="fw-semibold">${m.nombre}</div>
+                    ${m.descripcion ? `<div class="text-muted">${m.descripcion}</div>` : ''}
+                </td>
+                <td>${m.codigo ? `<span class="fr-id-code">${m.codigo}</span>` : '<span class="text-muted">—</span>'}</td>
+                <td>${m.categoria || '<span class="text-muted">—</span>'}</td>
+                <td>
+                    ${m.esHazmat
+                        ? `<span class="fr-badge fr-badge-danger"><i class="ti ti-alert-triangle"></i> HAZMAT ${m.clasePeligrosidad || ''}</span>
+                           ${m.codigoOnu ? `<div class="mt-1 text-muted">ONU ${m.codigoOnu} · HS ${m.codigoHs || '—'}</div>` : ''}`
+                        : '<span class="fr-badge fr-badge-neutral">General</span>'}
+                </td>
+                <td>${requisitosHtml(m)}</td>
+                <td class="text-end">
+                    <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                            data-fr-deactivate="/api/tipos-mercancia/${m.id}/deactivate"
+                            data-fr-nombre="${m.nombre}" title="Desactivar"
+                            aria-label="Desactivar ${m.nombre}">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+    }
+
+    document.getElementById('chkSoloPeligrosas').addEventListener('change', cargarMercancia);
+
+    // ── Importación CSV (HU-017) ───────────────────────────────
+    document.getElementById('btnImportarCsv').addEventListener('click', () =>
+        document.getElementById('inputArchivoMercancia').click());
+
+    document.getElementById('inputArchivoMercancia').addEventListener('change', async (e) => {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+        const fd = new FormData();
+        fd.append('archivo', archivo);
+        const resp = await FrApi.upload('/api/tipos-mercancia/importar', fd);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Importación completada. Los registros inválidos fueron omitidos.');
+            setTimeout(() => window.location.reload(), 1200);
+        });
+        e.target.value = '';
+    });
+
+    cargarMercancia();
+</script>
+}

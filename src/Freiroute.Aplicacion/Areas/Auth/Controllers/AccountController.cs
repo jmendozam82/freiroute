@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Freiroute.Aplicacion.Areas.Auth.Controllers;
@@ -24,10 +25,12 @@ namespace Freiroute.Aplicacion.Areas.Auth.Controllers;
 public class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly IConfiguration _configuration;
 
-    public AccountController(IAuthService authService)
+    public AccountController(IAuthService authService, IConfiguration configuration)
     {
         _authService = authService;
+        _configuration = configuration;
     }
 
     // ── GET: Login ───────────────────────────────────────────────
@@ -40,7 +43,10 @@ public class AccountController : Controller
             return RedirectToDashboard();
         }
 
+        // HU-004 CA-06: URLs de inicio OAuth (Supabase Auth redirects).
         ViewData["ReturnUrl"] = returnUrl;
+        ViewData["OAuthGoogleUrl"] = BuildOAuthAuthorizeUrl("google");
+        ViewData["OAuthMicrosoftUrl"] = BuildOAuthAuthorizeUrl("microsoft");
         return View(new LoginRequestDto());
     }
 
@@ -91,6 +97,62 @@ public class AccountController : Controller
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<LoginResponseDto>.Fail("Error en el inicio de sesión: " + ex.Message));
+        }
+    }
+
+    // ── GET: OAuthCallback (HU-004 CA-06) ───────────────────────
+    // Supabase redirige aquí tras el flujo OAuth con el access_token en
+    // el fragment de la URL (#access_token=...). La vista extrae el token
+    // y hace POST a OAuthCallback (abajo) para completar la sesión.
+    [HttpGet]
+    public IActionResult OAuthCallback()
+    {
+        ViewData["HideSidebar"] = true;
+        return View();
+    }
+
+    // ── POST: OAuthCallback (AJAX) ──────────────────────────────
+    // Recibe el token de Supabase Auth del proveedor y emite el JWT interno
+    // + cookie de sesión (mismo patrón que Login POST, ADR-007).
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> OAuthCallback([FromBody] OAuthCallbackRequestDto request)
+    {
+        try
+        {
+            var result = await _authService.LoginConOAuthAsync(request);
+
+            var claims = DecodeJwtClaims(result.AccessToken);
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            Response.Cookies.Append("fr_refresh_token", result.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                Secure = false,
+                Expires = DateTime.UtcNow.AddDays(30)
+            });
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal,
+                new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTime.UtcNow.AddHours(8)
+                });
+
+            return Ok(ApiResponse<LoginResponseDto>.Ok(result, "Inicio de sesión con OAuth exitoso"));
+        }
+        catch (Freiroute.Utility.Exceptions.BusinessException ex)
+        {
+            return UnprocessableEntity(ApiResponse<LoginResponseDto>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<LoginResponseDto>.Fail("Error en el inicio de sesión OAuth: " + ex.Message));
         }
     }
 
@@ -260,5 +322,22 @@ public class AccountController : Controller
     private IActionResult RedirectToDashboard()
     {
         return RedirectToAction("Index", "Home", new { area = "Admin" });
+    }
+
+    /// <summary>
+    /// Construye la URL de autorización OAuth de Supabase Auth (HU-004).
+    /// Incluye 'state' con el proveedor para que el callback lo relea.
+    /// Tras autenticarse, Supabase redirige con el access_token en el
+    /// fragment a la vista OAuthCallback de esta área.
+    /// </summary>
+    private string BuildOAuthAuthorizeUrl(string provider)
+    {
+        var supabaseUrl = _configuration["Supabase:Url"] ?? "http://127.0.0.1:54321";
+        var appBaseUrl = _configuration["App:BaseUrl"] ?? "http://localhost:5000";
+
+        var redirectTo = $"{appBaseUrl.TrimEnd('/')}/Auth/Account/OAuthCallback";
+        return $"{supabaseUrl.TrimEnd('/')}/auth/v1/authorize?provider={provider}"
+               + $"&redirect_to={Uri.EscapeDataString(redirectTo)}"
+               + $"&state={Uri.EscapeDataString(provider)}";
     }
 }

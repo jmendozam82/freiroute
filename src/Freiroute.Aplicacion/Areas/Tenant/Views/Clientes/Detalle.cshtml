@@ -1,0 +1,237 @@
+@model Freiroute.DTO.Cliente.ClienteResponseDto
+@{
+    ViewData["Title"] = "Detalle de cliente";
+    ViewData["ActiveMenu"] = "clientes";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Clientes</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">@Model.Nombre</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title d-flex align-items-center gap-2">
+            @Model.Nombre
+            <span class="fr-badge @FrBadges.TipoCliente(Model.TipoCliente)">@Model.TipoClienteLabel</span>
+            <span class="fr-badge @FrBadges.EstadoCredito(Model.EstadoCredito)">@Model.EstadoCreditoLabel</span>
+        </h1>
+        <div class="fr-page-subtitle">
+            @if (!string.IsNullOrEmpty(Model.RucNit))
+            {
+                <span class="fr-id-code">@Model.RucNit</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.NombreComercial) && Model.NombreComercial != Model.Nombre)
+            {
+                <span> · @Model.NombreComercial</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.Industria))
+            {
+                <span> · @Model.Industria</span>
+            }
+        </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnCambiarEstadoCredito">
+            <i class="ti ti-credit-card"></i> Estado de crédito
+        </button>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="fr-btn fr-btn-primary">
+            <i class="ti ti-edit"></i> Editar
+        </a>
+    </div>
+</div>
+
+@if (Model.EstadoCredito == "BLOQUEADO")
+{
+    <div class="fr-card p-3 mb-4 d-flex align-items-center gap-3">
+        <span class="fr-badge fr-badge-danger"><i class="ti ti-alert-triangle"></i> Bloqueado</span>
+        <span><strong>Crédito bloqueado:</strong> este cliente no puede emitir embarques hasta regularizar su estado (HU-019 CA-05).</span>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Información general</div>
+            </div>
+            <div class="fr-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3 fr-form-label">Dirección fiscal</dt>
+                    <dd class="col-sm-9">
+                        @(string.IsNullOrEmpty(Model.DireccionFiscal) ? "—" : Model.DireccionFiscal)
+                        @if (!string.IsNullOrEmpty(Model.Ciudad))
+                        {
+                            <span class="text-muted">, @Model.Ciudad@(!string.IsNullOrEmpty(Model.Pais) ? $", {Model.Pais}" : "")</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">Contacto</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.Email))
+                        {
+                            <div>@Model.Email</div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Telefono))
+                        {
+                            <div class="text-muted">@Model.Telefono</div>
+                        }
+                        @if (string.IsNullOrEmpty(Model.Email) && string.IsNullOrEmpty(Model.Telefono))
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">Despacho por defecto</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.UbicacionDefectoId.HasValue)
+                        {
+                            <span class="fr-badge fr-badge-info">
+                                <i class="ti ti-map-pin"></i> @Model.UbicacionDefectoNombre
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Sin ubicación asignada</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">Moneda de facturación</dt>
+                    <dd class="col-sm-9"><span class="fr-id-code">@Model.Moneda</span></dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="fr-card mt-4">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Contactos (@Model.Contactos.Count(c => c.Activo))</div>
+            </div>
+            <div class="fr-card-body p-0">
+                <div class="fr-table-responsive">
+                    <table class="fr-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Cargo</th>
+                                <th>Rol</th>
+                                <th>Email</th>
+                                <th>Principal</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Contactos.Any(c => c.Activo))
+                            {
+                                <tr>
+                                    <td colspan="6">
+                                        <div class="fr-empty">
+                                            <div class="fr-empty-icon"><i class="ti ti-users"></i></div>
+                                            <div class="fr-empty-title">Sin contactos activos</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var c in Model.Contactos.Where(c => c.Activo))
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@c.Nombre</td>
+                                    <td>@(string.IsNullOrEmpty(c.Cargo) ? "—" : c.Cargo)</td>
+                                    <td>@c.RolLabel</td>
+                                    <td>@(string.IsNullOrEmpty(c.Email) ? "—" : c.Email)</td>
+                                    <td>
+                                        @if (c.EsPrincipal)
+                                        {
+                                            <span class="fr-badge fr-badge-success">Principal</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="fr-btn fr-btn-danger fr-btn-sm"
+                                                data-fr-deactivate="/api/clientes/@Model.Id/contactos/@c.Id/deactivate"
+                                                data-fr-nombre="@c.Nombre" title="Desactivar contacto"
+                                                aria-label="Desactivar contacto @c.Nombre">
+                                            <i class="ti ti-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Crédito y SLA</div>
+            </div>
+            <div class="fr-card-body">
+                <div class="fr-kpi-card mb-3">
+                    <div class="fr-kpi-label">Estado de crédito</div>
+                    <div class="fr-kpi-value">@Model.EstadoCreditoLabel</div>
+                    <div class="fr-kpi-delta @(Model.EstadoCredito == "BLOQUEADO" ? "down" : "up")">
+                        Cambiado manualmente desde el detalle (HU-019 CA-05)
+                    </div>
+                </div>
+                <dl class="row mb-0">
+                    <dt class="col-sm-6 fr-form-label">Días de crédito</dt>
+                    <dd class="col-sm-6 text-end">@Model.CreditoDias</dd>
+                    <dt class="col-sm-6 fr-form-label">Límite de crédito</dt>
+                    <dd class="col-sm-6 text-end">@Model.Moneda @Model.LimiteCredito.ToString("N0")</dd>
+                    <dt class="col-sm-6 fr-form-label">SLA de entrega</dt>
+                    <dd class="col-sm-6 text-end">@(Model.SlaDiasEntrega.HasValue ? $"{Model.SlaDiasEntrega} días" : "—")</dd>
+                    <dt class="col-sm-6 fr-form-label">Cliente desde</dt>
+                    <dd class="col-sm-6 text-end">@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: cambiar estado de crédito -->
+<div class="modal fade" id="modalEstadoCredito" tabindex="-1" aria-labelledby="modalEstadoCreditoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEstadoCreditoTitle">Cambiar estado de crédito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">El estado <strong>Bloqueado</strong> impide emitir embarques a este cliente.</p>
+                <label class="fr-form-label fr-form-required" for="selectNuevoEstado">Nuevo estado</label>
+                <select id="selectNuevoEstado" class="fr-form-control">
+                    <option value="AL_DIA" selected="@(Model.EstadoCredito == "AL_DIA")">Al día</option>
+                    <option value="EN_MORA" selected="@(Model.EstadoCredito == "EN_MORA")">En mora</option>
+                    <option value="BLOQUEADO" selected="@(Model.EstadoCredito == "BLOQUEADO")">Bloqueado</option>
+                    <option value="SIN_CREDITO" selected="@(Model.EstadoCredito == "SIN_CREDITO")">Sin crédito</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarEstadoCredito">
+                    <i class="ti ti-device-floppy"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('btnCambiarEstadoCredito').addEventListener('click', () =>
+        FrModal.show('modalEstadoCredito'));
+
+    document.getElementById('btnConfirmarEstadoCredito').addEventListener('click', async () => {
+        const estado = document.getElementById('selectNuevoEstado').value;
+        const resp = await FrApi.patch('/api/clientes/@Model.Id/estado-credito', { estadoCredito: estado });
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Estado de crédito actualizado');
+            FrModal.hide('modalEstadoCredito');
+            setTimeout(() => window.location.reload(), 800);
+        });
+    });
+</script>
+}

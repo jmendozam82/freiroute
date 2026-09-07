@@ -252,5 +252,43 @@ const FrBadge = {
     },
     claseActivo(activo) {
         return activo ? 'fr-badge-success' : 'fr-badge-neutral';
+    },
+
+    // Tipo de ubicación (HU-015)
+    claseTipo(tipo) {
+        const mapa = {
+            'ALMACEN':          'fr-badge-info',
+            'CLIENTE':          'fr-badge-success',
+            'PUERTO':           'fr-badge-warning',
+            'AEROPUERTO':       'fr-badge-info',
+            'TERMINAL':         'fr-badge-neutral',
+            'CRUCE_FRONTERA':   'fr-badge-danger',
+            'PUNTO_RECARGA':    'fr-badge-info',
+            'OTRO':             'fr-badge-neutral'
+        };
+        return mapa[tipo] || 'fr-badge-neutral';
+    },
+
+    // Tipo de cliente (HU-019)
+    claseTipoCliente(tipo) {
+        const mapa = {
+            'VIP':          'fr-badge-success',
+            'CORPORATIVO':  'fr-badge-info',
+            'GOBIERNO':     'fr-badge-info',
+            'REGULAR':      'fr-badge-neutral',
+            'OCASIONAL':    'fr-badge-neutral'
+        };
+        return mapa[tipo] || 'fr-badge-neutral';
+    },
+
+    // Estado de crédito del cliente (HU-019 CA-05) — BLOQUEADO alerta en toda la UI
+    claseEstadoCredito(estado) {
+        const mapa = {
+            'AL_DIA':       'fr-badge-success',
+            'EN_MORA':      'fr-badge-warning',
+            'BLOQUEADO':    'fr-badge-danger',
+            'SIN_CREDITO':  'fr-badge-neutral'
+        };
+        return mapa[estado] || 'fr-badge-neutral';
     }
 };

@@ -1,0 +1,232 @@
+@model Freiroute.DTO.Zona.ZonaRequestDto
+@{
+    ViewData["Title"] = "Nueva zona de entrega";
+    ViewData["ActiveMenu"] = "zonas";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Zonas de entrega</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Nueva zona</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Nueva zona de entrega</h1>
+        <div class="fr-page-subtitle">Defina la cobertura por polígono, códigos postales, ciudades o departamentos</div>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-body">
+        <form id="frZonaForm" novalidate>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="inputNombre" class="fr-form-label fr-form-required">Nombre</label>
+                    <input type="text" id="inputNombre" class="fr-form-control" placeholder="Ej: Zona Managua Norte"
+                           data-val="true" data-val-required="El nombre es obligatorio"
+                           data-val-maxlength="Máximo 100 caracteres" data-val-maxlength-max="100" />
+                    <span class="fr-form-error" data-valmsg-for="inputNombre"></span>
+                </div>
+                <div class="col-md-3">
+                    <label for="inputCodigo" class="fr-form-label fr-form-required">Código</label>
+                    <input type="text" id="inputCodigo" class="fr-form-control" placeholder="Ej: Z-MGA-N"
+                           data-val="true" data-val-required="El código es obligatorio"
+                           data-val-maxlength="Máximo 20 caracteres" data-val-maxlength-max="20" />
+                    <span class="fr-form-error" data-valmsg-for="inputCodigo"></span>
+                </div>
+                <div class="col-md-3">
+                    <label for="selectTipoDefinicion" class="fr-form-label">Método de definición</label>
+                    <select id="selectTipoDefinicion" class="fr-form-control">
+                        <option value="POLIGONO">Polígono en mapa</option>
+                        <option value="CODIGOS_POSTALES">Códigos postales</option>
+                        <option value="CIUDADES">Ciudades</option>
+                        <option value="DEPARTAMENTOS">Departamentos</option>
+                        <option value="PAISES">Países</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="inputColor" class="fr-form-label">Color de zona</label>
+                    <input type="color" id="inputColor" class="fr-form-control fr-input-color" value="#1A73E8" />
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-12">
+                    <label for="inputDescripcion" class="fr-form-label">Descripción</label>
+                    <input type="text" id="inputDescripcion" class="fr-form-control" placeholder="Descripción opcional de la zona" />
+                </div>
+            </div>
+
+            <!-- Polígono en mapa -->
+            <div class="form-section-title mt-4" id="tituloPoligono">Dibuje el polígono en el mapa</div>
+            <div id="bloquePoligono">
+                <div class="fr-card">
+                    <div class="fr-card-body p-0">
+                        <div id="mapaDibujo" class="fr-map" aria-label="Mapa para dibujar el polígono de la zona"></div>
+                    </div>
+                </div>
+                <span class="fr-form-hint d-none" id="hintPoligono">Requiere al menos 3 puntos (HU-016 CA-03).</span>
+            </div>
+
+            <!-- Listas por valor -->
+            <div class="form-section-title mt-4 d-none" id="tituloListas">Elementos de cobertura</div>
+            <div id="bloqueListas" class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label for="inputCodigosPostales" class="fr-form-label">Códigos postales</label>
+                    <input type="text" id="inputCodigosPostales" class="fr-form-control d-none" placeholder="Separados por coma: 11000,12000" />
+                    <input type="text" id="inputCiudades" class="fr-form-control d-none" placeholder="Separadas por coma: Managua, León" />
+                    <input type="text" id="inputDepartamentos" class="fr-form-control d-none" placeholder="Separados por coma: Managua, Masaya" />
+                    <input type="text" id="inputPaises" class="fr-form-control" placeholder="Separados por coma: Nicaragua, Honduras" />
+                    <span class="fr-form-hint">Separar con comas. Al menos un valor es obligatorio.</span>
+                </div>
+            </div>
+
+            <input type="hidden" id="inputPoligonoGeojson" />
+
+            <div class="d-flex gap-2 mt-4 pt-3 border-top">
+                <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
+                    <i class="ti ti-device-floppy"></i> Guardar zona
+                </button>
+                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+}
+
+@section Scripts {
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+    $.validator.unobtrusive.parse('#frZonaForm');
+
+    const nombreInput = document.getElementById('inputNombre');
+    const codigoInput = document.getElementById('inputCodigo');
+    const tipoSelect = document.getElementById('selectTipoDefinicion');
+    const colorSelect = document.getElementById('inputColor');
+    const poligonoInput = document.getElementById('inputPoligonoGeojson');
+
+    // ── Mapa con herramienta de dibujo (HU-016 CA-03) ──────────
+    const mapa = L.map('mapaDibujo').setView([12.87, -85.21], 7);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 19
+    }).addTo(mapa);
+
+    const drawnItems = new L.FeatureGroup();
+    mapa.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+        draw: {
+            rectangle: false, circle: false, circlemarker: false,
+            polygon: { allowIntersection: false, showArea: true },
+            polyline: false, marker: false
+        },
+        edit: { featureGroup: drawnItems, remove: true }
+    });
+    mapa.addControl(drawControl);
+
+    let numeroPoligono = 0;
+    mapa.on('draw:created', e => {
+        numeroPoligono++;
+        drawnItems.clearLayers();
+        const layer = e.layer;
+        layer.bindPopup(`<b>Zona (${numeroPoligono})</b>`);
+        drawnItems.addLayer(layer);
+        poligonoInput.value = JSON.stringify(layer.toGeoJSON());
+        document.getElementById('hintPoligono').classList.add('d-none');
+    });
+
+    mapa.on('draw:deleted', () => { poligonoInput.value = ''; });
+    mapa.on('draw:edited', () => {
+        drawnItems.eachLayer(layer => {
+            poligonoInput.value = JSON.stringify(layer.toGeoJSON());
+        });
+    });
+
+    // ── Toggle poligono / listas ──────────────────────────────
+    const visibilidad = {
+        'POLIGONO': { lista: null },
+        'CODIGOS_POSTALES': { lista: 'inputCodigosPostales' },
+        'CIUDADES': { lista: 'inputCiudades' },
+        'DEPARTAMENTOS': { lista: 'inputDepartamentos' },
+        'PAISES': { lista: 'inputPaises' }
+    };
+    const inputsLista = ['inputCodigosPostales', 'inputCiudades', 'inputDepartamentos', 'inputPaises'];
+
+    tipoSelect.addEventListener('change', aplicarModo);
+    function aplicarModo() {
+        const modo = tipoSelect.value;
+        const esPoligono = modo === 'POLIGONO';
+
+        document.getElementById('bloquePoligono').classList.toggle('d-none', !esPoligono);
+        document.getElementById('tituloPoligono').classList.toggle('d-none', !esPoligono);
+        document.getElementById('bloqueListas').classList.toggle('d-none', esPoligono);
+        document.getElementById('tituloListas').classList.toggle('d-none', esPoligono);
+
+        inputsLista.forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.toggle('d-none', visibilidad[modo].lista !== id);
+        });
+        if (!esPoligono) {
+            setTimeout(() => mapa.invalidateSize(), 100);
+        } else {
+            poligonoInput.value = '';
+        }
+    }
+    aplicarModo();
+
+    // ── Guardar (client-side → POST /api/zonas-entrega) ───────
+    document.getElementById('frZonaForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!$('#frZonaForm').valid()) return;
+
+        const modo = tipoSelect.value;
+        let poligonoGeojson = null;
+        let listas = {};
+
+        if (modo === 'POLIGONO') {
+            poligonoGeojson = poligonoInput.value;
+            if (!poligonoGeojson) {
+                FrToast.error('Dibuje el polígono en el mapa antes de guardar');
+                return;
+            }
+        } else {
+            const idInput = visibilidad[modo].lista;
+            const valores = document.getElementById(idInput).value
+                .split(',').map(v => v.trim()).filter(Boolean);
+            if (valores.length === 0) {
+                FrToast.error('Ingrese al menos un valor de cobertura');
+                return;
+            }
+            listas = { [idInput === 'inputCodigosPostales' ? 'codigosPostales' :
+                        idInput === 'inputCiudades' ? 'ciudades' :
+                        idInput === 'inputDepartamentos' ? 'departamentos' : 'paises']: valores };
+        }
+
+        const payload = {
+            nombre: nombreInput.value.trim(),
+            codigo: codigoInput.value.trim().toUpperCase(),
+            descripcion: document.getElementById('inputDescripcion').value.trim() || null,
+            colorHex: colorSelect.value,
+            tipoDefinicion: modo,
+            poligonoGeojson: poligonoGeojson,
+            codigosPostales: listas.codigosPostales || [],
+            ciudades: listas.ciudades || [],
+            departamentos: listas.departamentos || [],
+            paises: listas.paises || ['Nicaragua']
+        };
+
+        const resp = await FrApi.post('/api/zonas-entrega', payload);
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Zona creada correctamente');
+            setTimeout(() => window.location.href = '/Tenant/Zonas', 600);
+        });
+    });
+</script>
+}

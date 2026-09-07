@@ -1,0 +1,74 @@
+@{
+    ViewData["Title"] = "Completando inicio de sesión";
+    ViewData["HideSidebar"] = true;
+}
+
+<div class="fr-auth-split">
+    <div class="fr-auth-split-left">
+        <div class="fr-auth-split-brand">
+            <div class="fr-logo-mark">FR</div>
+            <div>
+                <div class="fr-logo-text">Freiroute</div>
+                <div class="fr-logo-tag">Transportation Management System</div>
+            </div>
+        </div>
+        <div class="fr-auth-split-hero">
+            <h1>Controla cada ruta.<br />Mueve cada carga.</h1>
+            <p>Autenticación segura con tu proveedor corporativo (HU-004 CA-06).</p>
+        </div>
+    </div>
+
+    <div class="fr-auth-split-right">
+        <div class="fr-auth-split-card" style="text-align:center">
+            @Html.AntiForgeryToken()
+            <div class="fr-logo-mark mx-auto mb-3" style="font-size:28px;width:56px;height:56px">FR</div>
+            <h1 class="fr-auth-title" style="text-align:center">Completando inicio de sesión</h1>
+            <p class="fr-auth-subtitle" style="text-align:center">Verificando tu cuenta con el proveedor...</p>
+            <div class="mt-4">
+                <i class="ti ti-loader-2" style="font-size:34px;color:var(--fr-action-blue);animation:spin 1s linear infinite"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── OAuth callback (HU-004 CA-06) ───────────────────────────
+    // Supabase redirige con el access_token en el fragment (#access_token=...)
+    // y el proveedor en 'state' (query o fragment, según el flujo).
+    (async function () {
+        const params = new URLSearchParams(window.location.search);
+        const hash = new URLSearchParams(window.location.hash.substring(1));
+
+        const errorDesc = hash.get('error_description') || params.get('error_description');
+        if (errorDesc) {
+            FrToast.error('Inicio de sesión cancelado: ' + errorDesc);
+            setTimeout(() => window.location.href = '@Url.Action("Login", "Account", new { area = "Auth" })', 1500);
+            return;
+        }
+
+        const supabaseToken = hash.get('access_token');
+        const provider = hash.get('state') || params.get('state') || 'google';
+
+        if (!supabaseToken) {
+            FrToast.error('No se recibió el token de autenticación');
+            setTimeout(() => window.location.href = '@Url.Action("Login", "Account", new { area = "Auth" })', 1500);
+            return;
+        }
+
+        const resp = await FrApi.post('@Url.Action("OAuthCallback", "Account", new { area = "Auth" })', {
+            provider,
+            supabaseToken
+        });
+
+        if (resp.success) {
+            sessionStorage.setItem('fr_token', resp.data.accessToken);
+            const tipo = resp.data?.usuario?.tipoUsuario;
+            window.location.href = tipo === 'SUPER_ADMIN' ? '/Admin' : '/';
+        } else {
+            FrToast.error(resp.message || 'No se pudo completar el inicio de sesión');
+            setTimeout(() => window.location.href = '@Url.Action("Login", "Account", new { area = "Auth" })', 1500);
+        }
+    })();
+</script>
+}
