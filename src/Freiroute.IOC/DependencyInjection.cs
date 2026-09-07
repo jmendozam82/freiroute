@@ -15,6 +15,12 @@ using Freiroute.DTO.Suscripcion;
 using Freiroute.DTO.Onboarding;
 using Freiroute.DTO.Configuracion;
 using Freiroute.DTO.Admin;
+using Freiroute.DTO.Ubicacion;
+using Freiroute.DTO.Zona;
+using Freiroute.DTO.Mercancia;
+using Freiroute.DTO.Unidad;
+using Freiroute.DTO.Cliente;
+using Freiroute.DTO.Tarifa;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -73,9 +79,17 @@ public static class DependencyInjection
 
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
-        // Sprint 1: stubs (Supabase Auth reales van en Sprint 2).
         services.AddHttpClient<IEmailService, ResendEmailService>();
-        services.AddScoped<ISupabaseAuthService, SupabaseAuthServiceStub>();
+        // Supabase Auth: real en producción/CI con credenciales, stub en dev sin ellas.
+        var usarAuthReal = configuration.GetValue<bool?>("Supabase:UseRealAuth") ?? false;
+        if (usarAuthReal)
+        {
+            services.AddScoped<ISupabaseAuthService, SupabaseAuthServiceReal>();
+        }
+        else
+        {
+            services.AddScoped<ISupabaseAuthService, SupabaseAuthServiceStub>();
+        }
         // Transversal: la auditoría se inyecta en todos los demás servicios.
         services.AddScoped<IAuditoriaService, AuditoriaService>();
 
@@ -97,6 +111,27 @@ public static class DependencyInjection
         // ── 6c. Supabase Storage (HU-014, ADR-012) via HttpClient ───
         services.AddHttpClient<IStorageService, SupabaseStorageService>();
 
+        // ── 6d. Servicios BLL Sprint 3 (EP-03 Maestros y Catálogos) ──
+        services.AddScoped<IUbicacionService, UbicacionService>();
+        services.AddScoped<IZonaEntregaService, ZonaEntregaService>();
+        services.AddScoped<ITipoMercanciaService, TipoMercanciaService>();
+        services.AddScoped<IUnidadMedidaService, UnidadMedidaService>();
+        services.AddScoped<ITipoEmbalajeService, TipoEmbalajeService>();
+        services.AddScoped<IClienteService, ClienteService>();
+        services.AddScoped<ITarifaBaseService, TarifaBaseService>();
+
+        // ── 6e. Geocodificación Nominatim (ADR-014) via HttpClient ───
+        //    User-Agent identificable y timeout 10s (política de uso de OSM);
+        //    el servicio serializa internamente 1 request/segundo.
+        services.AddHttpClient<IGeocodingService, NominatimGeocodingService>(
+            client =>
+            {
+                client.BaseAddress = new Uri("https://nominatim.openstreetmap.org");
+                client.Timeout = TimeSpan.FromSeconds(10);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                    "FreirouteTMS/1.0 (dev@freiroute.com)");
+            });
+
         // ── 7. Validadores FluentValidation (validación servidor) ──
         services.AddScoped<IValidator<LoginRequestDto>, BLL.Validators.LoginValidator>();
         services.AddScoped<IValidator<EmpresaRequestDto>, BLL.Validators.EmpresaValidator>();
@@ -113,6 +148,15 @@ public static class DependencyInjection
         services.AddScoped<IValidator<OnboardingPaso3RequestDto>, BLL.Validators.OnboardingPaso3Validator>();
         services.AddScoped<IValidator<ConfiguracionRequestDto>, BLL.Validators.ConfiguracionValidator>();
         services.AddScoped<IValidator<NumeracionRequestDto>, BLL.Validators.NumeracionValidator>();
+
+        // ── 7c. Validadores Sprint 3 (EP-03 Maestros y Catálogos) ────
+        services.AddScoped<IValidator<UbicacionRequestDto>, BLL.Validators.UbicacionValidator>();
+        services.AddScoped<IValidator<ZonaRequestDto>, BLL.Validators.ZonaEntregaValidator>();
+        services.AddScoped<IValidator<TipoMercanciaRequestDto>, BLL.Validators.TipoMercanciaValidator>();
+        services.AddScoped<IValidator<UnidadMedidaRequestDto>, BLL.Validators.UnidadMedidaValidator>();
+        services.AddScoped<IValidator<TipoEmbalajeRequestDto>, BLL.Validators.TipoEmbalajeValidator>();
+        services.AddScoped<IValidator<ClienteRequestDto>, BLL.Validators.ClienteValidator>();
+        services.AddScoped<IValidator<TarifaBaseRequestDto>, BLL.Validators.TarifaBaseValidator>();
 
         return services;
     }

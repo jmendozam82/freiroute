@@ -69,6 +69,21 @@ public class SupabaseAuthServiceStub : ISupabaseAuthService
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Stub del cambio de contraseña con token de admin (G-06-D).
+    /// Devuelve siempre true — el comportamiento real (PATCH /auth/v1/admin/users/{id})
+    /// vive en SupabaseAuthServiceReal; el stub se usa en dev/CI hasta activar
+    /// Supabase:UseRealAuth=true en la configuración.
+    /// </summary>
+    public Task<bool> CambiarPasswordAsync(Guid supabaseUserId, string nuevaPassword)
+    {
+        _logger.LogWarning(
+            "SUPABASE AUTH STUB → cambio de password ADMIN simulado para SupabaseUserId {SupabaseUserId} (TODO: llamada real en Sprint 2)",
+            supabaseUserId);
+
+        return Task.FromResult(true);
+    }
+
     private static Guid DeterministicGuid(string email)
     {
         return new Guid(MD5Hash(email));

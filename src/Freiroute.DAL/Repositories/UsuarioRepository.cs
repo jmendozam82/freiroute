@@ -191,6 +191,26 @@ public class UsuarioRepository : IUsuarioRepository
     }
 
     /// <summary>
+    /// Vincula el supabase_user_id a un usuario existente (HU-004 OAuth).
+    /// Se usa cuando el usuario ya existía en Freiroute (solo con el email) y
+    /// llega por un proveedor OAuth por primera vez.
+    /// </summary>
+    public async Task<bool> ActualizarSupabaseUserIdAsync(Guid usuarioId, Guid supabaseUserId)
+    {
+        const string sql = @"
+            UPDATE usuarios
+            SET supabase_user_id = @SupabaseUserId,
+                fecha_modificacion = NOW()
+            WHERE id = @Id
+              AND activo = true";
+
+        var rows = await _connection.ExecuteAsync(
+            sql, new { Id = usuarioId, SupabaseUserId = supabaseUserId });
+
+        return rows > 0;
+    }
+
+    /// <summary>
     /// Obtiene un usuario por email SIN filtrar por empresa y SIN filtrar por activo
     /// (HU-003 — login). EXCEPCIÓN ADR-003 deliberada: resuelve el tenant antes de
     /// autenticar. No filtra por activo porque AuthService necesita ver usuarios

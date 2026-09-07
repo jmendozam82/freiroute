@@ -25,4 +25,13 @@ public interface ISupabaseAuthService
 
     /// <summary>Cambia la contraseña de un usuario en Supabase Auth (HU-007 CA-06).</summary>
     Task UpdatePasswordAsync(Guid supabaseUserId, string newPassword);
+
+    /// <summary>
+    /// Cambia la contraseña de un usuario en Supabase Auth con el token de admin
+    /// (endpoint admin/users/{id} — G-06-D). Devuelve false si Supabase Auth no
+    /// pudo completar el cambio (usuario inexistente, service role inválido, etc).
+    /// El stub de Sprint 1 devuelve siempre true; la implementación real
+    /// (SupabaseAuthServiceReal) hace el PATCH HTTP.
+    /// </summary>
+    Task<bool> CambiarPasswordAsync(Guid supabaseUserId, string nuevaPassword);
 }

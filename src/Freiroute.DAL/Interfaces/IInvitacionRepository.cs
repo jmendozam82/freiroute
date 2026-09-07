@@ -19,6 +19,13 @@ public interface IInvitacionRepository
     Task<Invitacion?> GetByTokenAsync(string token);
 
     /// <summary>
+    /// Obtiene la invitación PENDING más reciente por email (HU-004 OAuth):
+    /// usada para autoprovisionar un usuario que llega por OAuth pero aún no
+    /// tiene cuenta Freiroute. Devuelve null si no hay invitación pendiente.
+    /// </summary>
+    Task<Invitacion?> GetPendienteByEmailAsync(string email);
+
+    /// <summary>
     /// Marca una invitación como aceptada: estado = 'ACCEPTED' y
     /// fecha_aceptacion = @FechaAceptacion. El token es de un solo uso (CA-04).
     /// </summary>

@@ -370,20 +370,57 @@ public class AuthControllerTests : IDisposable
     }
 
     [Fact]
-    public async Task OAuthCallback_Devuelve500CuandoAunNoImplementado()
+    public async Task OAuthCallback_ConTokenValido_Retorna200ConSesion()
     {
-        // El stub de OAuth lanza NotImplementedException (Sprint 3, HU-004),
-        // que el GlobalExceptionMiddleware mapea al 500 genérico.
+        // HU-004 (Sprint 3): el endpoint /api/auth/oauth/callback ya está
+        // implementado — con un LoginResponseDto válido retorna 200 + tokens.
+        var resultado = new LoginResponseDto
+        {
+            AccessToken = "access-oauth",
+            RefreshToken = "refresh-oauth",
+            ExpiresIn = 28800,
+            Usuario = new UsuarioTokenDto
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Juan Perez",
+                Email = "juan@transnic.com",
+                TipoUsuario = "OPERADOR",
+                EmpresaNombre = "Transnic",
+                Permisos = ["embarques:read"]
+            }
+        };
+
         _factory.AuthService
             .Setup(s => s.LoginConOAuthAsync(It.IsAny<OAuthCallbackRequestDto>()))
-            .ThrowsAsync(new NotImplementedException());
+            .ReturnsAsync(resultado);
 
         var client = _factory.CrearClientSinToken();
 
         var response = await client.PostAsJsonAsync("/api/auth/oauth/callback",
-            new OAuthCallbackRequestDto { Provider = "google", SupabaseToken = "tok" });
+            new OAuthCallbackRequestDto { Provider = "google", SupabaseToken = "tok-valido" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await response.Content.ReadAsStringAsync();
+        json.Should().Contain("access-oauth");
+        json.Should().Contain("juan@transnic.com");
+    }
+
+    [Fact]
+    public async Task OAuthCallback_ConTokenInvalido_Retorna422()
+    {
+        // HU-004: token del proveedor inválido → BusinessException → 422 controlado
+        // (antes este endpoint devolvía 500 por NotImplementedException).
+        _factory.AuthService
+            .Setup(s => s.LoginConOAuthAsync(It.IsAny<OAuthCallbackRequestDto>()))
+            .ThrowsAsync(new BusinessException(
+                "Token de OAuth inválido o expirado. Vuelva a intentar el inicio de sesión."));
+
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsJsonAsync("/api/auth/oauth/callback",
+            new OAuthCallbackRequestDto { Provider = "google", SupabaseToken = "tok-invalido" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     // ── POST /api/auth/2fa/recovery-codes/regenerate ──────────────────

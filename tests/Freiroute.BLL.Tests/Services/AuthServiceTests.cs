@@ -38,6 +38,7 @@ public class AuthServiceTests
     private readonly Mock<IPermisoRepository> _permisoRepository;
     private readonly Mock<IEmpresaRepository> _empresaRepository;
     private readonly Mock<IInvitacionRepository> _invitacionRepository;
+    private readonly Mock<IPerfilRepository> _perfilRepository;
     private readonly Mock<ISesionRepository> _sesionRepository;
     private readonly Mock<IConfiguracion2faRepository> _config2faRepository;
     private readonly Mock<ISupabaseAuthService> _supabaseAuth;
@@ -48,6 +49,7 @@ public class AuthServiceTests
     private readonly IOptions<JwtSettings> _jwtSettings;
     private readonly IOptions<AppSettings> _appSettings;
     private readonly Mock<ILogger<AuthService>> _logger;
+    private readonly Mock<IHttpClientFactory> _httpClientFactory;
     private readonly AuthService _service;
 
     public AuthServiceTests()
@@ -56,6 +58,7 @@ public class AuthServiceTests
         _permisoRepository = new Mock<IPermisoRepository>();
         _empresaRepository = new Mock<IEmpresaRepository>();
         _invitacionRepository = new Mock<IInvitacionRepository>();
+        _perfilRepository = new Mock<IPerfilRepository>();
         _sesionRepository = new Mock<ISesionRepository>();
         _config2faRepository = new Mock<IConfiguracion2faRepository>();
         _supabaseAuth = new Mock<ISupabaseAuthService>();
@@ -63,6 +66,7 @@ public class AuthServiceTests
         _emailService = new Mock<IEmailService>();
         _httpContextAccessor = new Mock<IHttpContextAccessor>();
         _httpContextAccessor.Setup(a => a.HttpContext).Returns((HttpContext?)null);
+        _httpClientFactory = new Mock<IHttpClientFactory>();
         _jwtSettings = Options.Create(new JwtSettings
         {
             Key = TestSecret,
@@ -101,7 +105,9 @@ public class AuthServiceTests
             configConClave,
             _jwtSettings,
             _appSettings,
-            _logger.Object);
+            _logger.Object,
+            _perfilRepository.Object,
+            _httpClientFactory.Object);
     }
 
     [Fact]
@@ -128,7 +134,9 @@ public class AuthServiceTests
             configSinClave,
             _jwtSettings,
             _appSettings,
-            _logger.Object);
+            _logger.Object,
+            _perfilRepository.Object,
+            _httpClientFactory.Object);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TotpEncryptionKey*");
@@ -941,8 +949,8 @@ public class AuthServiceTests
             .ReturnsAsync(usuario);
 
         _supabaseAuth
-            .Setup(s => s.UpdatePasswordAsync(It.IsAny<Guid>(), It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
+            .Setup(s => s.CambiarPasswordAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
 
         _invitacionRepository
             .Setup(r => r.MarcarAceptadaAsync(invitacion.Id, It.IsAny<DateTime>()))
@@ -966,7 +974,7 @@ public class AuthServiceTests
         });
 
         _supabaseAuth.Verify(
-            s => s.UpdatePasswordAsync(usuario.SupabaseUserId.Value, "NuevaPassword123!"),
+            s => s.CambiarPasswordAsync(usuario.SupabaseUserId.Value, "NuevaPassword123!"),
             Times.Once);
         _invitacionRepository.Verify(
             r => r.MarcarAceptadaAsync(invitacion.Id, It.IsAny<DateTime>()),
@@ -1033,6 +1041,374 @@ public class AuthServiceTests
 
         var ex = await act.Should().ThrowAsync<BusinessException>();
         ex.WithMessage("*inválido*");
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_CuandoUsuarioSinSupabaseUserId_LanzaBusinessException()
+    {
+        // G-06-D: sin supabase_user_id no hay cuenta en Supabase Auth donde cambiar
+        // la contraseña — el flujo de recuperación debe fallar de forma controlada.
+        var token = "token-valido-sin-supabase";
+        var invitacion = new Invitacion
+        {
+            Id = Guid.NewGuid(),
+            EmpresaId = EmpresaId,
+            Email = "juan@transnic.com",
+            Token = token,
+            Estado = "PENDING",
+            FechaExpiracion = DateTime.UtcNow.AddMinutes(30)
+        };
+        var usuario = UsuarioActivo();
+        usuario.SupabaseUserId = null;
+
+        _invitacionRepository
+            .Setup(r => r.GetByTokenAsync(token))
+            .ReturnsAsync(invitacion);
+
+        _usuarioRepository
+            .Setup(r => r.GetByEmailAsync(invitacion.Email, EmpresaId))
+            .ReturnsAsync(usuario);
+
+        var act = async () => await _service.ResetPasswordAsync(new ResetPasswordRequestDto
+        {
+            Token = token,
+            NewPassword = "NuevaPassword123!"
+        });
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*Supabase Auth*");
+
+        _supabaseAuth.Verify(
+            s => s.CambiarPasswordAsync(It.IsAny<Guid>(), It.IsAny<string>()),
+            Times.Never);
+        _invitacionRepository.Verify(
+            r => r.MarcarAceptadaAsync(It.IsAny<Guid>(), It.IsAny<DateTime>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ResetPasswordAsync_CuandoSupabaseNoPuedeCambiar_LanzaBusinessException()
+    {
+        // G-06-D: si Supabase Auth rechaza el cambio (false), el flujo no debe
+        // marcar la invitación como aceptada ni revocar sesiones.
+        var token = "token-valido-supabase-falla";
+        var invitacion = new Invitacion
+        {
+            Id = Guid.NewGuid(),
+            EmpresaId = EmpresaId,
+            Email = "juan@transnic.com",
+            Token = token,
+            Estado = "PENDING",
+            FechaExpiracion = DateTime.UtcNow.AddMinutes(30)
+        };
+        var usuario = UsuarioActivo();
+        usuario.SupabaseUserId = Guid.NewGuid();
+
+        _invitacionRepository
+            .Setup(r => r.GetByTokenAsync(token))
+            .ReturnsAsync(invitacion);
+
+        _usuarioRepository
+            .Setup(r => r.GetByEmailAsync(invitacion.Email, EmpresaId))
+            .ReturnsAsync(usuario);
+
+        _supabaseAuth
+            .Setup(s => s.CambiarPasswordAsync(It.IsAny<Guid>(), It.IsAny<string>()))
+            .ReturnsAsync(false);
+
+        var act = async () => await _service.ResetPasswordAsync(new ResetPasswordRequestDto
+        {
+            Token = token,
+            NewPassword = "NuevaPassword123!"
+        });
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*No se pudo actualizar la contraseña*");
+
+        _sesionRepository.Verify(
+            r => r.RevocarTodasPorUsuarioAsync(usuario.Id), Times.Never);
+    }
+
+    // ── OAuth (HU-004) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task LoginConOAuthAsync_CuandoTokenInvalido_LanzaBusinessException()
+    {
+        // HU-004 CA-01: token del proveedor rechazado → 422 controlado por el
+        // middleware (BusinessException), nunca un 500 por fallo de red.
+        var httpFactory = new Mock<IHttpClientFactory>();
+        var httpClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized)))
+        {
+            BaseAddress = new Uri("http://localhost:54321")
+        };
+        httpFactory.Setup(f => f.CreateClient("SupabaseAuth")).Returns(httpClient);
+
+        var service = CrearServiceConClaveConocidaConHttpFactory(ClaveTotpConocida, httpFactory.Object);
+
+        var act = async () => await service.LoginConOAuthAsync(new OAuthCallbackRequestDto
+        {
+            Provider = "google",
+            SupabaseToken = "token-invalido"
+        });
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*OAuth*");
+    }
+
+    [Fact]
+    public async Task LoginConOAuthAsync_CuandoUsuarioVinculado_CompletaSesionYAuditaLOGIN_OAUTH()
+    {
+        // HU-004: usuario ya vinculado por supabase_user_id → login completo
+        // (perfiles, permisos, refresh) + auditoría LOGIN_OAUTH con provider.
+        var supabaseUserId = Guid.NewGuid();
+        var usuario = UsuarioActivo();
+        usuario.SupabaseUserId = supabaseUserId;
+
+        var httpFactory = HttpFactoryConSupabaseUser(supabaseUserId, "juan@transnic.com");
+
+        _usuarioRepository
+            .Setup(r => r.GetBySupabaseUserIdAsync(supabaseUserId))
+            .ReturnsAsync(usuario);
+
+        _permisoRepository
+            .Setup(r => r.GetByPerfilAsync(PerfilId, EmpresaId))
+            .ReturnsAsync(new[]
+            {
+                new Permiso { Modulo = "embarques", PuedeLeer = true }
+            });
+
+        _empresaRepository
+            .Setup(r => r.GetByIdAsync(EmpresaId))
+            .ReturnsAsync(new Empresa { Id = EmpresaId, Nombre = "Transnic" });
+
+        _sesionRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Sesion>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _usuarioRepository
+            .Setup(r => r.ResetearIntentosFallidosAsync(usuario.Id))
+            .Returns(Task.CompletedTask);
+        _usuarioRepository
+            .Setup(r => r.ActualizarUltimoAccesoAsync(usuario.Id))
+            .Returns(Task.CompletedTask);
+
+        _auditoria
+            .Setup(a => a.RegistrarAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>(),
+                It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<Guid?>(),
+                It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CrearServiceConClaveConocidaConHttpFactory(ClaveTotpConocida, httpFactory.Object);
+
+        var resultado = await service.LoginConOAuthAsync(new OAuthCallbackRequestDto
+        {
+            Provider = "google",
+            SupabaseToken = "token-valido"
+        });
+
+        resultado.AccessToken.Should().NotBeNullOrEmpty();
+        resultado.RefreshToken.Should().NotBeNullOrEmpty();
+        resultado.Usuario.Email.Should().Be("juan@transnic.com");
+        resultado.Usuario.Permisos.Should().Contain("embarques:read");
+
+        _auditoria.Verify(
+            a => a.RegistrarAsync(
+                "auth", AccionAuditoria.LOGIN_OAUTH, EmpresaId, UsuarioId,
+                It.IsAny<string?>(), It.IsAny<Guid?>(),
+                It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+            Times.Once);
+
+        _usuarioRepository.Verify(
+            r => r.ActualizarSupabaseUserIdAsync(It.IsAny<Guid>(), It.IsAny<Guid>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task LoginConOAuthAsync_CuandoUsuarioExistePorEmail_VinculaSupabaseUserId()
+    {
+        // HU-004 CA-03: usuario Freiroute existente pero sin vínculo → se vincula
+        // el supabase_user_id recibido del proveedor y se completa el login.
+        var supabaseUserId = Guid.NewGuid();
+        var usuario = UsuarioActivo();
+        usuario.SupabaseUserId = null;
+
+        var httpFactory = HttpFactoryConSupabaseUser(supabaseUserId, "juan@transnic.com");
+
+        _usuarioRepository
+            .Setup(r => r.GetBySupabaseUserIdAsync(supabaseUserId))
+            .ReturnsAsync((Usuario?)null);
+        _usuarioRepository
+            .Setup(r => r.GetByEmailGlobalAsync("juan@transnic.com"))
+            .ReturnsAsync(usuario);
+        _usuarioRepository
+            .Setup(r => r.ActualizarSupabaseUserIdAsync(usuario.Id, supabaseUserId))
+            .ReturnsAsync(true);
+
+        _permisoRepository
+            .Setup(r => r.GetByPerfilAsync(PerfilId, EmpresaId))
+            .ReturnsAsync(Array.Empty<Permiso>());
+
+        _empresaRepository
+            .Setup(r => r.GetByIdAsync(EmpresaId))
+            .ReturnsAsync(new Empresa { Id = EmpresaId, Nombre = "Transnic" });
+
+        _sesionRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Sesion>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _usuarioRepository
+            .Setup(r => r.ResetearIntentosFallidosAsync(usuario.Id))
+            .Returns(Task.CompletedTask);
+        _usuarioRepository
+            .Setup(r => r.ActualizarUltimoAccesoAsync(usuario.Id))
+            .Returns(Task.CompletedTask);
+
+        _auditoria
+            .Setup(a => a.RegistrarAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>(),
+                It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<Guid?>(),
+                It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CrearServiceConClaveConocidaConHttpFactory(ClaveTotpConocida, httpFactory.Object);
+
+        var resultado = await service.LoginConOAuthAsync(new OAuthCallbackRequestDto
+        {
+            Provider = "microsoft",
+            SupabaseToken = "token-valido"
+        });
+
+        resultado.Usuario.Email.Should().Be("juan@transnic.com");
+
+        _usuarioRepository.Verify(
+            r => r.ActualizarSupabaseUserIdAsync(usuario.Id, supabaseUserId), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginConOAuthAsync_CuandoEmailNuevoConInvitacionPendiente_AutoprovisionaUsuario()
+    {
+        // HU-004 CA-04: email sin usuario pero con invitación PENDING → se crea el
+        // usuario con perfil/empresa de la invitación y se marca como aceptada.
+        var supabaseUserId = Guid.NewGuid();
+        var invitacionId = Guid.NewGuid();
+        var nuevoUsuarioId = Guid.NewGuid();
+
+        var invitacion = new Invitacion
+        {
+            Id = invitacionId,
+            EmpresaId = EmpresaId,
+            Email = "nuevo@transnic.com",
+            PerfilId = PerfilId,
+            Token = "token-invitacion",
+            Estado = "PENDING",
+            FechaExpiracion = DateTime.UtcNow.AddMinutes(48 * 60),
+            FechaCreacion = DateTime.UtcNow
+        };
+
+        var httpFactory = HttpFactoryConSupabaseUser(supabaseUserId, "nuevo@transnic.com");
+
+        _usuarioRepository
+            .Setup(r => r.GetBySupabaseUserIdAsync(supabaseUserId))
+            .ReturnsAsync((Usuario?)null);
+        _usuarioRepository
+            .Setup(r => r.GetByEmailGlobalAsync("nuevo@transnic.com"))
+            .ReturnsAsync((Usuario?)null);
+        _invitacionRepository
+            .Setup(r => r.GetPendienteByEmailAsync("nuevo@transnic.com"))
+            .ReturnsAsync(invitacion);
+        _perfilRepository
+            .Setup(r => r.GetByIdAsync(PerfilId, EmpresaId))
+            .ReturnsAsync(new Perfil
+            {
+                Id = PerfilId,
+                EmpresaId = EmpresaId,
+                Nombre = "Operador",
+                TipoPerfil = TipoPerfil.OPERADOR,
+                Activo = true
+            });
+        _usuarioRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Usuario>()))
+            .ReturnsAsync(nuevoUsuarioId);
+        _invitacionRepository
+            .Setup(r => r.MarcarAceptadaAsync(invitacionId, It.IsAny<DateTime>()))
+            .ReturnsAsync(true);
+
+        _permisoRepository
+            .Setup(r => r.GetByPerfilAsync(PerfilId, EmpresaId))
+            .ReturnsAsync(Array.Empty<Permiso>());
+
+        _empresaRepository
+            .Setup(r => r.GetByIdAsync(EmpresaId))
+            .ReturnsAsync(new Empresa { Id = EmpresaId, Nombre = "Transnic" });
+
+        _sesionRepository
+            .Setup(r => r.CreateAsync(It.IsAny<Sesion>()))
+            .ReturnsAsync(Guid.NewGuid());
+
+        _usuarioRepository
+            .Setup(r => r.ResetearIntentosFallidosAsync(nuevoUsuarioId))
+            .Returns(Task.CompletedTask);
+        _usuarioRepository
+            .Setup(r => r.ActualizarUltimoAccesoAsync(nuevoUsuarioId))
+            .Returns(Task.CompletedTask);
+        _usuarioRepository
+            .Setup(r => r.ActualizarSupabaseUserIdAsync(nuevoUsuarioId, supabaseUserId))
+            .ReturnsAsync(true);
+
+        _auditoria
+            .Setup(a => a.RegistrarAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Guid>(),
+                It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<Guid?>(),
+                It.IsAny<object?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        var service = CrearServiceConClaveConocidaConHttpFactory(ClaveTotpConocida, httpFactory.Object);
+
+        var resultado = await service.LoginConOAuthAsync(new OAuthCallbackRequestDto
+        {
+            Provider = "google",
+            SupabaseToken = "token-valido"
+        });
+
+        resultado.Usuario.Email.Should().Be("nuevo@transnic.com");
+        resultado.Usuario.TipoUsuario.Should().Be(TipoUsuario.OPERADOR);
+
+        _invitacionRepository.Verify(
+            r => r.MarcarAceptadaAsync(invitacionId, It.IsAny<DateTime>()), Times.Once);
+        _usuarioRepository.Verify(
+            r => r.CreateAsync(It.Is<Usuario>(u => u.Email == "nuevo@transnic.com")), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoginConOAuthAsync_CuandoEmailNuevoSinInvitacion_LanzaBusinessException()
+    {
+        // HU-004 CA-05: email sin usuario y sin invitación → acceso denegado 422.
+        var supabaseUserId = Guid.NewGuid();
+
+        var httpFactory = HttpFactoryConSupabaseUser(supabaseUserId, "desconocido@external.com");
+
+        _usuarioRepository
+            .Setup(r => r.GetBySupabaseUserIdAsync(supabaseUserId))
+            .ReturnsAsync((Usuario?)null);
+        _usuarioRepository
+            .Setup(r => r.GetByEmailGlobalAsync("desconocido@external.com"))
+            .ReturnsAsync((Usuario?)null);
+        _invitacionRepository
+            .Setup(r => r.GetPendienteByEmailAsync("desconocido@external.com"))
+            .ReturnsAsync((Invitacion?)null);
+
+        var service = CrearServiceConClaveConocidaConHttpFactory(ClaveTotpConocida, httpFactory.Object);
+
+        var act = async () => await service.LoginConOAuthAsync(new OAuthCallbackRequestDto
+        {
+            Provider = "google",
+            SupabaseToken = "token-valido"
+        });
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.WithMessage("*invitación*");
     }
 
     // ── Refresh: usuario inválido ──────────────────────────────────
@@ -2047,6 +2423,82 @@ public class AuthServiceTests
             config,
             _jwtSettings,
             _appSettings,
-            _logger.Object);
+            _logger.Object,
+            _perfilRepository.Object,
+            _httpClientFactory.Object);
+    }
+
+    /// <summary>
+    /// Crea un AuthService con una clave TOTP conocida y un IHttpClientFactory
+    /// custom (para los tests de OAuth — HU-004).
+    /// </summary>
+    private AuthService CrearServiceConClaveConocidaConHttpFactory(
+        string claveConocida, IHttpClientFactory httpClientFactory)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "Security:TotpEncryptionKey", claveConocida },
+                { "Supabase:Url", "http://localhost:54321" },
+                { "Supabase:AnonKey", "anon-test-key" }
+            })
+            .Build();
+
+        return new AuthService(
+            _usuarioRepository.Object,
+            _permisoRepository.Object,
+            _empresaRepository.Object,
+            _invitacionRepository.Object,
+            _sesionRepository.Object,
+            _config2faRepository.Object,
+            _supabaseAuth.Object,
+            _jwtService,
+            _auditoria.Object,
+            _emailService.Object,
+            _httpContextAccessor.Object,
+            config,
+            _jwtSettings,
+            _appSettings,
+            _logger.Object,
+            _perfilRepository.Object,
+            httpClientFactory);
+    }
+
+    /// <summary>
+    /// Crea un IHttpClientFactory cuyo client "SupabaseAuth" responde el GET
+    /// /auth/v1/user con un usuario de Supabase válido (id + email).
+    /// </summary>
+    private static Mock<IHttpClientFactory> HttpFactoryConSupabaseUser(Guid supabaseUserId, string email)
+    {
+        var body = $$"""{ "id": "{{supabaseUserId}}", "email": "{{email}}" }""";
+        var httpClient = new HttpClient(new StubHttpMessageHandler(
+            new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/json")
+            }))
+        {
+            BaseAddress = new Uri("http://localhost:54321")
+        };
+
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("SupabaseAuth")).Returns(httpClient);
+        return factory;
+    }
+
+    /// <summary>Handler HTTP de test que devuelve SIEMPRE la respuesta programada.</summary>
+    private sealed class StubHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly HttpResponseMessage _respuesta;
+
+        public StubHttpMessageHandler(HttpResponseMessage respuesta)
+        {
+            _respuesta = respuesta;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(_respuesta);
+        }
     }
 }

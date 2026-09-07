@@ -36,6 +36,13 @@ public interface IUsuarioRepository
     /// <summary>Obtiene un usuario por su vínculo con Supabase Auth (OAuth / SSO, HU-004).</summary>
     Task<Usuario?> GetBySupabaseUserIdAsync(Guid supabaseUserId);
 
+    /// <summary>
+    /// Vincula el supabase_user_id a un usuario existente (HU-004 OAuth):
+    /// cuando el usuario ya existía en Freiroute pero llega por un proveedor
+    /// OAuth por primera vez, se persiste el vínculo con auth.users.
+    /// </summary>
+    Task<bool> ActualizarSupabaseUserIdAsync(Guid usuarioId, Guid supabaseUserId);
+
     /// <summary>Insertar un usuario. El UUID lo genera la BD.</summary>
     Task<Guid> CreateAsync(Usuario usuario);
 

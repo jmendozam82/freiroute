@@ -89,7 +89,7 @@ public class AccountController : BaseAdminController
     [HttpPost]
     public async Task<IActionResult> DeleteFoto()
     {
-        await _usuarioService.UpdateFotoAsync(UsuarioId, EmpresaId, null);
+        await _usuarioService.UpdateFotoAsync(UsuarioId, EmpresaId, null!);
         return Ok(new { success = true });
     }
 }

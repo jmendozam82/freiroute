@@ -58,6 +58,7 @@ public class UsuarioServiceTests
             _usuarioRepository.Object,
             _perfilRepository.Object,
             _invitacionRepository.Object,
+            new Mock<ISesionRepository>().Object,
             _validator.Object,
             _supabaseAuth.Object,
             _auditoria.Object,

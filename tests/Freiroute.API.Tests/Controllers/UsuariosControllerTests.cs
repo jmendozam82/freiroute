@@ -344,4 +344,48 @@ public class UsuariosControllerTests : IDisposable
         var json = await response.Content.ReadAsStringAsync();
         json.Should().Contain("reactivado");
     }
+
+    // ── POST /api/usuarios/{id}/reset-password (G-06) ────────────────
+
+    [Fact]
+    public async Task ResetPassword_SinToken_Retorna401()
+    {
+        var client = _factory.CrearClientSinToken();
+
+        var response = await client.PostAsync($"/api/usuarios/{Guid.NewGuid()}/reset-password", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task ResetPassword_ConPermisoUpdate_Retorna200()
+    {
+        _factory.UsuarioService
+            .Setup(s => s.ResetPasswordAdminAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask);
+
+        var clientUpdate = _factory.CrearClientConToken(
+            JwtTestHelper.GenerateTestToken(
+                Guid.NewGuid(), JwtTestHelper.EmpresaTenant,
+                ["usuarios:read", "usuarios:create", "usuarios:update"], "ADMIN"));
+
+        var response = await clientUpdate.PostAsync(
+            $"/api/usuarios/{Guid.NewGuid()}/reset-password", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("restablecida");
+    }
+
+    [Fact]
+    public async Task ResetPassword_SinPermisoUpdate_Retorna403()
+    {
+        // Solamente lectura no puede restablecer contraseñas (G-06).
+        var client = _factory.CrearClientConToken(JwtTestHelper.TokenSoloLectura);
+
+        var response = await client.PostAsync(
+            $"/api/usuarios/{Guid.NewGuid()}/reset-password", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

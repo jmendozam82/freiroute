@@ -1,20 +1,16 @@
 using FluentValidation;
 using Freiroute.DTO.Onboarding;
+using Freiroute.Utility.Constants;
 
 namespace Freiroute.BLL.Validators;
 
 /// <summary>
 /// Validación del Paso 3 del onboarding: configuración operativa (HU-012 CA-04).
 /// Se valida el formato de colores, los prefijos y que los modos de transporte
-/// sean códigos válidos (FTL, LTL, AEREO, MARITIMO, etc.).
+/// sean códigos de <see cref="ModoTransporte"/> (fuente única en la capa Utility).
 /// </summary>
 public class OnboardingPaso3Validator : AbstractValidator<OnboardingPaso3RequestDto>
 {
-    private static readonly string[] ModosValidos =
-    [
-        "FTL", "LTL", "AEREO", "MARITIMO", "FERROVIARIO", "INTERMODAL"
-    ];
-
     public OnboardingPaso3Validator()
     {
         RuleFor(x => x.Moneda)
@@ -47,9 +43,16 @@ public class OnboardingPaso3Validator : AbstractValidator<OnboardingPaso3Request
             .NotEmpty()
             .WithMessage("Debe seleccionar al menos un modo de transporte");
 
+        // Nivel colección: conserva PropertyName = "ModosTransporteActivos"
+        // (compatibilidad con mensajes y tests de Sprint 2).
         RuleFor(x => x.ModosTransporteActivos)
-            .Must(modos => modos.All(m => ModosValidos.Contains(m)))
+            .Must(modos => modos.All(m => ModoTransporte.Todos.Contains(m)))
             .WithMessage("Un modo de transporte no es válido")
             .When(x => x.ModosTransporteActivos is { Count: > 0 });
+
+        // Per-element (Fase 3): mensaje con el modo específico.
+        RuleForEach(x => x.ModosTransporteActivos)
+            .Must(modo => ModoTransporte.Todos.Contains(modo))
+            .WithMessage("El modo de transporte '{PropertyValue}' no es válido");
     }
 }

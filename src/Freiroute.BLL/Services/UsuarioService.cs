@@ -24,6 +24,7 @@ public class UsuarioService : IUsuarioService
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IPerfilRepository _perfilRepository;
     private readonly IInvitacionRepository _invitacionRepository;
+    private readonly ISesionRepository _sesionRepository;
     private readonly IValidator<UsuarioRequestDto> _validator;
     private readonly ISupabaseAuthService _supabaseAuth;
     private readonly IAuditoriaService _auditoria;
@@ -39,6 +40,7 @@ public class UsuarioService : IUsuarioService
         IUsuarioRepository usuarioRepository,
         IPerfilRepository perfilRepository,
         IInvitacionRepository invitacionRepository,
+        ISesionRepository sesionRepository,
         IValidator<UsuarioRequestDto> validator,
         ISupabaseAuthService supabaseAuth,
         IAuditoriaService auditoria,
@@ -50,6 +52,7 @@ public class UsuarioService : IUsuarioService
         _usuarioRepository = usuarioRepository;
         _perfilRepository = perfilRepository;
         _invitacionRepository = invitacionRepository;
+        _sesionRepository = sesionRepository;
         _validator = validator;
         _supabaseAuth = supabaseAuth;
         _auditoria = auditoria;
@@ -349,6 +352,50 @@ public class UsuarioService : IUsuarioService
         return await MapUsuarioAsync(usuario.EmpresaId, usuario);
     }
 
+    // ── Reset de contraseña por admin (G-06, Sprint 3) ──────────────
+
+    /// <summary>
+    /// Restablece la contraseña de un usuario desde el panel de Administración
+    /// (G-06 del Sprint 3): actualiza la contraseña en Supabase Auth con el token
+    /// de admin, revoca todas las sesiones activas del usuario y registra auditoría
+    /// con el admin que ejecutó la acción.
+    /// </summary>
+    public async Task ResetPasswordAdminAsync(Guid usuarioId, Guid empresaId, Guid adminId)
+    {
+        var usuario = await _usuarioRepository.GetByIdAsync(usuarioId, empresaId);
+        if (usuario is null || !usuario.Activo)
+        {
+            throw new NotFoundException(nameof(Usuario), usuarioId);
+        }
+
+        // Supabase Auth es el almacén de contraseñas — sin supabase_user_id no hay
+        // cuenta vinculada y no se puede forzar el cambio desde el panel.
+        if (!usuario.SupabaseUserId.HasValue)
+        {
+            throw new BusinessException(
+                "El usuario no tiene cuenta en Supabase Auth. Espere a que acepte la invitación.");
+        }
+
+        // G-06-D: cambiar contraseña con token de admin (real o stub según DI).
+        // Contraseña temporal aleatoria (formato G6:Otp12) — el usuario la cambia
+        // en su próximo login. Nunca se muestra ni se registra en logs.
+        var passwordOk = await _supabaseAuth.CambiarPasswordAsync(
+            usuario.SupabaseUserId.Value, GenerarPasswordTemporal());
+        if (!passwordOk)
+        {
+            throw new BusinessException(
+                "No se pudo restablecer la contraseña en Supabase Auth. Intente nuevamente.");
+        }
+
+        // G-06-E: invalidar todas las sesiones activas del usuario.
+        await _sesionRepository.RevocarTodasPorUsuarioAsync(usuarioId);
+
+        await _auditoria.RegistrarAsync(
+            "usuarios", "RESET_PASSWORD_ADMIN", empresaId, adminId,
+            nameof(Usuario), usuarioId,
+            new { usuarioEmail = usuario.Email, metodo = "admin" });
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     private async Task<Perfil> ValidarPerfilAsync(Guid empresaId, Guid perfilId)
@@ -392,6 +439,25 @@ public class UsuarioService : IUsuarioService
         if (!tiposValidos.Contains(tipoUsuario))
         {
             throw new BusinessException("El tipo de usuario no es válido.");
+        }
+    }
+
+    /// <summary>
+    /// Genera una contraseña temporal aleatoria con formato G6:Otp12 (G-06-D),
+    /// p. ej. "Gh7Qp2:rn4kLm9wAs1" — solo se aplica en Supabase Auth; nunca se
+    /// muestra al admin ni se registra en logs (el usuario la cambia en el login).
+    /// </summary>
+    private static string GenerarPasswordTemporal()
+    {
+        const string alfaNumericos =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        return $"{GenerarSegmento(alfaNumericos, 6)}:{GenerarSegmento(alfaNumericos, 12)}";
+
+        static string GenerarSegmento(string alfabeto, int longitud)
+        {
+            var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(longitud);
+            return new string(bytes.Select(b => alfabeto[b % alfabeto.Length]).ToArray());
         }
     }
 

@@ -73,6 +73,35 @@ public class InvitacionRepository : IInvitacionRepository
     }
 
     /// <summary>
+    /// Obtiene la invitación PENDING más reciente por email (HU-004 OAuth).
+    /// Usada por AuthService.LoginConOAuthAsync para autoprovisionar un usuario
+    /// que llega por OAuth con una invitación pendiente pero sin cuenta creada.
+    /// </summary>
+    public async Task<Invitacion?> GetPendienteByEmailAsync(string email)
+    {
+        const string sql = @"
+            SELECT
+                id               AS Id,
+                empresa_id       AS EmpresaId,
+                email            AS Email,
+                perfil_id        AS PerfilId,
+                token            AS Token,
+                estado           AS Estado,
+                fecha_expiracion AS FechaExpiracion,
+                fecha_aceptacion AS FechaAceptacion,
+                creado_por_id    AS CreadoPorId,
+                fecha_creacion   AS FechaCreacion
+            FROM invitaciones
+            WHERE email = @Email
+              AND estado = 'PENDING'
+            ORDER BY fecha_creacion DESC
+            LIMIT 1";
+
+        return await _connection.QueryFirstOrDefaultAsync<Invitacion>(
+            sql, new { Email = email });
+    }
+
+    /// <summary>
     /// Marca una invitación como aceptada: estado = 'ACCEPTED',
     /// fecha_aceptacion = @FechaAceptacion (token de un solo uso, HU-007 CA-04).
     /// </summary>

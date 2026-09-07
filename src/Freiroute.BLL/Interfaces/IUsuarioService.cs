@@ -40,4 +40,11 @@ public interface IUsuarioService
 
     /// <summary>Acepta una invitación: valida token, asigna el perfil y activa el usuario.</summary>
     Task<UsuarioResponseDto> AceptarInvitacionAsync(string token, string nuevaPassword);
+
+    /// <summary>
+    /// Restablece la contraseña de un usuario desde el panel de Administración
+    /// (G-06 del Sprint 3): actualiza la contraseña en Supabase Auth con el token
+    /// de admin, revoca todas las sesiones activas del usuario y registra auditoría.
+    /// </summary>
+    Task ResetPasswordAdminAsync(Guid usuarioId, Guid empresaId, Guid adminId);
 }

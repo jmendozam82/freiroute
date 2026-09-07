@@ -130,4 +130,21 @@ public class UsuariosController : ControllerBase
         return StatusCode(StatusCodes.Status201Created,
             ApiResponse<UsuarioResponseDto>.Ok(usuario, "Cuenta activada exitosamente"));
     }
+
+    /// <summary>
+    /// Restablece la contraseña de un usuario desde el panel de administración
+    /// (G-06 del Sprint 3): cambia la contraseña en Supabase Auth con token de
+    /// admin y revoca todas sus sesiones activas.
+    /// </summary>
+    [HttpPost("{id:guid}/reset-password")]
+    [RequirePermission(ModuloPermiso.Usuarios, PermissionType.Update)]
+    [ProducesResponseType(typeof(ApiResponse<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResetPassword(Guid id)
+    {
+        var empresaId = User.GetTenantEfectivo(HttpContext);
+        var adminId = User.GetUsuarioId();
+        await _usuarioService.ResetPasswordAdminAsync(id, empresaId, adminId);
+        return Ok(ApiResponse<string>.Ok(string.Empty,
+            "Contraseña restablecida. El usuario deberá iniciar sesión nuevamente."));
+    }
 }

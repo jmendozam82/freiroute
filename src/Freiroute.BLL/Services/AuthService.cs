@@ -11,11 +11,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OtpNet;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Freiroute.BLL.Services;
 
 /// <summary>
-/// Lógica de negocio de autenticación (HU-003, HU-007). Servicio más crítico
+/// Lógica de negocio de autenticación (HU-003, HU-004, HU-007). Servicio más crítico
 /// del Sprint 1:
 /// - Login: resuelve el tenant por email (GetByEmailGlobalAsync), valida estado
 ///   y bloqueos, verifica credenciales contra Supabase Auth, genera JWT con los
@@ -23,6 +25,9 @@ namespace Freiroute.BLL.Services;
 /// - Refresh: rota el refresh token y emite un nuevo access token.
 /// - Logout: invalida el refresh token.
 /// - Forgot/Reset password: token de un solo uso de 30 min en 'invitaciones'.
+/// - OAuth (HU-004, Sprint 3): valida el access token del proveedor contra el
+///   endpoint público /auth/v1/user de Supabase, resuelve o autoprovisiona el
+///   usuario Freiroute por email y emite la sesión completa.
 /// </summary>
 public class AuthService : IAuthService
 {
@@ -30,6 +35,7 @@ public class AuthService : IAuthService
     private readonly IPermisoRepository _permisoRepository;
     private readonly IEmpresaRepository _empresaRepository;
     private readonly IInvitacionRepository _invitacionRepository;
+    private readonly IPerfilRepository _perfilRepository;
     private readonly ISesionRepository _sesionRepository;
     private readonly IConfiguracion2faRepository _config2faRepository;
     private readonly ISupabaseAuthService _supabaseAuth;
@@ -37,9 +43,12 @@ public class AuthService : IAuthService
     private readonly IAuditoriaService _auditoria;
     private readonly IEmailService _emailService;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly JwtSettings _jwtSettings;
     private readonly AppSettings _appSettings;
     private readonly string _totpEncryptionKey;
+    private readonly string _supabaseUrl;
+    private readonly string _supabaseAnonKey;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -57,12 +66,15 @@ public class AuthService : IAuthService
         IConfiguration configuration,
         IOptions<JwtSettings> jwtSettings,
         IOptions<AppSettings> appSettings,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IPerfilRepository perfilRepository,
+        IHttpClientFactory httpClientFactory)
     {
         _usuarioRepository = usuarioRepository;
         _permisoRepository = permisoRepository;
         _empresaRepository = empresaRepository;
         _invitacionRepository = invitacionRepository;
+        _perfilRepository = perfilRepository;
         _sesionRepository = sesionRepository;
         _config2faRepository = config2faRepository;
         _supabaseAuth = supabaseAuth;
@@ -70,6 +82,7 @@ public class AuthService : IAuthService
         _auditoria = auditoria;
         _emailService = emailService;
         _httpContextAccessor = httpContextAccessor;
+        _httpClientFactory = httpClientFactory;
         _jwtSettings = jwtSettings.Value;
         _appSettings = appSettings.Value;
         // Clave maestra para cifrar el secret TOTP (ADR-011). OBLIGATORIA:
@@ -84,6 +97,11 @@ public class AuthService : IAuthService
                 "La clave de cifrado TOTP no está configurada. Verificar Security:TotpEncryptionKey en la configuración.");
         }
         _totpEncryptionKey = claveTotp;
+
+        // Endpoint y AnonKey de Supabase Auth (OAuth — HU-004). Con default local
+        // para que los tests/CI sin variables de entorno no fallen al resolverlos.
+        _supabaseUrl = configuration["Supabase:Url"] ?? "http://localhost:54321";
+        _supabaseAnonKey = configuration["Supabase:AnonKey"] ?? string.Empty;
         _logger = logger;
     }
 
@@ -391,11 +409,21 @@ public class AuthService : IAuthService
             throw new BusinessException("Token inválido o expirado");
         }
 
-        // Cambiar contraseña en Supabase Auth (stub Sprint 1 — ver TODO).
-        if (usuario.SupabaseUserId.HasValue)
+        // G-06-D: cambiar contraseña en Supabase Auth con token de admin.
+        // Supabase Auth es el almacén de contraseñas — sin supabase_user_id no
+        // hay cuenta vinculada y el flujo de recuperación no puede continuar.
+        if (!usuario.SupabaseUserId.HasValue)
         {
-            await _supabaseAuth.UpdatePasswordAsync(
-                usuario.SupabaseUserId.Value, request.NewPassword);
+            throw new BusinessException(
+                "El usuario no tiene cuenta en Supabase Auth. Contacta al administrador.");
+        }
+
+        var passwordOk = await _supabaseAuth.CambiarPasswordAsync(
+            usuario.SupabaseUserId.Value, request.NewPassword);
+        if (!passwordOk)
+        {
+            throw new BusinessException(
+                "No se pudo actualizar la contraseña. Intente nuevamente.");
         }
 
         // Token de un solo uso (CA-04).
@@ -608,19 +636,105 @@ public class AuthService : IAuthService
     }
 
     /// <summary>
-    /// Login con OAuth (HU-004). En este sprint se resuelve el vínculo por
-    /// supabase_user_id; la llamada real a Supabase Auth por proveedor va pendiente.
+    /// Login con OAuth (HU-004, Sprint 3). Flujo:
+    /// 1. Valida el access token del proveedor contra el endpoint público de
+    ///    Supabase Auth (GET /auth/v1/user con Authorization Bearer + apikey).
+    /// 2. Resuelve el usuario Freiroute: primero por supabase_user_id, luego por
+    ///    email (vinculando el supabase_user_id si aún no estaba vinculado).
+    /// 3. Si el email no tiene usuario, autoprovisiona uno desde la invitación
+    ///    PENDING más reciente (empresa + perfil de la invitación).
+    /// 4. Genera access + refresh token, registra LOGIN_OAUTH en auditoría.
+    /// Respuestas controladas: token inválido → BusinessException (422).
     /// </summary>
     public async Task<LoginResponseDto> LoginConOAuthAsync(OAuthCallbackRequestDto request)
     {
         var (ipAddress, userAgent) = GetRequestContext();
 
-        // Implementación base: se asume que el frontend ya validó el access token del
-        // proveedor contra Supabase. Aquí solo se resuelve el usuario vinculado.
-        // El parseo real del token OAuth de Supabase se integra en Sprint 3.
-        await Task.CompletedTask;
-        throw new NotImplementedException(
-            "La resolución del token OAuth de Supabase se implementa en Sprint 3 (HU-004).");
+        if (string.IsNullOrWhiteSpace(request.SupabaseToken))
+        {
+            throw new BusinessException(
+                "Token de OAuth inválido. Vuelva a intentar el inicio de sesión.");
+        }
+
+        // 1. Validar el token contra Supabase Auth (GET /auth/v1/user).
+        var supabaseUser = await ValidarTokenOAuthAsync(request.SupabaseToken);
+        if (supabaseUser is null)
+        {
+            throw new BusinessException(
+                "Token de OAuth inválido o expirado. Vuelva a intentar el inicio de sesión.");
+        }
+
+        // 2. Resolver el usuario Freiroute vinculado (si existe).
+        var usuario = await _usuarioRepository.GetBySupabaseUserIdAsync(supabaseUser.Id);
+
+        // 2b. No vinculado: buscar por email (migración de usuarios ya existentes).
+        if (usuario is null)
+        {
+            usuario = await _usuarioRepository.GetByEmailGlobalAsync(supabaseUser.Email ?? string.Empty);
+        }
+
+        // 3. No existe: autoprovisionar desde la invitación PENDING (HU-004 CA-04).
+        if (usuario is null)
+        {
+            usuario = await AutoprovisionarUsuarioOAuthAsync(supabaseUser.Email ?? string.Empty);
+        }
+
+        // Estado de la cuenta — misma política que el login con password (CA-07).
+        if (usuario.Estado != EstadoUsuario.ACTIVE)
+        {
+            var mensaje = usuario.Estado switch
+            {
+                EstadoUsuario.PENDING => "Cuenta pendiente de activación. Revise su email.",
+                EstadoUsuario.SUSPENDED => "Cuenta suspendida. Contacte al administrador.",
+                EstadoUsuario.LOCKED => "Cuenta bloqueada. Contacte al administrador.",
+                _ => "La cuenta no está activa. Contacte al administrador."
+            };
+            throw new BusinessException(mensaje);
+        }
+
+        // 3b. Vincular el supabase_user_id si el usuario vino por email (primera vez).
+        if (!usuario.SupabaseUserId.HasValue || usuario.SupabaseUserId.Value != supabaseUser.Id)
+        {
+            await _usuarioRepository.ActualizarSupabaseUserIdAsync(usuario.Id, supabaseUser.Id);
+            usuario.SupabaseUserId = supabaseUser.Id;
+        }
+
+        // 4. Login exitoso: permisos, token, sesión y auditoría.
+        await _usuarioRepository.ResetearIntentosFallidosAsync(usuario.Id);
+        await _usuarioRepository.ActualizarUltimoAccesoAsync(usuario.Id);
+
+        var permisos = await CargarPermisosAsync(usuario.PerfilId, usuario.EmpresaId);
+        var empresa = await _empresaRepository.GetByIdAsync(usuario.EmpresaId);
+        var empresaNombre = empresa?.Nombre ?? string.Empty;
+
+        var accessToken = _jwtService.GenerateAccessToken(
+            usuario.Id, usuario.EmpresaId, usuario.PerfilId,
+            usuario.TipoUsuario, usuario.NombreCompleto, permisos,
+            empresa?.LogoUrl);
+
+        var refreshToken = await CrearSesionAsync(usuario);
+
+        await _auditoria.RegistrarAsync(
+            "auth", AccionAuditoria.LOGIN_OAUTH, usuario.EmpresaId, usuario.Id,
+            nameof(Usuario), usuario.Id,
+            new { provider = request.Provider, supabaseUserId = supabaseUser.Id },
+            ipAddress, userAgent);
+
+        return new LoginResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresIn = _jwtSettings.ExpiryHours * 3600,
+            Usuario = new UsuarioTokenDto
+            {
+                Id = usuario.Id,
+                Nombre = usuario.NombreCompleto,
+                Email = usuario.Email,
+                TipoUsuario = usuario.TipoUsuario,
+                EmpresaNombre = empresaNombre,
+                Permisos = permisos.ToList()
+            }
+        };
     }
 
     // ── Recovery codes (HU-005) ──────────────────────────────────
@@ -818,5 +932,116 @@ public class AuthService : IAuthService
 
         return (string.IsNullOrWhiteSpace(ip) ? null : ip,
                 string.IsNullOrWhiteSpace(agent) ? null : agent);
+    }
+
+    /// <summary>
+    /// Valida el access token del proveedor OAuth contra Supabase Auth
+    /// (GET /auth/v1/user con Authorization Bearer + apikey). Devuelve null si
+    /// el token es inválido/expirado o si el endpoint no responde (fail-soft).
+    /// </summary>
+    private async Task<SupabaseUserDto?> ValidarTokenOAuthAsync(string accessToken)
+    {
+        try
+        {
+            using var client = _httpClientFactory.CreateClient("SupabaseAuth");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_supabaseUrl}/auth/v1/user");
+
+            request.Headers.Add("apikey", _supabaseAnonKey);
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {accessToken}");
+
+            using var response = await client.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "Supabase Auth → validación OAuth fallida {Status}", (int)response.StatusCode);
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<SupabaseUserDto>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Supabase Auth → error HTTP validando token OAuth");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Autoprovisiona un usuario Freiroute desde la invitación PENDING más
+    /// reciente del email (HU-004 CA-04). El tipo_usuario se deriva del perfil
+    /// de la invitación — misma lógica que UsuarioService.DerivarTipoUsuario.
+    /// </summary>
+    private async Task<Usuario> AutoprovisionarUsuarioOAuthAsync(string email)
+    {
+        var invitacion = await _invitacionRepository.GetPendienteByEmailAsync(email);
+        if (invitacion is null)
+        {
+            throw new BusinessException(
+                "No tienes acceso a Freiroute con esta cuenta. " +
+                "Solicita una invitación al administrador de tu empresa.");
+        }
+
+        var perfil = await _perfilRepository.GetByIdAsync(invitacion.PerfilId, invitacion.EmpresaId);
+        if (perfil is null || !perfil.Activo)
+        {
+            throw new BusinessException(
+                "Tu perfil de acceso no está activo. Contacta al administrador.");
+        }
+
+        var nuevoUsuario = new Usuario
+        {
+            EmpresaId = invitacion.EmpresaId,
+            PerfilId = invitacion.PerfilId,
+            Email = email,
+            NombreCompleto = DerivarNombreDeEmail(email),
+            SupabaseUserId = Guid.Empty, // se vincula al final del flujo OAuth
+            TipoUsuario = DerivarTipoUsuario(perfil.TipoPerfil),
+            Estado = EstadoUsuario.ACTIVE,
+            Activo = true,
+            FechaCreacion = DateTime.UtcNow
+        };
+
+        var usuarioId = await _usuarioRepository.CreateAsync(nuevoUsuario);
+        nuevoUsuario.Id = usuarioId;
+
+        await _invitacionRepository.MarcarAceptadaAsync(invitacion.Id, DateTime.UtcNow);
+
+        return nuevoUsuario;
+    }
+
+    /// <summary>Deriva el TipoUsuario del perfil base (misma lógica que UsuarioService).</summary>
+    private static string DerivarTipoUsuario(string tipoPerfil) => tipoPerfil switch
+    {
+        TipoPerfil.ADMIN => TipoUsuario.ADMIN,
+        TipoPerfil.DISPATCHER => TipoUsuario.DISPATCHER,
+        TipoPerfil.OPERADOR => TipoUsuario.OPERADOR,
+        TipoPerfil.CONDUCTOR => TipoUsuario.CONDUCTOR,
+        TipoPerfil.CLIENTE => TipoUsuario.CLIENTE,
+        _ => TipoUsuario.OPERADOR
+    };
+
+    /// <summary>
+    /// Deriva el nombre inicial de la parte local del email (autoprovisionamiento
+    /// OAuth): convierte puntos/guiones en espacios y capitaliza cada palabra.
+    /// </summary>
+    private static string DerivarNombreDeEmail(string email)
+    {
+        var local = email.Split('@')[0];
+        var palabras = local
+            .Split(['.', '_', '-', '+'], StringSplitOptions.RemoveEmptyEntries)
+            .Where(p => p.Any(char.IsLetterOrDigit));
+
+        return string.Join(" ", palabras.Select(p =>
+            char.ToUpperInvariant(p[0]) + p[1..].ToLowerInvariant()));
+    }
+
+    /// <summary>DTO interno de la respuesta de GET /auth/v1/user (HU-004 OAuth).</summary>
+    private sealed class SupabaseUserDto
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("id")]
+        public Guid Id { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("email")]
+        public string? Email { get; set; }
     }
 }
