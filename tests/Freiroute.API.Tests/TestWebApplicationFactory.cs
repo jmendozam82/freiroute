@@ -34,6 +34,15 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public Mock<IOnboardingService> OnboardingService { get; }
     public Mock<IConfiguracionService> ConfiguracionService { get; }
 
+    // Servicios Sprint 3 — catálogos TMS (HU-015 a HU-020, G-06).
+    public Mock<IUbicacionService> UbicacionService { get; }
+    public Mock<IZonaEntregaService> ZonaEntregaService { get; }
+    public Mock<ITarifaBaseService> TarifaBaseService { get; }
+    public Mock<IClienteService> ClienteService { get; }
+    public Mock<ITipoMercanciaService> TipoMercanciaService { get; }
+    public Mock<IUnidadMedidaService> UnidadMedidaService { get; }
+    public Mock<ITipoEmbalajeService> TipoEmbalajeService { get; }
+
     public TestWebApplicationFactory()
     {
         AuthService = new Mock<IAuthService>();
@@ -49,6 +58,14 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         PlanLimiteService = new Mock<IPlanLimiteService>();
         OnboardingService = new Mock<IOnboardingService>();
         ConfiguracionService = new Mock<IConfiguracionService>();
+
+        UbicacionService = new Mock<IUbicacionService>();
+        ZonaEntregaService = new Mock<IZonaEntregaService>();
+        TarifaBaseService = new Mock<ITarifaBaseService>();
+        ClienteService = new Mock<IClienteService>();
+        TipoMercanciaService = new Mock<ITipoMercanciaService>();
+        UnidadMedidaService = new Mock<IUnidadMedidaService>();
+        TipoEmbalajeService = new Mock<ITipoEmbalajeService>();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -77,6 +94,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IPlanLimiteService>();
             services.RemoveAll<IOnboardingService>();
             services.RemoveAll<IConfiguracionService>();
+            services.RemoveAll<IUbicacionService>();
+            services.RemoveAll<IZonaEntregaService>();
+            services.RemoveAll<ITarifaBaseService>();
+            services.RemoveAll<IClienteService>();
+            services.RemoveAll<ITipoMercanciaService>();
+            services.RemoveAll<IUnidadMedidaService>();
+            services.RemoveAll<ITipoEmbalajeService>();
 
             services.AddSingleton(AuthService.Object);
             services.AddSingleton(EmpresaService.Object);
@@ -90,6 +114,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(PlanLimiteService.Object);
             services.AddSingleton(OnboardingService.Object);
             services.AddSingleton(ConfiguracionService.Object);
+            services.AddSingleton(UbicacionService.Object);
+            services.AddSingleton(ZonaEntregaService.Object);
+            services.AddSingleton(TarifaBaseService.Object);
+            services.AddSingleton(ClienteService.Object);
+            services.AddSingleton(TipoMercanciaService.Object);
+            services.AddSingleton(UnidadMedidaService.Object);
+            services.AddSingleton(TipoEmbalajeService.Object);
         });
     }
 

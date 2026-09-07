@@ -172,4 +172,43 @@ public class UnidadMedidaServiceTests
 
         await act.Should().ThrowAsync<NotFoundException>();
     }
+
+    [Fact]
+    public async Task DeactivateAsync_CuandoTieneReferencias_LanzaBusinessException()
+    {
+        var unidad = Unidad("kg", TipoMedida.Peso, 1m);
+        _repo.Setup(r => r.GetByIdAsync(unidad.Id, unidad.EmpresaId))
+            .ReturnsAsync(unidad);
+        _repo.Setup(r => r.ContarReferenciasAsync(unidad.Id, unidad.EmpresaId))
+            .ReturnsAsync(3);
+
+        var act = async () => await _service.DeactivateAsync(unidad.Id, unidad.EmpresaId);
+
+        var ex = await act.Should().ThrowAsync<BusinessException>();
+        ex.Which.Code.Should().Be("UNIDAD_EN_USO");
+        ex.Which.Message.Should().Contain("3 tipo(s) de mercancía");
+        _repo.Verify(r => r.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+        _auditoria.Verify(a => a.RegistrarAsync(
+            "unidades_medida", AccionAuditoria.DEACTIVATE, It.IsAny<Guid>(),
+            null, "UnidadMedida", It.IsAny<Guid>(), It.IsAny<object>(), null, null), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeactivateAsync_SinReferencias_DesactivaCorrectamente()
+    {
+        var unidad = Unidad("kg", TipoMedida.Peso, 1m);
+        _repo.Setup(r => r.GetByIdAsync(unidad.Id, unidad.EmpresaId))
+            .ReturnsAsync(unidad);
+        _repo.Setup(r => r.ContarReferenciasAsync(unidad.Id, unidad.EmpresaId))
+            .ReturnsAsync(0);
+        _repo.Setup(r => r.DeactivateAsync(unidad.Id, unidad.EmpresaId))
+            .ReturnsAsync(true);
+
+        var resultado = await _service.DeactivateAsync(unidad.Id, unidad.EmpresaId);
+
+        resultado.Should().BeTrue();
+        _auditoria.Verify(a => a.RegistrarAsync(
+            "unidades_medida", AccionAuditoria.DEACTIVATE, unidad.EmpresaId,
+            null, "UnidadMedida", unidad.Id, It.IsAny<object>(), null, null), Times.Once);
+    }
 }
