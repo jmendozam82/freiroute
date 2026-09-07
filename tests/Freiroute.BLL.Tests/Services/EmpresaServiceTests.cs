@@ -25,6 +25,8 @@ public class EmpresaServiceTests
     private readonly Mock<ISuscripcionRepository> _suscripcionRepoMock;
     private readonly Mock<IPlanRepository> _planRepoMock;
     private readonly Mock<IUsuarioRepository> _usuarioRepoMock;
+    private readonly Mock<IUnidadMedidaRepository> _unidadMedidaRepoMock;
+    private readonly Mock<ITipoEmbalajeRepository> _tipoEmbalajeRepoMock;
     private readonly Mock<ISupabaseAuthService> _supabaseAuthMock;
     private readonly Mock<IValidator<EmpresaRequestDto>> _validator;
     private readonly Mock<IAuditoriaService> _auditoria;
@@ -40,6 +42,8 @@ public class EmpresaServiceTests
         _suscripcionRepoMock = new Mock<ISuscripcionRepository>();
         _planRepoMock = new Mock<IPlanRepository>();
         _usuarioRepoMock = new Mock<IUsuarioRepository>();
+        _unidadMedidaRepoMock = new Mock<IUnidadMedidaRepository>();
+        _tipoEmbalajeRepoMock = new Mock<ITipoEmbalajeRepository>();
         _supabaseAuthMock = new Mock<ISupabaseAuthService>();
         _validator = new Mock<IValidator<EmpresaRequestDto>>();
         _auditoria = new Mock<IAuditoriaService>();
@@ -58,6 +62,8 @@ public class EmpresaServiceTests
             _suscripcionRepoMock.Object,
             _planRepoMock.Object,
             _usuarioRepoMock.Object,
+            _unidadMedidaRepoMock.Object,
+            _tipoEmbalajeRepoMock.Object,
             _supabaseAuthMock.Object,
             _validator.Object,
             _auditoria.Object,

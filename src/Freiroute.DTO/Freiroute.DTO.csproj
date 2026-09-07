@@ -2,6 +2,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Freiroute.Entity\Freiroute.Entity.csproj" />
+    <!-- ADR-016: DTO referencia Utility (constantes de dominio usadas
+         como defaults: TipoUbicacion, ModoTransporte, TipoCliente, etc.)
+         — Utility es hoja sin dependencias, no hay ciclo (enmienda a ADR-002). -->
+    <ProjectReference Include="..\Freiroute.Utility\Freiroute.Utility.csproj" />
   </ItemGroup>
 
   <ItemGroup>

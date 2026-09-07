@@ -62,6 +62,15 @@ public static class DependencyInjection
         services.AddScoped<IConfiguracion2faRepository, Configuracion2faRepository>();
         services.AddScoped<IConfiguracionRepository,    ConfiguracionRepository>();
 
+        // ── Repositorios Sprint 3 (EP-03 Maestros y Catálogos) ─────
+        services.AddScoped<IUbicacionRepository,      UbicacionRepository>();
+        services.AddScoped<IZonaEntregaRepository,    ZonaEntregaRepository>();
+        services.AddScoped<ITipoMercanciaRepository,  TipoMercanciaRepository>();
+        services.AddScoped<IUnidadMedidaRepository,   UnidadMedidaRepository>();
+        services.AddScoped<ITipoEmbalajeRepository,   TipoEmbalajeRepository>();
+        services.AddScoped<IClienteRepository,        ClienteRepository>();
+        services.AddScoped<ITarifaBaseRepository,     TarifaBaseRepository>();
+
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
         // Sprint 1: stubs (Supabase Auth reales van en Sprint 2).

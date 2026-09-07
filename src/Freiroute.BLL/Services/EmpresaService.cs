@@ -14,8 +14,9 @@ namespace Freiroute.BLL.Services;
 /// NO recibe empresaId — la gestiona globalmente el SUPER_ADMIN (CA-07).
 /// Al crear un tenant se orquesta el flujo completo (Fix smoke test):
 /// empresa (estado TRIAL) + perfiles base con sus permisos plantilla (CA-02)
-/// + suscripción TRIAL de 30 días (ADR-004) + usuario admin con contraseña
-/// temporal (Supabase Auth) + email de bienvenida + auditoría (CA-05).
+    /// + suscripción TRIAL de 30 días (ADR-004) + usuario admin con contraseña
+    /// temporal (Supabase Auth) + catálogos estándar copiados de la empresa raíz
+    /// (HU-018 CA-02/CA-04) + email de bienvenida + auditoría (CA-05).
 /// Email duplicado → ConflictException 409 (CA-06). Si falla un paso posterior
 /// a la creación de la empresa, se desactiva como compensación (soft delete).
 /// </summary>
@@ -27,6 +28,8 @@ public class EmpresaService : IEmpresaService
     private readonly ISuscripcionRepository _suscripcionRepository;
     private readonly IPlanRepository _planRepository;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IUnidadMedidaRepository _unidadMedidaRepository;
+    private readonly ITipoEmbalajeRepository _tipoEmbalajeRepository;
     private readonly ISupabaseAuthService _supabaseAuth;
     private readonly IValidator<EmpresaRequestDto> _validator;
     private readonly IAuditoriaService _auditoria;
@@ -43,6 +46,8 @@ public class EmpresaService : IEmpresaService
         ISuscripcionRepository suscripcionRepository,
         IPlanRepository planRepository,
         IUsuarioRepository usuarioRepository,
+        IUnidadMedidaRepository unidadMedidaRepository,
+        ITipoEmbalajeRepository tipoEmbalajeRepository,
         ISupabaseAuthService supabaseAuth,
         IValidator<EmpresaRequestDto> validator,
         IAuditoriaService auditoria,
@@ -55,6 +60,8 @@ public class EmpresaService : IEmpresaService
         _suscripcionRepository = suscripcionRepository;
         _planRepository = planRepository;
         _usuarioRepository = usuarioRepository;
+        _unidadMedidaRepository = unidadMedidaRepository;
+        _tipoEmbalajeRepository = tipoEmbalajeRepository;
         _supabaseAuth = supabaseAuth;
         _validator = validator;
         _auditoria = auditoria;
@@ -65,7 +72,8 @@ public class EmpresaService : IEmpresaService
     /// <summary>
     /// Registra un nuevo tenant orquestando el flujo completo del SaaS:
     /// empresa (TRIAL) → perfiles base → suscripción TRIAL → plan_id →
-    /// usuario admin → email de bienvenida → auditoría (HU-001, HU-011, ADR-004).
+    /// usuario admin → catálogos estándar → email de bienvenida → auditoría
+    /// (HU-001, HU-011, HU-018, ADR-004).
     /// Si falla un paso posterior a la creación de la empresa, se desactiva
     /// como compensación (soft delete — nunca DELETE físico).
     /// </summary>
@@ -124,8 +132,30 @@ public class EmpresaService : IEmpresaService
             // 8. Usuario admin del tenant + email de bienvenida con contraseña temporal.
             var adminId = await CrearUsuarioAdminAsync(empresaId, dto.EmailAdmin, dto.Nombre);
 
-            // 9. Auditoría (CA-05). El tenant de auditoría es la empresa raíz
-            //    (el SUPER_ADMIN opera sin un tenant propio distinto al de Freiroute).
+            // 9. Copiar catálogos estándar al nuevo tenant (HU-018 CA-02/CA-04):
+            //    unidades de medida (kg, m3, L, ...) y embalajes (PLT, CAJA, ...)
+            //    desde la empresa raíz como plantilla del sistema.
+            try
+            {
+                await _unidadMedidaRepository.CopiarUnidadesEstandarAsync(
+                    IdsSistema.EmpresaRaizId, empresaId);
+
+                await _tipoEmbalajeRepository.CopiarEmbalajesEstandarAsync(
+                    IdsSistema.EmpresaRaizId, empresaId);
+
+                _logger.LogInformation(
+                    "Catálogos estándar copiados al tenant {EmpresaId}",
+                    empresaId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "No se pudieron copiar catálogos estándar al tenant {Id}",
+                    empresaId);
+            }
+
+            // 10. Auditoría (CA-05). El tenant de auditoría es la empresa raíz
+            //     (el SUPER_ADMIN opera sin un tenant propio distinto al de Freiroute).
             await _auditoria.RegistrarAsync(
                 "empresas", AccionAuditoria.CREATE, IdsSistema.EmpresaRaizId, adminId,
                 nameof(Empresa), empresaId,

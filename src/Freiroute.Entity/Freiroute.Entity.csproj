@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <!-- ADR-016: Entity referencia Utility (constantes de dominio:
+         TipoUbicacion, TipoCliente, EstadoCredito, etc.) — Utility es
+         hoja sin dependencias, no hay ciclo (enmienda a ADR-002). -->
+    <ProjectReference Include="..\Freiroute.Utility\Freiroute.Utility.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
