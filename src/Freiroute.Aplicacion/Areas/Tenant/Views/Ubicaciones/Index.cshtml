@@ -27,7 +27,7 @@
         <button type="button" class="fr-btn fr-btn-ghost" id="btnImportarCsv" aria-label="Importar desde CSV">
             <i class="ti ti-upload"></i> Importar CSV
         </button>
-        <a asp-action="Create" class="fr-btn fr-btn-primary">
+        <a asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Create" class="fr-btn fr-btn-primary">
             <i class="ti ti-plus"></i> Nueva ubicación
         </a>
         <input type="file" id="inputArchivoCsv" accept=".csv" hidden />
@@ -155,7 +155,7 @@
                                 </td>
                                 <td class="text-end">
                                     <div class="d-inline-flex gap-1">
-                                        <a asp-action="Edit" asp-route-id="@u.Id" class="fr-btn fr-btn-ghost fr-btn-sm"
+                                        <a asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Edit" asp-route-id="@u.Id" class="fr-btn fr-btn-ghost fr-btn-sm"
                                            title="Editar" aria-label="Editar @u.Nombre">
                                             <i class="ti ti-edit"></i>
                                         </a>
@@ -206,6 +206,7 @@
 }
 
 @section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     // ── Toast de TempData (server-side create/edit) ─────────────
     const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';

@@ -260,7 +260,7 @@ public class OnboardingService : IOnboardingService
             throw new BusinessException("No se pudo generar la URL firmada del logo.");
         }
 
-        await _configRepository.UpdateLogoUrlAsync(empresaId, signedUrl);
+        await _configRepository.UpdateLogoUrlAsync(empresaId, objectPath);
         return signedUrl;
     }
 

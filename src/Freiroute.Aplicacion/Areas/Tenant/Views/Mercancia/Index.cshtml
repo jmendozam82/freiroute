@@ -19,7 +19,7 @@
             <i class="ti ti-upload"></i> Importar
         </button>
         <input type="file" id="inputArchivoMercancia" class="d-none" accept=".csv,.xlsx" aria-hidden="true" />
-        <a asp-action="Create" class="fr-btn fr-btn-primary">
+        <a asp-area="Tenant" asp-controller="Mercancia" asp-action="Create" class="fr-btn fr-btn-primary">
             <i class="ti ti-plus"></i> Nueva mercancía
         </a>
     </div>

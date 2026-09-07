@@ -5,7 +5,7 @@
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Ubicaciones</a>
+    <a asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Index">Ubicaciones</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">Editar ubicación</span>
 </nav>
@@ -19,7 +19,7 @@
 
 <div class="fr-card">
     <div class="fr-card-body">
-        <form asp-action="Edit" asp-route-id="@ViewContext.RouteData.Values["id"]" method="post" id="frUbicacionForm" novalidate>
+        <form asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Edit" asp-route-id="@ViewContext.RouteData.Values["id"]" method="post" id="frUbicacionForm" novalidate>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
 
@@ -144,7 +144,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
                     <i class="ti ti-device-floppy"></i> Guardar cambios
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+                <a asp-area="Tenant" asp-controller="Ubicaciones" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>
@@ -156,6 +156,7 @@
 }
 
 @section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     $.validator.unobtrusive.parse('#frUbicacionForm');
 

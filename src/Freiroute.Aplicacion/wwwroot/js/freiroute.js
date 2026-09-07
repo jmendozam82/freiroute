@@ -97,7 +97,8 @@ const FrApi = {
     async get(url) {
         const resp = await fetch(url, {
             method: 'GET',
-            headers: this._headers()
+            headers: this._headers(),
+            cache: 'no-cache'
         });
         if (resp.status === 401) {
             FrAuth.clearToken();

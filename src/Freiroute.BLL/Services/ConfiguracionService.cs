@@ -52,7 +52,20 @@ public class ConfiguracionService : IConfiguracionService
             throw new NotFoundException("empresas", empresaId);
         }
 
-        return MapToResponse(empresa);
+        var dto = MapToResponse(empresa);
+
+        if (!string.IsNullOrEmpty(dto.LogoUrl))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(dto.LogoUrl, "logos-tenants/([^?]+)");
+            var path = match.Success ? match.Groups[1].Value : dto.LogoUrl;
+
+            if (!path.StartsWith("http"))
+            {
+                dto.LogoUrl = await _storageService.GetSignedUrlAsync(BucketLogos, path);
+            }
+        }
+
+        return dto;
     }
 
     /// <summary>Actualiza la configuración general del tenant (HU-014 CA-04).</summary>
@@ -110,7 +123,7 @@ public class ConfiguracionService : IConfiguracionService
             throw new BusinessException("No se pudo generar la URL firmada del logo.");
         }
 
-        await _configRepository.UpdateLogoUrlAsync(empresaId, signedUrl);
+        await _configRepository.UpdateLogoUrlAsync(empresaId, objectPath);
 
         await _auditoria.RegistrarAsync(
             "configuracion", AccionAuditoria.UPDATE, empresaId, null,

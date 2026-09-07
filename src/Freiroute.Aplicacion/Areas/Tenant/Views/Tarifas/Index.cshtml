@@ -1,4 +1,4 @@
-@{
+﻿@{
     ViewData["Title"] = "Tarifas base";
     ViewData["ActiveMenu"] = "tarifas";
 }
@@ -15,10 +15,10 @@
         <div class="fr-page-subtitle">Precios por zona, modo y servicio con recargos (ADR-015). Al actualizar se cierra la vigencia anterior</div>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <a asp-action="Simulador" class="fr-btn fr-btn-ghost">
+        <a asp-area="Tenant" asp-controller="Tarifas" asp-action="Simulador" class="fr-btn fr-btn-ghost">
             <i class="ti ti-calculator"></i> Simular costo
         </a>
-        <a asp-action="Create" class="fr-btn fr-btn-primary">
+        <a asp-area="Tenant" asp-controller="Tarifas" asp-action="Create" class="fr-btn fr-btn-primary">
             <i class="ti ti-plus"></i> Nueva tarifa
         </a>
     </div>

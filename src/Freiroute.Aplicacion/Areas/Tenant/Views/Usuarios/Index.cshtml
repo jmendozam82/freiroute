@@ -1,4 +1,4 @@
-@using Freiroute.DTO.Usuario
+﻿@using Freiroute.DTO.Usuario
 @using Freiroute.Utility.Pagination
 @model PagedResult<Freiroute.DTO.Usuario.UsuarioResponseDto>
 @functions
@@ -95,7 +95,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary">
                     <i class="ti ti-search"></i> Filtrar
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
+                <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Index" class="fr-btn fr-btn-ghost ms-2">Limpiar</a>
             </div>
         </form>
     </div>
@@ -198,12 +198,12 @@
             de @Model.TotalItems usuarios
         </span>
         <div class="d-flex gap-2">
-            <a asp-action="Index"
+            <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Index"
                asp-route-page="@(Model.HasPreviousPage ? Model.PageNumber - 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]" asp-route-perfil="@ViewData["Perfil"]"
                class="fr-page-btn @(Model.HasPreviousPage ? "" : "disabled")">
                 ← Anterior
             </a>
-            <a asp-action="Index"
+            <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Index"
                asp-route-page="@(Model.HasNextPage ? Model.PageNumber + 1 : 1)" asp-route-q="@ViewData["Q"]" asp-route-estado="@ViewData["Estado"]" asp-route-perfil="@ViewData["Perfil"]"
                class="fr-page-btn @(Model.HasNextPage ? "" : "disabled")">
                 Siguiente →

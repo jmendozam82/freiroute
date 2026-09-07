@@ -5,7 +5,7 @@
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Zonas de entrega</a>
+    <a asp-area="Tenant" asp-controller="Zonas" asp-action="Index">Zonas de entrega</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">Nueva zona</span>
 </nav>
@@ -88,7 +88,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
                     <i class="ti ti-device-floppy"></i> Guardar zona
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+                <a asp-area="Tenant" asp-controller="Zonas" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>
@@ -101,6 +101,7 @@
 }
 
 @section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script>
     $.validator.unobtrusive.parse('#frZonaForm');
@@ -138,14 +139,14 @@
         const layer = e.layer;
         layer.bindPopup(`<b>Zona (${numeroPoligono})</b>`);
         drawnItems.addLayer(layer);
-        poligonoInput.value = JSON.stringify(layer.toGeoJSON());
+        poligonoInput.value = JSON.stringify(layer.toGeoJSON().geometry);
         document.getElementById('hintPoligono').classList.add('d-none');
     });
 
     mapa.on('draw:deleted', () => { poligonoInput.value = ''; });
     mapa.on('draw:edited', () => {
         drawnItems.eachLayer(layer => {
-            poligonoInput.value = JSON.stringify(layer.toGeoJSON());
+            poligonoInput.value = JSON.stringify(layer.toGeoJSON().geometry);
         });
     });
 

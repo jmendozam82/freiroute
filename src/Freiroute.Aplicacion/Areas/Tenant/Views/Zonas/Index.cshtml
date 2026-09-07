@@ -18,7 +18,7 @@
         <button type="button" class="fr-btn fr-btn-ghost" id="btnVerificarPunto" aria-label="Verificar punto en zonas">
             <i class="ti ti-crosshair"></i> Verificar punto
         </button>
-        <a asp-action="Create" class="fr-btn fr-btn-primary">
+        <a asp-area="Tenant" asp-controller="Zonas" asp-action="Create" class="fr-btn fr-btn-primary">
             <i class="ti ti-plus"></i> Nueva zona
         </a>
     </div>
@@ -96,6 +96,7 @@
 }
 
 @section Scripts {
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
     const LABEL_DEFINICION = {
         'POLIGONO': 'Polígono', 'CODIGOS_POSTALES': 'Cód. postales',

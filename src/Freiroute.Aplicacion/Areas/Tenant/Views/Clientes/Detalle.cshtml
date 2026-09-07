@@ -1,11 +1,11 @@
-@model Freiroute.DTO.Cliente.ClienteResponseDto
+﻿@model Freiroute.DTO.Cliente.ClienteResponseDto
 @{
     ViewData["Title"] = "Detalle de cliente";
     ViewData["ActiveMenu"] = "clientes";
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Clientes</a>
+    <a asp-area="Tenant" asp-controller="Clientes" asp-action="Index">Clientes</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">@Model.Nombre</span>
 </nav>
@@ -36,7 +36,7 @@
         <button type="button" class="fr-btn fr-btn-ghost" id="btnCambiarEstadoCredito">
             <i class="ti ti-credit-card"></i> Estado de crédito
         </button>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="fr-btn fr-btn-primary">
+        <a asp-area="Tenant" asp-controller="Clientes" asp-action="Edit" asp-route-id="@Model.Id" class="fr-btn fr-btn-primary">
             <i class="ti ti-edit"></i> Editar
         </a>
     </div>

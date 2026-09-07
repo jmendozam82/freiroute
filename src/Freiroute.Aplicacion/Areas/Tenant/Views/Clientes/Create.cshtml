@@ -1,4 +1,4 @@
-@model Freiroute.DTO.Cliente.ClienteRequestDto
+﻿@model Freiroute.DTO.Cliente.ClienteRequestDto
 @{
     ViewData["Title"] = "Nuevo cliente";
     ViewData["ActiveMenu"] = "clientes";
@@ -6,7 +6,7 @@
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Clientes</a>
+    <a asp-area="Tenant" asp-controller="Clientes" asp-action="Index">Clientes</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">Nuevo cliente</span>
 </nav>
@@ -20,7 +20,7 @@
 
 <div class="fr-card">
     <div class="fr-card-body">
-        <form asp-action="Create" method="post" id="frClienteForm" novalidate>
+        <form asp-area="Tenant" asp-controller="Clientes" asp-action="Create" method="post" id="frClienteForm" novalidate>
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
 
@@ -163,7 +163,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
                     <i class="ti ti-device-floppy"></i> Guardar cliente
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+                <a asp-area="Tenant" asp-controller="Clientes" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>

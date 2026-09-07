@@ -49,6 +49,7 @@ public class AuthService : IAuthService
     private readonly string _totpEncryptionKey;
     private readonly string _supabaseUrl;
     private readonly string _supabaseAnonKey;
+    private readonly IStorageService _storageService;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
@@ -68,7 +69,8 @@ public class AuthService : IAuthService
         IOptions<AppSettings> appSettings,
         ILogger<AuthService> logger,
         IPerfilRepository perfilRepository,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IStorageService storageService)
     {
         _usuarioRepository = usuarioRepository;
         _permisoRepository = permisoRepository;
@@ -97,12 +99,10 @@ public class AuthService : IAuthService
                 "La clave de cifrado TOTP no está configurada. Verificar Security:TotpEncryptionKey en la configuración.");
         }
         _totpEncryptionKey = claveTotp;
-
-        // Endpoint y AnonKey de Supabase Auth (OAuth — HU-004). Con default local
-        // para que los tests/CI sin variables de entorno no fallen al resolverlos.
+        _logger = logger;
         _supabaseUrl = configuration["Supabase:Url"] ?? "http://localhost:54321";
         _supabaseAnonKey = configuration["Supabase:AnonKey"] ?? string.Empty;
-        _logger = logger;
+        _storageService = storageService;
     }
 
     // ── Login (HU-003) ──────────────────────────────────────────────
@@ -228,11 +228,26 @@ public class AuthService : IAuthService
             throw new Requires2faException(tempToken);
         }
 
+        var logoUrl = empresa?.LogoUrl;
+        if (!string.IsNullOrEmpty(logoUrl))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(logoUrl, "logos-tenants/([^?]+)");
+            if (match.Success)
+            {
+                logoUrl = match.Groups[1].Value;
+            }
+
+            if (!logoUrl.StartsWith("http"))
+            {
+                logoUrl = await _storageService.GetSignedUrlAsync("logos-tenants", logoUrl);
+            }
+        }
+
         // 8. Generar access token + refresh token (hash persistido en sesiones).
         var accessToken = _jwtService.GenerateAccessToken(
             usuario.Id, usuario.EmpresaId, usuario.PerfilId,
             usuario.TipoUsuario, usuario.NombreCompleto, permisos,
-            empresa?.LogoUrl);
+            logoUrl);
 
         var refreshToken = await CrearSesionAsync(usuario);
 
@@ -285,9 +300,25 @@ public class AuthService : IAuthService
         var empresa = await _empresaRepository.GetByIdAsync(usuario.EmpresaId);
         var empresaNombre = empresa?.Nombre ?? string.Empty;
 
+        var logoUrl = empresa?.LogoUrl;
+        if (!string.IsNullOrEmpty(logoUrl))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(logoUrl, "logos-tenants/([^?]+)");
+            if (match.Success)
+            {
+                logoUrl = match.Groups[1].Value;
+            }
+
+            if (!logoUrl.StartsWith("http"))
+            {
+                logoUrl = await _storageService.GetSignedUrlAsync("logos-tenants", logoUrl);
+            }
+        }
+
         var accessToken = _jwtService.GenerateAccessToken(
             usuario.Id, usuario.EmpresaId, usuario.PerfilId,
-            usuario.TipoUsuario, usuario.NombreCompleto, permisos);
+            usuario.TipoUsuario, usuario.NombreCompleto, permisos,
+            logoUrl);
 
         // Rotación: revocar el refresh usado y emitir uno nuevo.
         await _sesionRepository.RevocarAsync(sesion.Id);
@@ -707,10 +738,16 @@ public class AuthService : IAuthService
         var empresa = await _empresaRepository.GetByIdAsync(usuario.EmpresaId);
         var empresaNombre = empresa?.Nombre ?? string.Empty;
 
+        var logoUrl = empresa?.LogoUrl;
+        if (!string.IsNullOrEmpty(logoUrl) && !logoUrl.StartsWith("http"))
+        {
+            logoUrl = await _storageService.GetSignedUrlAsync("logos-tenants", logoUrl);
+        }
+
         var accessToken = _jwtService.GenerateAccessToken(
             usuario.Id, usuario.EmpresaId, usuario.PerfilId,
             usuario.TipoUsuario, usuario.NombreCompleto, permisos,
-            empresa?.LogoUrl);
+            logoUrl);
 
         var refreshToken = await CrearSesionAsync(usuario);
 

@@ -1,4 +1,4 @@
-@model Freiroute.DTO.Usuario.UsuarioRequestDto
+﻿@model Freiroute.DTO.Usuario.UsuarioRequestDto
 @{
     ViewData["Title"] = "Editar usuario";
     ViewData["ActiveMenu"] = "usuarios";
@@ -89,7 +89,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarUsuario">
                     <i class="ti ti-device-floppy"></i> Guardar Cambios
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+                <a asp-area="Tenant" asp-controller="Usuarios" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>

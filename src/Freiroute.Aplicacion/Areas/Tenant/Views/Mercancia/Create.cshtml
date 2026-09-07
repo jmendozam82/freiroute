@@ -1,11 +1,11 @@
-@model Freiroute.DTO.Mercancia.TipoMercanciaRequestDto
+﻿@model Freiroute.DTO.Mercancia.TipoMercanciaRequestDto
 @{
     ViewData["Title"] = "Nueva mercancía";
     ViewData["ActiveMenu"] = "mercancia";
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Tipos de mercancía</a>
+    <a asp-area="Tenant" asp-controller="Mercancia" asp-action="Index">Tipos de mercancía</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">Nueva mercancía</span>
 </nav>
@@ -137,7 +137,7 @@
                 <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardar">
                     <i class="ti ti-device-floppy"></i> Guardar
                 </button>
-                <a asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+                <a asp-area="Tenant" asp-controller="Mercancia" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
             </div>
         </form>
     </div>

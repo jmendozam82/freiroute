@@ -250,7 +250,7 @@ else
                             @User.FindFirstValue("nombre")
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">Mi perfil</a></li>
+                            <li><a class="dropdown-item" asp-area="Admin" asp-controller="Account" asp-action="Profile">Mi perfil</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form asp-area="Auth" asp-controller="Account" asp-action="Logout" method="post">

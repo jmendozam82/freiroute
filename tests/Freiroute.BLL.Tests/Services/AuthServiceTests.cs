@@ -50,6 +50,7 @@ public class AuthServiceTests
     private readonly IOptions<AppSettings> _appSettings;
     private readonly Mock<ILogger<AuthService>> _logger;
     private readonly Mock<IHttpClientFactory> _httpClientFactory;
+    private readonly Mock<IStorageService> _storageService;
     private readonly AuthService _service;
 
     public AuthServiceTests()
@@ -67,6 +68,8 @@ public class AuthServiceTests
         _httpContextAccessor = new Mock<IHttpContextAccessor>();
         _httpContextAccessor.Setup(a => a.HttpContext).Returns((HttpContext?)null);
         _httpClientFactory = new Mock<IHttpClientFactory>();
+        _storageService = new Mock<IStorageService>();
+        _logger = new Mock<ILogger<AuthService>>();
         _jwtSettings = Options.Create(new JwtSettings
         {
             Key = TestSecret,
@@ -107,7 +110,8 @@ public class AuthServiceTests
             _appSettings,
             _logger.Object,
             _perfilRepository.Object,
-            _httpClientFactory.Object);
+            _httpClientFactory.Object,
+            _storageService.Object);
     }
 
     [Fact]
@@ -136,7 +140,8 @@ public class AuthServiceTests
             _appSettings,
             _logger.Object,
             _perfilRepository.Object,
-            _httpClientFactory.Object);
+            _httpClientFactory.Object,
+            _storageService.Object);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*TotpEncryptionKey*");
@@ -2425,7 +2430,7 @@ public class AuthServiceTests
             _appSettings,
             _logger.Object,
             _perfilRepository.Object,
-            _httpClientFactory.Object);
+            _httpClientFactory.Object,_storageService.Object);
     }
 
     /// <summary>
@@ -2461,7 +2466,8 @@ public class AuthServiceTests
             _appSettings,
             _logger.Object,
             _perfilRepository.Object,
-            httpClientFactory);
+            httpClientFactory,
+            new Mock<IStorageService>().Object);
     }
 
     /// <summary>

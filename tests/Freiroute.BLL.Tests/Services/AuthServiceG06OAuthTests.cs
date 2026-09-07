@@ -101,7 +101,8 @@ public class AuthServiceG06OAuthTests
             _appSettings,
             _logger.Object,
             _perfilRepository.Object,
-            _httpClientFactory.Object);
+            _httpClientFactory.Object,
+            new Mock<IStorageService>().Object);
     }
 
     private const string JsonUsuarioSupabase =

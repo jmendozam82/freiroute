@@ -1,10 +1,10 @@
-@{
+﻿@{
     ViewData["Title"] = "Simulador de costo de flete";
     ViewData["ActiveMenu"] = "tarifas";
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
-    <a asp-action="Index">Tarifas base</a>
+    <a asp-area="Tenant" asp-controller="Tarifas" asp-action="Index">Tarifas base</a>
     <span class="fr-breadcrumb-sep">/</span>
     <span aria-current="page">Simulador de costo</span>
 </nav>

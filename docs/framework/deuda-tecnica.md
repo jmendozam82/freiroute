@@ -15,11 +15,13 @@
 | ID | Sprint origen | HU | Descripción | Impacto | Sprint resolución | Estado |
 |---|---|---|---|---|---|---|
 | G-01 | Sprint 1 | HU-006 | Permisos Aprobar y Exportar no modelados | Medio | Sprint 10-12 | 🔴 Abierto |
-| G-02 | Sprint 1 | HU-008 | Vista/UI de exportación de auditoría | Bajo | Sprint 3 (pendiente FrontendDev) | 🟡 Parcial |
+| G-02 | Sprint 1 | HU-008 | Vista/UI de exportación de auditoría | Bajo | Sprint 3 | 🟢 Cerrado |
 | G-03 | Sprint 2 | HU-010 | Cálculo automático de descuento anual | Bajo | Sprint 4 | 🔴 Abierto |
-| G-04 | Sprint 2 | HU-013 | UI de creación directa de usuario sin validar | Bajo | Sprint 3 (validar en smoke test) | 🟡 Parcial |
+| G-04 | Sprint 2 | HU-013 | UI de creación directa de usuario sin validar | Bajo | Sprint 3 smoke test | 🟡 Parcial |
 | G-05 | Sprint 2 | HU-014 | Moneda secundaria e idioma del sistema | Medio | Sprint 6 | 🔴 Abierto |
-| G-06 | Sprint 1 | HU-007 | Recuperación de contraseña rota — SupabaseAuth es stub + link en Login no validado + no existe reset manual por Admin | Alto | Sprint 3 | 🔴 Abierto |
+| G-06 | Sprint 1 | HU-007 | Recuperación de contraseña — Fix A/B/D completados · Fix C verificado en Fase 5 | Alto | Sprint 3 | 🟢 Cerrado |
+| G-07 | Sprint 3 | HU-015 | UbicacionRequestDto no expone CodigoPostal/horarios/instrucciones en Edit | Bajo | Sprint 4 | 🔴 Abierto |
+| G-08 | Sprint 3 | HU-008 | AuditoriaActivityResponseDto muestra UUID sin nombre/email del usuario | Bajo | Sprint 5 | 🔴 Abierto |
 
 **Leyenda:** 🔴 Abierto · 🟡 Parcial (API existe, UI pendiente) · 🟢 Cerrado
 
@@ -391,15 +393,21 @@ await _sesionRepository
 ## Plan de resolución por sprint
 
 ```
-Sprint 3 (actual) — PRIORITARIO:
-  G-06 → @BackendDev: integrar Supabase Auth Admin API para reset
-          password real + endpoint reset manual por Admin
-          + verificar link en Login.cshtml
-  G-02 → @FrontendDev: vista de auditoría + sidebar link
-  G-04 → Validar en smoke test de Sprint 3
+Sprint 3 — CERRADO:
+  G-02 → Vista de auditoría implementada por @FrontendDev     🟢
+  G-06 → Fix A/B/C/D completados — reset password funcional   🟢
+
+Sprint 3 smoke test (pendiente):
+  G-04 → Validar UI de creación directa de usuario            🟡
 
 Sprint 4:
-  G-03 → @FrontendDev: sugerencia de descuento anual en UI de planes
+  G-03 → @FrontendDev: sugerencia de descuento anual en planes
+  G-07 → @BackendDev: enriquecer UbicacionResponseDto con
+          campos faltantes (CodigoPostal, horarios, instrucciones)
+
+Sprint 5:
+  G-08 → @BackendDev: enriquecer AuditoriaActivityResponseDto
+          con NombreUsuario y EmailUsuario (JOIN con tabla usuarios)
 
 Sprint 6 (antes de EP-05 Carriers):
   G-05 → @IngenieroDatos + @BackendDev + @FrontendDev:

@@ -39,6 +39,10 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Registrar TypeHandlers de Dapper para DateOnly y TimeOnly (PostgreSQL)
+        Dapper.SqlMapper.AddTypeHandler(new Freiroute.DAL.TypeHandlers.DateOnlyTypeHandler());
+        Dapper.SqlMapper.AddTypeHandler(new Freiroute.DAL.TypeHandlers.TimeOnlyTypeHandler());
+
         // ── 1. Configuración tipada (appsettings) ──────────────────
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
         services.Configure<AppSettings>(configuration.GetSection("App"));
