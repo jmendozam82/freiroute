@@ -1,0 +1,306 @@
+@using Freiroute.Aplicacion.Areas.Tenant.ViewModels
+@using Freiroute.Utility.Constants
+@model OrdenFormViewModel
+@{
+    ViewData["Title"] = "Editar orden";
+    ViewData["ActiveMenu"] = "ordenes";
+    var estado = ViewData["EstadoActual"] as string ?? string.Empty;
+    var numeroOrden = ViewData["NumeroOrden"] as string;
+    var editable = OrdenEstado.Editables.Contains(estado);
+    var rutaBloqueada = !editable || estado == OrdenEstado.Confirmed;
+    var camposBloqueados = !editable;
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index">Órdenes</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Detalle" asp-route-id="@ViewData["OrdenId"]">@(numeroOrden ?? "Borrador")</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Editar</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title d-flex align-items-center gap-2">
+            Editar
+            <span class="fr-id-code">@(numeroOrden ?? "Borrador")</span>
+            <span class="fr-badge @OrdenUiHelper.GetEstadoClass(estado)">@OrdenUiHelper.GetEstadoLabel(estado)</span>
+        </h1>
+        <div class="fr-page-subtitle">Solo las órdenes en estado Borrador o Confirmada pueden editarse (HU-021 CA-12)</div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(numeroOrden))
+{
+    <div class="fr-card p-3 mb-4 d-flex align-items-center gap-3">
+        <span class="fr-badge fr-badge-info"><i class="ti ti-info-circle"></i> @numeroOrden</span>
+        <span>Esta orden ya tiene número asignado. Los cambios se registrarán en el historial (HU-026).</span>
+    </div>
+}
+
+@if (!editable)
+{
+    <div class="fr-card p-3 mb-4 d-flex align-items-center gap-3">
+        <span class="fr-badge fr-badge-warning"><i class="ti ti-alert-triangle"></i> No editable</span>
+        <span><strong>La orden solo puede editarse en estado Borrador o Confirmada.</strong> Vuelva al detalle para operar sobre ella.</span>
+    </div>
+}
+else if (rutaBloqueada)
+{
+    <div class="fr-card p-3 mb-4 d-flex align-items-center gap-3">
+        <span class="fr-badge fr-badge-info"><i class="ti ti-lock"></i> Ruta bloqueada</span>
+        <span>En estado Confirmada, el cliente, origen y destino no pueden modificarse (HU-026).</span>
+    </div>
+}
+
+<form id="frOrdenForm" method="post" asp-action="Edit" asp-route-id="@ViewData["OrdenId"]" novalidate>
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="fr-form-error mb-3"></div>
+
+    <!-- ── Cliente y ruta ─────────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Cliente y ruta</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="ClienteId" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="ClienteId" asp-items="Model.Clientes" class="fr-form-control" disabled="@(rutaBloqueada)">
+                        <option value="">Seleccione un cliente</option>
+                    </select>
+                    <span asp-validation-for="ClienteId" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="OrigenId" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="OrigenId" asp-items="Model.Ubicaciones" class="fr-form-control" disabled="@(rutaBloqueada)">
+                        <option value="">Seleccione el origen</option>
+                    </select>
+                    <span asp-validation-for="OrigenId" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="DestinoId" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="DestinoId" asp-items="Model.Ubicaciones" class="fr-form-control" disabled="@(rutaBloqueada)">
+                        <option value="">Seleccione el destino</option>
+                    </select>
+                    <span asp-validation-for="DestinoId" class="fr-form-error"></span>
+                </div>
+                <div class="col-12">
+                    <div id="alertaRutaIgual" class="d-none">
+                        <span class="fr-badge fr-badge-warning"><i class="ti ti-alert-triangle"></i> El origen y el destino no pueden ser la misma ubicación</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Mercancía ──────────────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Mercancía</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="TipoMercanciaId" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="TipoMercanciaId" asp-items="Model.TiposMercancia" class="fr-form-control" disabled="@(camposBloqueados)">
+                        <option value="">Seleccione el tipo</option>
+                    </select>
+                    <span asp-validation-for="TipoMercanciaId" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="UnidadMedidaId" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="UnidadMedidaId" asp-items="Model.Unidades" class="fr-form-control" disabled="@(camposBloqueados)">
+                        <option value="">Seleccione la unidad</option>
+                    </select>
+                    <span asp-validation-for="UnidadMedidaId" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="TipoEmbalajeId" class="fr-form-label"></label>
+                    <select asp-for="TipoEmbalajeId" asp-items="Model.Embalajes" class="fr-form-control" disabled="@(camposBloqueados)">
+                        <option value="">Sin embalaje</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Datos físicos ──────────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Datos físicos</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="Cantidad" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="Cantidad" type="number" step="any" min="0.01" class="fr-form-control"
+                           placeholder="0" aria-label="Cantidad de unidades" disabled="@(camposBloqueados)" />
+                    <span asp-validation-for="Cantidad" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="PesoKg" class="fr-form-label fr-form-required"></label>
+                    <input asp-for="PesoKg" type="number" step="any" min="0.01" class="fr-form-control"
+                           placeholder="0.00" aria-label="Peso total en kilogramos" disabled="@(camposBloqueados)" />
+                    <small class="form-text text-muted">Peso total en kg</small>
+                    <span asp-validation-for="PesoKg" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="VolumenM3" class="fr-form-label"></label>
+                    <input asp-for="VolumenM3" type="number" step="any" min="0.01" class="fr-form-control"
+                           placeholder="Opcional" aria-label="Volumen total en metros cúbicos" disabled="@(camposBloqueados)" />
+                    <small class="form-text text-muted">Volumen en m³</small>
+                    <span asp-validation-for="VolumenM3" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ValorDeclarado" class="fr-form-label"></label>
+                    <input asp-for="ValorDeclarado" type="number" step="any" min="0" class="fr-form-control"
+                           placeholder="Opcional" aria-label="Valor declarado de la mercancía" disabled="@(camposBloqueados)" />
+                    <small class="form-text text-muted">Valor declarado</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Datos del servicio ─────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Datos del servicio</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label asp-for="ModoTransporte" class="fr-form-label fr-form-required"></label>
+                    <select asp-for="ModoTransporte" class="fr-form-control" disabled="@(camposBloqueados)">
+                        <option value="TERRESTRE">Terrestre</option>
+                        <option value="AEREO">Aéreo</option>
+                        <option value="MARITIMO">Marítimo</option>
+                        <option value="FERROVIARIO">Ferroviario</option>
+                        <option value="INTERMODAL">Intermodal</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="NivelServicio" class="fr-form-label"></label>
+                    <select asp-for="NivelServicio" class="fr-form-control" disabled="@(camposBloqueados)">
+                        @foreach (var kv in NivelServicio.Labels)
+                        {
+                            <option value="@kv.Key">@kv.Value</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Prioridad" class="fr-form-label"></label>
+                    <select asp-for="Prioridad" class="fr-form-control" disabled="@(camposBloqueados)">
+                        @foreach (var kv in OrdenPrioridad.Labels)
+                        {
+                            <option value="@kv.Key">@kv.Value</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="TarifaId" class="fr-form-label"></label>
+                    <select asp-for="TarifaId" asp-items="Model.Tarifas" class="fr-form-control" disabled="@(camposBloqueados)">
+                        <option value="">Sin tarifa</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Fechas y referencia ────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Fechas y referencia</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="FechaPickupSolicitada" class="fr-form-label"></label>
+                    <input asp-for="FechaPickupSolicitada" type="date" class="fr-form-control" aria-label="Fecha de recogida solicitada" disabled="@(camposBloqueados)" />
+                    <span asp-validation-for="FechaPickupSolicitada" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="FechaEntregaRequerida" class="fr-form-label"></label>
+                    <input asp-for="FechaEntregaRequerida" type="date" class="fr-form-control" aria-label="Fecha de entrega requerida" disabled="@(camposBloqueados)" />
+                    <span asp-validation-for="FechaEntregaRequerida" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ReferenciaCliente" class="fr-form-label"></label>
+                    <input asp-for="ReferenciaCliente" maxlength="100" class="fr-form-control"
+                           placeholder="Referencia interna del cliente" aria-label="Referencia del cliente" disabled="@(camposBloqueados)" />
+                    <span asp-validation-for="ReferenciaCliente" class="fr-form-error"></span>
+                </div>
+                <div class="col-12">
+                    <div id="alertaFechas" class="d-none">
+                        <span class="fr-badge fr-badge-warning"><i class="ti ti-alert-triangle"></i> La fecha de entrega debe ser posterior a la fecha de recogida</span>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Instrucciones" class="fr-form-label"></label>
+                    <textarea asp-for="Instrucciones" maxlength="1000" rows="3" class="fr-form-control"
+                              placeholder="Instrucciones especiales de manejo (opcional)" aria-label="Instrucciones especiales" disabled="@(camposBloqueados)"></textarea>
+                    <span asp-validation-for="Instrucciones" class="fr-form-error"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+        @if (editable)
+        {
+            <button type="submit" class="fr-btn fr-btn-primary">
+                <i class="ti ti-device-floppy"></i> Guardar cambios
+            </button>
+        }
+        <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Detalle" asp-route-id="@ViewData["OrdenId"]" class="fr-btn fr-btn-ghost">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // ── Alertas en vivo: origen == destino (CA-07) y fechas (CA-06) ──
+        function toggleAlertaRuta() {
+            const a = document.getElementById('OrigenId').value;
+            const b = document.getElementById('DestinoId').value;
+            document.getElementById('alertaRutaIgual')
+                .classList.toggle('d-none', !(a && b && a === b));
+        }
+
+        function toggleAlertaFechas() {
+            const p = document.getElementById('FechaPickupSolicitada').value;
+            const e = document.getElementById('FechaEntregaRequerida').value;
+            document.getElementById('alertaFechas')
+                .classList.toggle('d-none', !(p && e && e < p));
+        }
+
+        document.getElementById('OrigenId').addEventListener('change', toggleAlertaRuta);
+        document.getElementById('DestinoId').addEventListener('change', toggleAlertaRuta);
+        document.getElementById('FechaPickupSolicitada').addEventListener('change', toggleAlertaFechas);
+        document.getElementById('FechaEntregaRequerida').addEventListener('change', toggleAlertaFechas);
+
+        // ── Bloqueo de envío con mensajes ES vía FrToast ─────────────
+        $('#frOrdenForm').on('submit', function (e) {
+            const origen = document.getElementById('OrigenId').value;
+            const destino = document.getElementById('DestinoId').value;
+            const pickup = document.getElementById('FechaPickupSolicitada').value;
+            const entrega = document.getElementById('FechaEntregaRequerida').value;
+
+            if (origen && destino && origen === destino) {
+                e.preventDefault();
+                FrToast.warning('El origen y el destino no pueden ser la misma ubicación');
+                return false;
+            }
+            if (pickup && entrega && entrega < pickup) {
+                e.preventDefault();
+                FrToast.warning('La fecha de entrega debe ser posterior a la fecha de recogida');
+                return false;
+            }
+        });
+
+        // ── Toast de TempData (server-side edit) ───────────────────────
+        const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
+        const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
+        if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+    </script>
+}

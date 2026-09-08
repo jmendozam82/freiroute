@@ -154,7 +154,7 @@
                             <input type="number" asp-for="PrecioAnual" class="fr-form-control"
                                    min="0" step="0.01"
                                    placeholder="0.00" />
-                            <small class="text-muted">Sugerido: precio mensual × 10</small>
+                            <div id="precioAnualSugerido" class="form-text text-muted">Ingresa el precio mensual para ver la sugerencia</div>
                         </div>
                     </div>
                 </div>
@@ -268,6 +268,21 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 <script>
+// G-03 (deuda técnica): sugerencia dinámica del precio anual = mensual × 10.
+// No auto-rellena PrecioAnual — solo orienta al operador (2 meses gratis).
+(function () {
+    const mensual = document.getElementById('PrecioMensual');
+    const sugerido = document.getElementById('precioAnualSugerido');
+    if (!mensual || !sugerido) return;
+    const actualizar = () => {
+        const m = parseFloat(mensual.value);
+        sugerido.textContent = (!isNaN(m) && m > 0)
+            ? `Sugerido: $${(m * 10).toFixed(2)} (10 meses — 2 meses gratis)`
+            : 'Ingresa el precio mensual para ver la sugerencia';
+    };
+    mensual.addEventListener('input', actualizar);
+})();
+
 function toggleLimiteUsuarios(checkbox) {
     const inputs = [
         document.querySelector('input[name="LimiteUsuarios"]'),

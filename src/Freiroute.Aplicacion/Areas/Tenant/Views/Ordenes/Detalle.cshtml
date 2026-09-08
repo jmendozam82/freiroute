@@ -1,0 +1,373 @@
+@using Freiroute.DTO.Orden
+@using Freiroute.Utility.Constants
+@model OrdenResponseDto
+@{
+    ViewData["Title"] = Model.NumeroOrden ?? "Borrador";
+    ViewData["ActiveMenu"] = "ordenes";
+    var esEditable = OrdenEstado.Editables.Contains(Model.Estado);
+    var transiciones = Model.TransicionesDisponibles;
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index">Órdenes</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">@(Model.NumeroOrden ?? "Borrador")</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title d-flex align-items-center gap-2">
+            <span class="fr-id-code">@(Model.NumeroOrden ?? "Borrador")</span>
+            <span class="fr-badge @OrdenUiHelper.GetEstadoClass(Model.Estado)">@Model.EstadoLabel</span>
+            @if (Model.Prioridad == OrdenPrioridad.Critico)
+            {
+                <span class="fr-badge fr-badge-danger"><i class="ti ti-alert-triangle"></i> Crítico</span>
+            }
+        </h1>
+        <div class="fr-page-subtitle">
+            @Model.ClienteNombre · @Model.OrigenNombre <i class="ti ti-arrow-right"></i> @Model.DestinoNombre
+        </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        @if (User.HasPermission("ordenes", "UPDATE"))
+        {
+            @foreach (var t in transiciones)
+            {
+                <button type="button" class="fr-btn @OrdenUiHelper.GetAccionClass(t)"
+                        onclick="abrirModalEstado('@t', '@OrdenUiHelper.GetAccionLabel(t)')"
+                        title="@OrdenUiHelper.GetAccionLabel(t)" aria-label="@OrdenUiHelper.GetAccionLabel(t)">
+                    <i class="ti @OrdenUiHelper.GetAccionIcon(t)"></i> @OrdenUiHelper.GetAccionLabel(t)
+                </button>
+            }
+
+            @if (esEditable)
+            {
+                <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Edit" asp-route-id="@Model.Id" class="fr-btn fr-btn-primary">
+                    <i class="ti ti-edit"></i> Editar
+                </a>
+            }
+
+            @if (Model.Estado == OrdenEstado.Draft)
+            {
+                <button type="button" class="fr-btn fr-btn-danger" id="btnDesactivarOrden"
+                        title="Desactivar borrador" aria-label="Desactivar borrador">
+                    <i class="ti ti-trash"></i> Desactivar borrador
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@if (Model.Estado == OrdenEstado.OnHold)
+{
+    <div class="fr-card p-3 mb-4 d-flex align-items-center gap-3">
+        <span class="fr-badge fr-badge-warning"><i class="ti ti-pause"></i> En espera</span>
+        <span><strong>Orden puesta en espera:</strong> no admite transiciones de avance hasta reanudarla (ADR-019).</span>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- ── Datos generales ─────────────────────────────────── -->
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Información general</div>
+            </div>
+            <div class="fr-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-3 fr-form-label">Cliente</dt>
+                    <dd class="col-sm-9 fw-semibold">@Model.ClienteNombre</dd>
+                    <dt class="col-sm-3 fr-form-label">Ruta</dt>
+                    <dd class="col-sm-9">
+                        @Model.OrigenNombre <i class="ti ti-arrow-right text-muted"></i> @Model.DestinoNombre
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">Tipo de mercancía</dt>
+                    <dd class="col-sm-9">@Model.TipoMercanciaNombre</dd>
+                    <dt class="col-sm-3 fr-form-label">Embalaje</dt>
+                    <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.TipoEmbalajeNombre) ? "—" : Model.TipoEmbalajeNombre)</dd>
+                    <dt class="col-sm-3 fr-form-label">Tarifa aplicada</dt>
+                    <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.TarifaNombre) ? "Sin tarifa" : Model.TarifaNombre)</dd>
+                    <dt class="col-sm-3 fr-form-label">Shipment</dt>
+                    <dd class="col-sm-9">
+                        @if (string.IsNullOrEmpty(Model.ShipmentNumero))
+                        {
+                            <span class="text-muted">No asignado</span>
+                        }
+                        else
+                        {
+                            <span class="fr-id-code">@Model.ShipmentNumero</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">Fecha de creación</dt>
+                    <dd class="col-sm-9">@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>
+                    <dt class="col-sm-3 fr-form-label">Canal de ingreso</dt>
+                    <dd class="col-sm-9">
+                        <span class="fr-id-code">@Model.OrigenCreacion</span>
+                        <!-- HU-027 CA-03: el canal se muestra tal cual lo registró el sistema; no es editable. -->
+                        <span class="text-muted ms-1">Canal registrado por el sistema — no editable</span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- ── Líneas de detalle ───────────────────────────────── -->
+        @if (Model.Lineas.Count > 0)
+        {
+            <div class="fr-card mt-4">
+                <div class="fr-card-header">
+                    <div class="fr-card-title">Líneas de detalle (@Model.Lineas.Count)</div>
+                </div>
+                <div class="fr-card-body p-0">
+                    <div class="fr-table-responsive">
+                        <table class="fr-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Línea</th>
+                                    <th>Descripción</th>
+                                    <th>Cantidad</th>
+                                    <th>Peso unit.</th>
+                                    <th>Volumen unit.</th>
+                                    <th class="text-end">Valor unit.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var linea in Model.Lineas)
+                                {
+                                    <tr>
+                                        <td><span class="fr-id-code">@linea.NumeroLinea</span></td>
+                                        <td>@linea.Descripcion</td>
+                                        <td>@linea.Cantidad.ToString("N0") @(linea.UnidadMedidaSimbolo ?? "")</td>
+                                        <td>@(linea.PesoKg?.ToString("N2") ?? "—") kg</td>
+                                        <td>@(linea.VolumenM3?.ToString("N2") ?? "—") m³</td>
+                                        <td class="text-end">@(linea.ValorUnitario?.ToString("N2") ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- ── Sub-órdenes (solo PARTIALLY_SPLIT) ──────────────── -->
+        @if (Model.Estado == OrdenEstado.PartiallySplit && Model.SubOrdenes.Count > 0)
+        {
+            <div class="fr-card mt-4">
+                <div class="fr-card-header">
+                    <div class="fr-card-title">Sub-órdenes generadas por split (@Model.SubOrdenes.Count)</div>
+                </div>
+                <div class="fr-card-body p-0">
+                    <div class="fr-table-responsive">
+                        <table class="fr-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>N° Orden</th>
+                                    <th>Cliente</th>
+                                    <th>Destino</th>
+                                    <th>Peso</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var sub in Model.SubOrdenes)
+                                {
+                                    <tr>
+                                        <td><span class="fr-id-code">@(string.IsNullOrEmpty(sub.NumeroOrden) ? "—" : sub.NumeroOrden)</span></td>
+                                        <td>@sub.ClienteNombre</td>
+                                        <td>@sub.DestinoNombre</td>
+                                        <td>@sub.PesoKg.ToString("N0") kg</td>
+                                        <td><span class="fr-badge @OrdenUiHelper.GetEstadoClass(sub.Estado)">@sub.EstadoLabel</span></td>
+                                        <td class="text-end">
+                                            <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Detalle" asp-route-id="@sub.Id"
+                                               class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver sub-orden" aria-label="Ver sub-orden @(sub.NumeroOrden ?? sub.Id.ToString())">
+                                                <i class="ti ti-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- ── Historial de estados ────────────────────────────── -->
+        <div class="fr-card mt-4">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Historial de estados</div>
+            </div>
+            <div class="fr-card-body">
+                <div id="historialContainer">
+                    <span class="text-muted">Cargando historial…</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- ── KPI Carga ───────────────────────────────────────── -->
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Carga</div>
+            </div>
+            <div class="fr-card-body">
+                <div class="fr-kpi-card mb-3">
+                    <div class="fr-kpi-label">Cantidad</div>
+                    <div class="fr-kpi-value">@Model.Cantidad.ToString("N0") <small class="text-muted">@Model.UnidadMedidaSimbolo</small></div>
+                </div>
+                <dl class="row mb-0">
+                    <dt class="col-sm-6 fr-form-label">Peso total</dt>
+                    <dd class="col-sm-6 text-end">@Model.PesoKg.ToString("N0") kg</dd>
+                    <dt class="col-sm-6 fr-form-label">Volumen</dt>
+                    <dd class="col-sm-6 text-end">@(Model.VolumenM3?.ToString("N2") ?? "—") m³</dd>
+                    <dt class="col-sm-6 fr-form-label">Valor declarado</dt>
+                    <dd class="col-sm-6 text-end">@(Model.ValorDeclarado?.ToString("N2") ?? "—")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- ── KPI Servicio ────────────────────────────────────── -->
+        <div class="fr-card mt-4">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Servicio</div>
+            </div>
+            <div class="fr-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6 fr-form-label">Modo</dt>
+                    <dd class="col-sm-6 text-end">@Model.ModoTransporteLabel</dd>
+                    <dt class="col-sm-6 fr-form-label">Nivel de servicio</dt>
+                    <dd class="col-sm-6 text-end">@Model.NivelServicioLabel</dd>
+                    <dt class="col-sm-6 fr-form-label">Prioridad</dt>
+                    <dd class="col-sm-6 text-end">
+                        <span class="fr-badge @OrdenUiHelper.GetPrioridadClass(Model.Prioridad)">@Model.PrioridadLabel</span>
+                    </dd>
+                    <dt class="col-sm-6 fr-form-label">Recogida</dt>
+                    <dd class="col-sm-6 text-end">@(Model.FechaPickupSolicitada?.ToString("dd/MM/yyyy") ?? "—")</dd>
+                    <dt class="col-sm-6 fr-form-label">Entrega requerida</dt>
+                    <dd class="col-sm-6 text-end">@(Model.FechaEntregaRequerida?.ToString("dd/MM/yyyy") ?? "—")</dd>
+                    @if (!string.IsNullOrEmpty(Model.ReferenciaCliente))
+                    {
+                        <dt class="col-sm-6 fr-form-label">Referencia</dt>
+                        <dd class="col-sm-6 text-end text-truncate" title="@Model.ReferenciaCliente">@Model.ReferenciaCliente</dd>
+                    }
+                </dl>
+                @if (!string.IsNullOrEmpty(Model.Instrucciones))
+                {
+                    <div class="mt-3 pt-3" style="border-top:1px solid var(--fr-border)">
+                        <div class="fr-form-label mb-1">Instrucciones especiales</div>
+                        <div class="text-muted">@Model.Instrucciones</div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: cambiar estado (CA-10) ─────────────────────────── -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1" aria-labelledby="modalCambiarEstadoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCambiarEstadoTitle">Cambiar estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="inputEstadoNuevo" />
+                <p class="fr-form-hint" id="textoMotivoAyuda">Puede registrar un motivo del cambio. Es obligatorio al cancelar la orden.</p>
+                <label class="fr-form-label" for="inputMotivo">Motivo</label>
+                <textarea id="inputMotivo" class="fr-form-control" rows="3" maxlength="500"
+                          placeholder="Motivo del cambio de estado (opcional, obligatorio al cancelar)"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarCambioEstado">
+                    <i class="ti ti-device-floppy"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── Cambio de estado (PATCH /api/ordenes/{id}/estado) ────────
+    let estadoDestinoActual = '';
+
+    function abrirModalEstado(estado, label) {
+        estadoDestinoActual = estado;
+        document.getElementById('inputEstadoNuevo').value = estado;
+        document.getElementById('inputMotivo').value = '';
+        document.getElementById('modalCambiarEstadoTitle').textContent = 'Cambiar a ' + label;
+        FrModal.show('modalCambiarEstado');
+    }
+
+    document.getElementById('btnConfirmarCambioEstado').addEventListener('click', async () => {
+        if (!estadoDestinoActual) return;
+        const motivo = document.getElementById('inputMotivo').value.trim();
+        // El motivo es obligatorio al cancelar (CambiarEstadoOrdenRequestDto)
+        if (estadoDestinoActual === 'CANCELLED' && !motivo) {
+            FrToast.warning('El motivo es obligatorio al cancelar la orden');
+            return;
+        }
+        const btn = document.getElementById('btnConfirmarCambioEstado');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.patch('/api/ordenes/@Model.Id/estado', {
+                estadoNuevo: estadoDestinoActual,
+                motivo
+            });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Estado actualizado correctamente');
+                FrModal.hide('modalCambiarEstado');
+                setTimeout(() => window.location.reload(), 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Desactivar borrador (DELETE /api/ordenes/{id}/deactivate) ─
+    document.getElementById('btnDesactivarOrden')?.addEventListener('click', async () => {
+        if (!confirm('¿Está seguro de desactivar esta orden? Esta acción puede revertirse.')) return;
+        const resp = await FrApi.delete('/api/ordenes/@Model.Id/deactivate');
+        FrApi.handleResponse(resp, () => {
+            FrToast.success('Orden desactivada');
+            setTimeout(() => window.location.href = '@Url.Action("Index")', 800);
+        });
+    });
+
+    // ── Historial de estados (GET /api/ordenes/{id}/historial) ───
+    const esc = s => String(s ?? '').replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    (async () => {
+        const container = document.getElementById('historialContainer');
+        const resp = await FrApi.get('/api/ordenes/@Model.Id/historial');
+        if (!resp?.success) {
+            container.innerHTML = '<span class="text-muted">No se pudo cargar el historial.</span>';
+            return;
+        }
+        const items = resp.data;
+        if (!items?.length) {
+            container.innerHTML = '<span class="text-muted">Sin cambios de estado registrados.</span>';
+            return;
+        }
+        container.innerHTML = items.map(h => `
+            <div class="d-flex gap-3 mb-3">
+                <div class="flex-shrink-0 pt-1">
+                    <span class="fr-badge ${FrBadge.claseEstado(h.estadoNuevo)}">${esc(h.estadoNuevoLabel)}</span>
+                </div>
+                <div>
+                    <div class="fw-semibold">
+                        ${h.estadoAnteriorLabel ? `<span class="text-muted">${esc(h.estadoAnteriorLabel)}</span> <i class="ti ti-arrow-right text-muted"></i> ` : ''}${esc(h.estadoNuevoLabel)}
+                    </div>
+                    <div class="text-muted small">${new Date(h.fechaCreacion).toLocaleString('es-ES')} · ${esc(h.usuarioNombre || 'Sistema')}</div>
+                    ${h.motivo ? `<div class="text-muted small"><em>${esc(h.motivo)}</em></div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    })();
+</script>
+}

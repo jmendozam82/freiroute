@@ -1,0 +1,27 @@
+@model Freiroute.Aplicacion.Areas.Tenant.ViewModels.PaginacionModel
+@{
+    var pageUrl = Model.PageUrl ?? (p => "#");
+}
+<div class="fr-pagination">
+    <span class="fr-pagination-info">
+        Mostrando @Model.Desde–@Model.Hasta de @Model.TotalItems
+    </span>
+    <div class="d-flex gap-2">
+        @if (Model.HasPreviousPage)
+        {
+            <a class="fr-page-btn" href="@pageUrl(Model.PaginaActual - 1)" aria-label="Página anterior">Anterior</a>
+        }
+        else
+        {
+            <button type="button" class="fr-page-btn" disabled aria-label="Página anterior">Anterior</button>
+        }
+        @if (Model.HasNextPage)
+        {
+            <a class="fr-page-btn" href="@pageUrl(Model.PaginaActual + 1)" aria-label="Página siguiente">Siguiente</a>
+        }
+        else
+        {
+            <button type="button" class="fr-page-btn" disabled aria-label="Página siguiente">Siguiente</button>
+        }
+    </div>
+</div>

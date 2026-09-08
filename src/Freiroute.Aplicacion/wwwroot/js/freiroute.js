@@ -153,10 +153,11 @@ const FrApi = {
         return await resp.json();
     },
 
-    async patch(url) {
+    async patch(url, data) {
         const resp = await fetch(url, {
             method: 'PATCH',
-            headers: this._headers()
+            headers: this._headers(),
+            ...(data !== undefined ? { body: JSON.stringify(data) } : {})
         });
         if (resp.status === 401) {
             FrAuth.clearToken();
@@ -240,9 +241,10 @@ const FrBadge = {
             'DELIVERED':        'fr-badge-success',
             'INVOICED':         'fr-badge-success',
             'CLOSED':           'fr-badge-neutral',
-            'CANCELLED':        'fr-badge-danger',
+            'CANCELLED':        'fr-badge-neutral',
             'ON_HOLD':          'fr-badge-warning',
             'FAILED_DELIVERY':  'fr-badge-danger',
+            'PARTIALLY_SPLIT':  'fr-badge-info',
             'ACTIVE':           'fr-badge-success',
             'PENDING':          'fr-badge-info',
             'SUSPENDED':        'fr-badge-warning',

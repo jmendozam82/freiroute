@@ -1,0 +1,186 @@
+@using Freiroute.Aplicacion.Areas.Tenant.ViewModels
+@using Freiroute.DTO.Orden
+@using Freiroute.Utility.Constants
+@model OrdenIndexViewModel
+@{
+    ViewData["Title"] = "Órdenes de Transporte";
+    ViewData["ActiveMenu"] = "ordenes";
+    string PageUrl(int p) => Url.Action("Index", new { estado = Model.Estado, prioridad = Model.Prioridad, busqueda = Model.Busqueda, page = p })!;
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <span>Operación</span>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Órdenes</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Órdenes de Transporte</h1>
+        <div class="fr-page-subtitle">Solicitudes de transporte y seguimiento de su ciclo de vida (HU-021)</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        @if (User.HasPermission("ordenes", "CREATE"))
+        {
+            <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Create" class="fr-btn fr-btn-primary">
+                <i class="ti ti-plus"></i> Nueva orden
+            </a>
+        }
+    </div>
+</div>
+
+<div class="fr-kpi-grid">
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Órdenes registradas</div>
+        <div class="fr-kpi-value kpi-blue">@Model.Resultados.TotalItems</div>
+        <div class="fr-kpi-delta up">@Model.Resultados.PageSize por página</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Borradores (esta página)</div>
+        <div class="fr-kpi-value kpi-gray">@Model.Resultados.Items.Count(o => o.Estado == OrdenEstado.Draft)</div>
+        <div class="fr-kpi-delta down">Sin número de orden asignado</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">En tránsito (esta página)</div>
+        <div class="fr-kpi-value kpi-amber">@Model.Resultados.Items.Count(o => o.Estado == OrdenEstado.InTransit)</div>
+        <div class="fr-kpi-delta down">Requieren seguimiento activo</div>
+    </div>
+    <div class="fr-kpi-card">
+        <div class="fr-kpi-label">Críticas (esta página)</div>
+        <div class="fr-kpi-value kpi-red">@Model.Resultados.Items.Count(o => o.Prioridad == OrdenPrioridad.Critico)</div>
+        <div class="fr-kpi-delta down">Prioridad máxima de atención</div>
+    </div>
+</div>
+
+<div class="fr-card mb-3">
+    <div class="fr-card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="fr-form-label" for="fEstado">Estado</label>
+                <select id="fEstado" name="estado" class="fr-form-control">
+                    <option value="">Todos los estados</option>
+                    @foreach (var kv in OrdenEstado.Labels)
+                    {
+                        <option value="@kv.Key" selected="@(Model.Estado == kv.Key)">@kv.Value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="fr-form-label" for="fPrioridad">Prioridad</label>
+                <select id="fPrioridad" name="prioridad" class="fr-form-control">
+                    <option value="">Todas</option>
+                    @foreach (var kv in OrdenPrioridad.Labels)
+                    {
+                        <option value="@kv.Key" selected="@(Model.Prioridad == kv.Key)">@kv.Value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="fr-form-label" for="fBusqueda">Buscar</label>
+                <input id="fBusqueda" type="text" name="busqueda" value="@Model.Busqueda" class="fr-form-control"
+                       placeholder="Número de orden o referencia del cliente" aria-label="Buscar orden" />
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="fr-btn fr-btn-primary w-100">
+                    <i class="ti ti-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="fr-table-wrapper">
+    <div class="fr-table-responsive">
+        <table class="fr-table">
+            <thead>
+                <tr>
+                    <th>N° Orden</th>
+                    <th>Cliente</th>
+                    <th>Ruta</th>
+                    <th>Peso</th>
+                    <th>Prioridad</th>
+                    <th>Entrega</th>
+                    <th>Estado</th>
+                    <th>Canal</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Resultados.Items.Count() == 0)
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="fr-empty">
+                                <div class="fr-empty-icon"><i class="ti ti-clipboard-list"></i></div>
+                                <div class="fr-empty-title">No hay órdenes</div>
+                                <div class="fr-empty-text">Cree la primera orden de transporte o ajuste los filtros.</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var o in Model.Resultados.Items)
+                {
+                    <tr>
+                        <td><span class="fr-id-code">@(string.IsNullOrEmpty(o.NumeroOrden) ? "—" : o.NumeroOrden)</span></td>
+                        <td>
+                            <div class="fw-semibold">@o.ClienteNombre</div>
+                            @if (!string.IsNullOrEmpty(o.ReferenciaCliente))
+                            {
+                                <div class="text-muted">Ref: @o.ReferenciaCliente</div>
+                            }
+                        </td>
+                        <td>
+                            <span class="text-muted">@o.OrigenNombre</span>
+                            <i class="ti ti-arrow-right text-muted mx-1"></i>
+                            <span>@o.DestinoNombre</span>
+                        </td>
+                        <td>@o.PesoKg.ToString("N0") kg</td>
+                        <td>
+                            <span class="fr-badge @OrdenUiHelper.GetPrioridadClass(o.Prioridad)">@o.PrioridadLabel</span>
+                        </td>
+                        <td>@(o.FechaEntregaRequerida?.ToString("dd/MM/yyyy") ?? "—")</td>
+                        <td>
+                            <span class="fr-badge @OrdenUiHelper.GetEstadoClass(o.Estado)">@o.EstadoLabel</span>
+                        </td>
+                        <td>
+                            <span class="fr-badge fr-badge-neutral" title="Canal de ingreso registrado por el sistema — no editable">@o.OrigenCreacion</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-1">
+                                <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Detalle" asp-route-id="@o.Id" class="fr-btn fr-btn-ghost fr-btn-sm"
+                                   title="Ver detalle" aria-label="Ver detalle de la orden @(o.NumeroOrden ?? o.Id.ToString())">
+                                    <i class="ti ti-eye"></i>
+                                </a>
+                                @if (User.HasPermission("ordenes", "UPDATE") && OrdenEstado.Editables.Contains(o.Estado))
+                                {
+                                    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Edit" asp-route-id="@o.Id" class="fr-btn fr-btn-ghost fr-btn-sm"
+                                       title="Editar" aria-label="Editar la orden @(o.NumeroOrden ?? o.Id.ToString())">
+                                        <i class="ti ti-edit"></i>
+                                    </a>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @await Html.PartialAsync("_Paginacion", new PaginacionModel
+    {
+        PaginaActual = Model.Resultados.PageNumber,
+        PageSize = Model.Resultados.PageSize,
+        TotalItems = Model.Resultados.TotalItems,
+        ItemsEnPagina = Model.Resultados.Items.Count(),
+        PageUrl = PageUrl,
+    })
+</div>
+
+@section Scripts {
+<script>
+    // ── Toast de TempData (server-side create/edit) ─────────────
+    const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
+    const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
+    if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+</script>
+}
