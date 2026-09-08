@@ -276,7 +276,7 @@ public class OnboardingServiceTests
     }
 
     [Fact]
-    public async Task GuardarLogoAsync_SubeYGuardaSignedUrl()
+    public async Task GuardarLogoAsync_SubeYGuardaObjectPathRetornaSignedUrl()
     {
         var id = Guid.NewGuid();
         using var stream = new MemoryStream([1, 2, 3, 4]);
@@ -290,6 +290,6 @@ public class OnboardingServiceTests
         var result = await _service.GuardarLogoAsync(id, stream, ".png");
 
         result.Should().Be("https://signed/url.png");
-        _config.Verify(r => r.UpdateLogoUrlAsync(id, "https://signed/url.png"), Times.Once);
+        _config.Verify(r => r.UpdateLogoUrlAsync(id, $"{id}/logo.png"), Times.Once);
     }
 }
