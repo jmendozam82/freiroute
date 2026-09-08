@@ -15,6 +15,7 @@ using Freiroute.DTO.Suscripcion;
 using Freiroute.DTO.Onboarding;
 using Freiroute.DTO.Configuracion;
 using Freiroute.DTO.Admin;
+using Freiroute.DTO.Orden;
 using Freiroute.DTO.Ubicacion;
 using Freiroute.DTO.Zona;
 using Freiroute.DTO.Mercancia;
@@ -81,6 +82,13 @@ public static class DependencyInjection
         services.AddScoped<IClienteRepository,        ClienteRepository>();
         services.AddScoped<ITarifaBaseRepository,     TarifaBaseRepository>();
 
+        // ── Repositorios Sprint 4 (EP-04 Order Management) ────────
+        services.AddScoped<IOrdenRepository,            OrdenRepository>();
+        services.AddScoped<IShipmentRepository,         ShipmentRepository>();
+        services.AddScoped<IPlantillaOrdenRepository,   PlantillaOrdenRepository>();
+        services.AddScoped<IImportacionOrdenRepository, ImportacionOrdenRepository>();
+        services.AddScoped<IApiKeyTenantRepository,     ApiKeyTenantRepository>();
+
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
         services.AddHttpClient<IEmailService, ResendEmailService>();
@@ -124,6 +132,12 @@ public static class DependencyInjection
         services.AddScoped<IClienteService, ClienteService>();
         services.AddScoped<ITarifaBaseService, TarifaBaseService>();
 
+        // ── 6f. Servicios BLL Sprint 4 (EP-04 Order Management) ──
+        services.AddScoped<IOrdenService, OrdenService>();
+        services.AddScoped<IOrdenImportService, OrdenImportService>();
+        services.AddScoped<IOrdenApiExternaService, OrdenApiExternaService>();
+        services.AddScoped<IPlantillaOrdenService, PlantillaOrdenService>();
+
         // ── 6e. Geocodificación Nominatim (ADR-014) via HttpClient ───
         //    User-Agent identificable y timeout 10s (política de uso de OSM);
         //    el servicio serializa internamente 1 request/segundo.
@@ -161,6 +175,12 @@ public static class DependencyInjection
         services.AddScoped<IValidator<TipoEmbalajeRequestDto>, BLL.Validators.TipoEmbalajeValidator>();
         services.AddScoped<IValidator<ClienteRequestDto>, BLL.Validators.ClienteValidator>();
         services.AddScoped<IValidator<TarifaBaseRequestDto>, BLL.Validators.TarifaBaseValidator>();
+
+        // ── 7d. Validadores Sprint 4 (EP-04 Order Management) ────
+        services.AddScoped<IValidator<OrdenRequestDto>, BLL.Validators.OrdenValidator>();
+        services.AddScoped<IValidator<CambiarEstadoOrdenRequestDto>, BLL.Validators.CambiarEstadoOrdenValidator>();
+        services.AddScoped<IValidator<SplitOrdenRequestDto>, BLL.Validators.SplitOrdenValidator>();
+        services.AddScoped<IValidator<ConsolidarOrdenesRequestDto>, BLL.Validators.ConsolidarOrdenesValidator>();
 
         return services;
     }

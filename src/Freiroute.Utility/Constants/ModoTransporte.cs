@@ -9,6 +9,7 @@ namespace Freiroute.Utility.Constants;
 /// </summary>
 public static class ModoTransporte
 {
+    public const string Terrestre = "TERRESTRE";  // Sprint 4: default en ordenes de transporte
     public const string Ftl = "FTL";
     public const string Ltl = "LTL";
     public const string Aereo = "AEREO";
@@ -19,6 +20,6 @@ public static class ModoTransporte
     /// <summary>Todos los modos válidos — usado por validadores y filtros.</summary>
     public static readonly string[] Todos =
     {
-        Ftl, Ltl, Aereo, Maritimo, Ferroviario, Intermodal
+        Terrestre, Ftl, Ltl, Aereo, Maritimo, Ferroviario, Intermodal
     };
 }

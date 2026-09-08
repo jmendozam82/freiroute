@@ -36,6 +36,9 @@ public class UbicacionResponseDto
     [SwaggerSchema(Description = "Ciudad")]
     public string? Ciudad { get; set; }
 
+    [SwaggerSchema(Description = "Código postal")]
+    public string? CodigoPostal { get; set; }
+
     [SwaggerSchema(Description = "Latitud (-90 a 90) — null si no georeferenciada")]
     public double? Latitud { get; set; }
 
@@ -53,6 +56,15 @@ public class UbicacionResponseDto
 
     [SwaggerSchema(Description = "Teléfono de contacto en sitio")]
     public string? ContactoTelefono { get; set; }
+
+    [SwaggerSchema(Description = "Horario de apertura (HH:mm)")]
+    public string? HorarioApertura { get; set; }
+
+    [SwaggerSchema(Description = "Horario de cierre (HH:mm)")]
+    public string? HorarioCierre { get; set; }
+
+    [SwaggerSchema(Description = "Instrucciones de la ubicación")]
+    public string? Instrucciones { get; set; }
 
     [SwaggerSchema(Description = "Tiempo estimado de carga/descarga en minutos")]
     public int TiempoServicioMin { get; set; }

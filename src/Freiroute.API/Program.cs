@@ -45,6 +45,9 @@ public class Program
 
         // --- Job de fondo: vencimiento de suscripciones (HU-011 CA-05/06) ---
         builder.Services.AddHostedService<VencimientoSuscripcionJob>();
+        
+        // --- Job de fondo: procesamiento de órdenes recurrentes (HU-027 CA-06) ---
+        builder.Services.AddHostedService<RecurrenciaOrdenesJob>();
 
         // --- Auth JWT Base ---
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
