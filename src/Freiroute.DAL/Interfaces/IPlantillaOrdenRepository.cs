@@ -30,15 +30,13 @@ public interface IPlantillaOrdenRepository
 
     /// <summary>
     /// Obtiene todas las plantillas recurrentes cuya próxima ejecución
-    /// es <= hoy. Usado por el background job RecurrenciaOrdenesJob.
+    /// es <= hoy. Consulta cross-tenant.
     /// </summary>
-    Task<IEnumerable<PlantillaOrden>> GetPlantillasParaEjecutarAsync(
-        Guid empresaId, DateOnly fechaReferencia);
+    Task<IEnumerable<PlantillaOrden>> GetRecurrentesPendientesAsync(DateOnly fechaReferencia);
 
     /// <summary>
     /// Actualiza solo la fecha de próxima ejecución de una plantilla.
-    /// Usado por el background job tras crear la orden.
     /// </summary>
-    Task<bool> ActualizarProximaEjecucionAsync(
-        Guid plantillaId, DateOnly nuevaFecha, Guid empresaId);
+    Task<bool> UpdateProximaEjecucionAsync(
+        Guid plantillaId, Guid empresaId, DateOnly nuevaFecha);
 }

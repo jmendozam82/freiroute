@@ -3,7 +3,9 @@ using Freiroute.BLL.Interfaces;
 using Freiroute.DAL.Interfaces;
 using Freiroute.DTO.Orden;
 using Freiroute.Entity;
+using Freiroute.Utility.Constants;
 using Freiroute.Utility.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace Freiroute.BLL.Services;
 
@@ -12,15 +14,18 @@ public class PlantillaOrdenService : IPlantillaOrdenService
     private readonly IPlantillaOrdenRepository _plantillaRepository;
     private readonly IOrdenService _ordenService;
     private readonly IAuditoriaRepository _auditoriaRepository;
+    private readonly ILogger<PlantillaOrdenService> _logger;
 
     public PlantillaOrdenService(
         IPlantillaOrdenRepository plantillaRepository,
         IOrdenService ordenService,
-        IAuditoriaRepository auditoriaRepository)
+        IAuditoriaRepository auditoriaRepository,
+        ILogger<PlantillaOrdenService> logger)
     {
         _plantillaRepository = plantillaRepository;
         _ordenService = ordenService;
         _auditoriaRepository = auditoriaRepository;
+        _logger = logger;
     }
 
     public async Task<PlantillaOrdenResponseDto> GuardarComoPlantillaAsync(Guid ordenId, PlantillaOrdenRequestDto dto, Guid empresaId, Guid usuarioId)
@@ -212,5 +217,36 @@ public class PlantillaOrdenService : IPlantillaOrdenService
             });
         }
         return result;
+    }
+
+    public async Task ProcesarRecurrenciasPendientesAsync(DateOnly fecha)
+    {
+        // Consulta cross-tenant — sin empresa_id (CA-07 HU-027)
+        var pendientes = await _plantillaRepository
+            .GetRecurrentesPendientesAsync(fecha);
+
+        foreach (var plantilla in pendientes)
+        {
+            try
+            {
+                await CrearOrdenDesdePlantillaAsync(
+                    plantilla.Id, plantilla.EmpresaId, plantilla.CreadoPor ?? Guid.Empty);
+
+                // Calcular y actualizar la próxima ejecución (CA-08 HU-027)
+                var proxima = FrecuenciaRecurrencia.CalcularProximaEjecucion(
+                    plantilla.FrecuenciaRecurrencia!, fecha);
+
+                await _plantillaRepository.UpdateProximaEjecucionAsync(
+                    plantilla.Id, plantilla.EmpresaId, proxima);
+            }
+            catch (Exception ex)
+            {
+                // Log y continuar — no detener el job por una plantilla fallida
+                _logger.LogError(ex,
+                    "Error procesando plantilla recurrente {PlantillaId} " +
+                    "del tenant {EmpresaId}",
+                    plantilla.Id, plantilla.EmpresaId);
+            }
+        }
     }
 }

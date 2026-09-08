@@ -155,4 +155,16 @@ public static class FrecuenciaRecurrencia
 
     public static string GetLabel(string frecuencia) =>
         Labels.TryGetValue(frecuencia, out var label) ? label : frecuencia;
+
+    public static DateOnly CalcularProximaEjecucion(string frecuencia, DateOnly fechaActual)
+    {
+        return frecuencia.ToUpper() switch
+        {
+            Diaria => fechaActual.AddDays(1),
+            Semanal => fechaActual.AddDays(7),
+            Quincenal => fechaActual.AddDays(15),
+            Mensual => fechaActual.AddMonths(1),
+            _ => fechaActual.AddDays(1)
+        };
+    }
 }

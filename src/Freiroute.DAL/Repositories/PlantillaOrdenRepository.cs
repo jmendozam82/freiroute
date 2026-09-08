@@ -141,32 +141,28 @@ public class PlantillaOrdenRepository : IPlantillaOrdenRepository
     }
 
     /// <summary>
-    /// Plantillas recurrentes activas cuya próxima ejecución es &lt;= la fecha
-    /// de referencia. Consulta del background job RecurrenciaOrdenesJob (HU-027).
-    /// El índice parcial idx_plantillas_recurrentes acelera esta lectura.
+    /// Plantillas recurrentes activas cuya próxima ejecución es <= la fecha
+    /// de referencia. Consulta cross-tenant.
     /// </summary>
-    public async Task<IEnumerable<PlantillaOrden>> GetPlantillasParaEjecutarAsync(
-        Guid empresaId, DateOnly fechaReferencia)
+    public async Task<IEnumerable<PlantillaOrden>> GetRecurrentesPendientesAsync(DateOnly fechaReferencia)
     {
         const string sql = $@"
             SELECT {ColPlantilla}
             FROM plantillas_orden
-            WHERE empresa_id = @EmpresaId
-              AND es_recurrente = true
+            WHERE es_recurrente = true
               AND activo = true
               AND proxima_ejecucion <= @FechaReferencia
             ORDER BY proxima_ejecucion ASC";
 
         return await _connection.QueryAsync<PlantillaOrden>(sql,
-            new { EmpresaId = empresaId, FechaReferencia = fechaReferencia });
+            new { FechaReferencia = fechaReferencia });
     }
 
     /// <summary>
-    /// Actualiza la próxima ejecución tras crear la orden recurrente (HU-027).
-    /// La nueva fecha la calcula la BLL con CalcularProximaEjecucion().
+    /// Actualiza la próxima ejecución tras crear la orden recurrente.
     /// </summary>
-    public async Task<bool> ActualizarProximaEjecucionAsync(
-        Guid plantillaId, DateOnly nuevaFecha, Guid empresaId)
+    public async Task<bool> UpdateProximaEjecucionAsync(
+        Guid plantillaId, Guid empresaId, DateOnly nuevaFecha)
     {
         const string sql = @"
             UPDATE plantillas_orden

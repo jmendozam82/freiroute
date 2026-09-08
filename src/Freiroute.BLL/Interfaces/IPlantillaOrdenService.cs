@@ -58,4 +58,9 @@ public interface IPlantillaOrdenService
     /// sin borrar el historial (HU-027 CA-10).
     /// </summary>
     Task<bool> DeactivateAsync(Guid id, Guid empresaId, Guid usuarioId);
+
+    /// <summary>
+    /// Procesa todas las plantillas recurrentes pendientes (cross-tenant).
+    /// </summary>
+    Task ProcesarRecurrenciasPendientesAsync(DateOnly fecha);
 }
