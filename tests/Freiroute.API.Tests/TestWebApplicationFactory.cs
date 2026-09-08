@@ -43,6 +43,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public Mock<IUnidadMedidaService> UnidadMedidaService { get; }
     public Mock<ITipoEmbalajeService> TipoEmbalajeService { get; }
 
+    // Servicios Sprint 4 — Órdenes (HU-021 a HU-027).
+    public Mock<IOrdenService> OrdenService { get; }
+    public Mock<IOrdenImportService> OrdenImportService { get; }
+    public Mock<IOrdenApiExternaService> OrdenApiExternaService { get; }
+    public Mock<IPlantillaOrdenService> PlantillaOrdenService { get; }
+
     public TestWebApplicationFactory()
     {
         AuthService = new Mock<IAuthService>();
@@ -66,6 +72,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         TipoMercanciaService = new Mock<ITipoMercanciaService>();
         UnidadMedidaService = new Mock<IUnidadMedidaService>();
         TipoEmbalajeService = new Mock<ITipoEmbalajeService>();
+
+        OrdenService = new Mock<IOrdenService>();
+        OrdenImportService = new Mock<IOrdenImportService>();
+        OrdenApiExternaService = new Mock<IOrdenApiExternaService>();
+        PlantillaOrdenService = new Mock<IPlantillaOrdenService>();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -101,6 +112,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<ITipoMercanciaService>();
             services.RemoveAll<IUnidadMedidaService>();
             services.RemoveAll<ITipoEmbalajeService>();
+            
+            services.RemoveAll<IOrdenService>();
+            services.RemoveAll<IOrdenImportService>();
+            services.RemoveAll<IOrdenApiExternaService>();
+            services.RemoveAll<IPlantillaOrdenService>();
 
             services.AddSingleton(AuthService.Object);
             services.AddSingleton(EmpresaService.Object);
@@ -121,6 +137,33 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(TipoMercanciaService.Object);
             services.AddSingleton(UnidadMedidaService.Object);
             services.AddSingleton(TipoEmbalajeService.Object);
+
+            services.AddScoped<IOrdenService>(_ =>
+            {
+                var mock = OrdenService;
+                // Setup mínimo para GetAll → lista vacía
+                mock.Setup(s => s.GetAllAsync(It.IsAny<Guid>(), It.IsAny<Freiroute.DTO.Orden.OrdenFiltroDto>()))
+                    .ReturnsAsync(new Freiroute.Utility.Pagination.PagedResult<Freiroute.DTO.Orden.OrdenListDto>
+                    {
+                        Items = new System.Collections.Generic.List<Freiroute.DTO.Orden.OrdenListDto>(),
+                        TotalItems = 0,
+                        PageNumber = 1,
+                        PageSize = 20
+                    });
+                // Setup para Create → 201
+                mock.Setup(s => s.CreateAsync(
+                    It.IsAny<Freiroute.DTO.Orden.OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+                    .ReturnsAsync(new Freiroute.DTO.Orden.OrdenResponseDto
+                    {
+                        Id = Guid.NewGuid(),
+                        Estado = Freiroute.Utility.Constants.OrdenEstado.Draft
+                    });
+                return mock.Object;
+            });
+
+            services.AddScoped<IOrdenImportService>(_ => OrdenImportService.Object);
+            services.AddScoped<IOrdenApiExternaService>(_ => OrdenApiExternaService.Object);
+            services.AddScoped<IPlantillaOrdenService>(_ => PlantillaOrdenService.Object);
         });
     }
 
@@ -136,3 +179,4 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         return client;
     }
 }
+

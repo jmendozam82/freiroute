@@ -64,6 +64,26 @@ public static class JwtTestHelper
         GenerateTokenCore(Guid.NewGuid(), EmpresaTenant, Array.Empty<string>(), "OPERADOR");
 
     /// <summary>
+    /// Token de ADMIN con permisos completos del módulo de órdenes de su empresa
+    /// (ordenes). Usado por los tests de Ordenes, Plantillas e Importaciones (HU-021..HU-027).
+    /// </summary>
+    public static string TokenOrdenes { get; } =
+        GenerateTokenCore(
+            Guid.NewGuid(), EmpresaTenant,
+            new[] { "ordenes:read", "ordenes:create", "ordenes:update" },
+            "ADMIN");
+
+    /// <summary>
+    /// Token de ADMIN con permisos completos del módulo de configuración de su empresa
+    /// (configuracion). Usado por los tests de Api Keys y configuración de tenant.
+    /// </summary>
+    public static string TokenConfiguracion { get; } =
+        GenerateTokenCore(
+            Guid.NewGuid(), EmpresaTenant,
+            new[] { "configuracion:read", "configuracion:create", "configuracion:update" },
+            "ADMIN");
+
+    /// <summary>
     /// Genera un token JWT con los claims especificados.
     /// </summary>
     /// <param name="userId">Identificador del usuario</param>
