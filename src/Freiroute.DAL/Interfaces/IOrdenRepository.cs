@@ -1,3 +1,4 @@
+using Freiroute.DTO.Orden;
 using Freiroute.Entity;
 using Freiroute.Utility.Pagination;
 
@@ -24,7 +25,7 @@ public interface IOrdenRepository
         string? shipmentId = null, string? q = null,
         DateOnly? fechaPickupDesde = null, DateOnly? fechaPickupHasta = null,
         DateOnly? fechaEntregaDesde = null, DateOnly? fechaEntregaHasta = null,
-        bool? esSplit = null);
+        bool? esSplit = null, string? po = null);
 
     /// <summary>Obtiene una orden por Id dentro de la empresa.</summary>
     Task<Orden?> GetByIdAsync(Guid id, Guid empresaId);
@@ -87,4 +88,54 @@ public interface IOrdenRepository
 
     /// <summary>Crea múltiples líneas en lote.</summary>
     Task CreateLineasBulkAsync(IEnumerable<LineaOrden> lineas);
+
+    // ── Sprint 5: PO/SO, SLA y prioridades (HU-028, HU-029, HU-031) ──────
+
+    /// <summary>
+    /// Busca todas las órdenes activas con un número de PO EXACTO del
+    /// mismo tenant (HU-028 CA-05 — GET /api/ordenes/por-po/{numero}).
+    /// </summary>
+    Task<IEnumerable<Orden>> GetPorPoAsync(string numeroPo, Guid empresaId);
+
+    /// <summary>
+    /// Órdenes críticas: prioridad CRITICO o ALTO cuyo último cambio de
+    /// estado supera las 4 horas sin avanzar, excluyendo estados
+    /// terminales (HU-029 CA-04 — GET /api/ordenes/criticas).
+    /// </summary>
+    Task<IEnumerable<Orden>> GetCriticasAsync(Guid empresaId);
+
+    /// <summary>
+    /// Órdenes con SLA en riesgo: entrega requerida dentro de las
+    /// próximas 24 h (o ya vencida) y estado no terminal (HU-031 CA-02).
+    /// </summary>
+    Task<IEnumerable<Orden>> GetSlaEnRiesgoAsync(Guid empresaId);
+
+    /// <summary>
+    /// Persiste la fecha/hora real de entrega al registrar el POD
+    /// (HU-031 CA-04). Retorna true si afectó una fila.
+    /// </summary>
+    Task<bool> UpdateFechaEntregaRealAsync(Guid ordenId, Guid empresaId,
+        DateTime fechaEntregaReal);
+
+    /// <summary>
+    /// Métricas SLA de un cliente en el período: total de órdenes
+    /// entregadas y cuántas fueron a tiempo vs la fecha requerida
+    /// (HU-031 CA-05).
+    /// </summary>
+    Task<(int TotalOrdenes, int OrdenesATiempo)> GetSlaClienteAsync(
+        Guid clienteId, Guid empresaId, DateTime desde, DateTime hasta);
+
+    /// <summary>
+    /// Reporte de cumplimiento SLA por cliente en el período (HU-031
+    /// CA-07). Devuelve DTOs listos para la respuesta de la API.
+    /// </summary>
+    Task<IEnumerable<SlaReporteItemDto>> GetSlaReporteAsync(
+        Guid empresaId, DateTime desde, DateTime hasta);
+
+    /// <summary>
+    /// Cambia la prioridad de una orden (elevación automática HU-029).
+    /// Retorna true si afectó una fila.
+    /// </summary>
+    Task<bool> UpdatePrioridadAsync(Guid ordenId, Guid empresaId,
+        string prioridad);
 }

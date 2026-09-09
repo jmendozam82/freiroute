@@ -1,0 +1,146 @@
+@{
+    ViewData["Title"] = "Órdenes Críticas";
+    ViewData["ActiveMenu"] = "ordenes";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index">Órdenes</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Críticas</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Órdenes Críticas</h1>
+        <div class="fr-page-subtitle">Órdenes de prioridad CRÍTICO o ALTO sin avance significativo (HU-029)</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button class="fr-btn fr-btn-ghost" id="btnRefrescarCriticas" title="Actualizar datos" aria-label="Actualizar datos">
+            <i class="ti ti-refresh"></i> Actualizar
+        </button>
+        <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Index" class="fr-btn fr-btn-secondary">
+            <i class="ti ti-arrow-left"></i> Volver a órdenes
+        </a>
+    </div>
+</div>
+
+<div class="fr-card">
+    <div class="fr-card-header">
+        <div class="fr-card-title">Órdenes críticas</div>
+        <span class="fr-badge fr-badge-danger" id="contadorCriticas">—</span>
+    </div>
+    <div class="fr-card-body p-0">
+        <div class="fr-table-responsive">
+            <table class="fr-table mb-0">
+                <thead>
+                    <tr>
+                        <th>N° Orden</th>
+                        <th>Cliente</th>
+                        <th>Ruta</th>
+                        <th>Entrega requerida</th>
+                        <th>Prioridad</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyCriticas">
+                    <tr>
+                        <td colspan="7">
+                            <div class="fr-empty py-4">
+                                <div class="fr-empty-icon"><i class="ti ti-loader"></i></div>
+                                <div class="fr-empty-title">Cargando órdenes críticas…</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── Escapado HTML ────────────────────────────────────────────
+    const esc = s => String(s ?? '').replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const badgePrioridad = p => {
+        switch (p) {
+            case 'CRITICO': return '<span class="fr-badge fr-badge-danger fr-badge-critico--pulse">Crítico</span>';
+            case 'ALTO':    return '<span class="fr-badge fr-badge-warning">Alto</span>';
+            case 'BAJO':    return '<span class="fr-badge fr-badge-neutral">Bajo</span>';
+            default:        return '<span class="fr-badge fr-badge-neutral">Normal</span>';
+        }
+    };
+
+    async function cargarCriticas() {
+        const tbody = document.getElementById('tbodyCriticas');
+        const contador = document.getElementById('contadorCriticas');
+        const resp = await FrApi.get('/api/ordenes/criticas');
+        if (!resp?.success) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="fr-empty py-4">
+                            <div class="fr-empty-icon"><i class="ti ti-alert-triangle"></i></div>
+                            <div class="fr-empty-title">No se pudieron cargar las órdenes críticas</div>
+                            <div class="fr-empty-text">${esc(resp?.message || 'Error inesperado')}</div>
+                        </div>
+                    </td>
+                </tr>`;
+            return;
+        }
+        const items = resp.data || [];
+        contador.textContent = `${items.length} órdenes`;
+
+        if (!items.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="fr-empty py-4">
+                            <div class="fr-empty-icon"><i class="ti ti-circle-check"></i></div>
+                            <div class="fr-empty-title">Sin órdenes críticas</div>
+                            <div class="fr-empty-text">Todas las órdenes avanzan dentro de lo esperado.</div>
+                        </div>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = items.map(o => `
+            <tr>
+                <td><span class="fr-id-code">${esc(o.numeroOrden || '—')}</span></td>
+                <td class="fw-semibold">${esc(o.clienteNombre)}</td>
+                <td>
+                    <span class="text-muted">${esc(o.origenNombre)}</span>
+                    <i class="ti ti-arrow-right text-muted mx-1"></i>
+                    <span>${esc(o.destinoNombre)}</span>
+                </td>
+                <td>${o.fechaEntregaRequerida ? new Date(o.fechaEntregaRequerida).toLocaleDateString('es-ES') : '—'}</td>
+                <td>${badgePrioridad(o.prioridad)}</td>
+                <td><span class="fr-badge ${FrBadge.claseEstado(o.estado)}">${esc(o.estadoLabel || o.estado)}</span></td>
+                <td class="text-end">
+                    <a href="detalle/${o.id}" class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver detalle" aria-label="Ver detalle de la orden ${o.numeroOrden || o.id}">
+                        <i class="ti ti-eye"></i>
+                    </a>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    document.getElementById('btnRefrescarCriticas')?.addEventListener('click', () => {
+        document.getElementById('tbodyCriticas').innerHTML = `
+            <tr>
+                <td colspan="7">
+                    <div class="fr-empty py-4">
+                        <div class="fr-empty-icon"><i class="ti ti-loader"></i></div>
+                        <div class="fr-empty-title">Cargando órdenes críticas…</div>
+                    </div>
+                </td>
+            </tr>`;
+        cargarCriticas();
+    });
+
+    cargarCriticas();
+</script>
+}

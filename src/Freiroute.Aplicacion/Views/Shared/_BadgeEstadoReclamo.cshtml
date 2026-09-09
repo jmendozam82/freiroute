@@ -1,0 +1,14 @@
+@* Vista parcial: Badge de estado de reclamo (HU-032). Model = Estado: ABIERTO | EN_REVISION | APROBADO | RECHAZADO | CERRADO *@
+@model string
+@{
+    var (clase, label) = Model switch
+    {
+        "ABIERTO"     => ("fr-badge fr-badge-info",    "Abierto"),
+        "EN_REVISION" => ("fr-badge fr-badge-warning", "En revisión"),
+        "APROBADO"    => ("fr-badge fr-badge-success", "Aprobado"),
+        "RECHAZADO"   => ("fr-badge fr-badge-danger",  "Rechazado"),
+        "CERRADO"     => ("fr-badge fr-badge-neutral", "Cerrado"),
+        _             => ("fr-badge fr-badge-neutral", Model)
+    };
+}
+<span class="@clase">@label</span>

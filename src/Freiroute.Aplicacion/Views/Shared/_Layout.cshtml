@@ -73,6 +73,11 @@ else
                             <i class="ti ti-clipboard-list fr-icon"></i>
                             <span>Órdenes</span>
                         </a>
+                        <a asp-area="Tenant" asp-controller="Reclamos" asp-action="Index"
+                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "reclamos" ? "active" : "")">
+                            <i class="ti ti-report fr-icon"></i>
+                            <span>Reclamos</span>
+                        </a>
                     }
 
                     @if (User.HasPermission("embarques", "READ"))

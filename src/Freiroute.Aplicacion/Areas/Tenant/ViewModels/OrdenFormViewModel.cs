@@ -67,6 +67,13 @@ public class OrdenFormViewModel
     [StringLength(1000, ErrorMessage = "Las instrucciones no pueden exceder 1000 caracteres")]
     public string? Instrucciones { get; set; }
 
+    // ── Integración PO/SO (HU-028) ────────────────────────────────
+    [StringLength(100, ErrorMessage = "El número de Purchase Order no puede exceder 100 caracteres")]
+    public string? NumeroPo { get; set; }
+
+    [StringLength(100, ErrorMessage = "El número de Sales Order no puede exceder 100 caracteres")]
+    public string? NumeroSo { get; set; }
+
     // ── Catálogos para selects ────────────────────────────────────
     public List<SelectListItem> Clientes { get; set; } = [];
 
@@ -101,5 +108,7 @@ public class OrdenFormViewModel
         FechaEntregaRequerida = FechaEntregaRequerida,
         ReferenciaCliente = ReferenciaCliente,
         Instrucciones = Instrucciones,
+        NumeroPo = NumeroPo,
+        NumeroSo = NumeroSo,
     };
 }

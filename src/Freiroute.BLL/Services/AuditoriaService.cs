@@ -113,6 +113,8 @@ public class AuditoriaService : IAuditoriaService
         Id = a.Id,
         EmpresaId = a.EmpresaId,
         UsuarioId = a.UsuarioId,
+        UsuarioNombre = a.UsuarioNombre,
+        EmailUsuario = a.EmailUsuario,
         Modulo = a.Modulo,
         Accion = a.Accion,
         EntidadTipo = a.EntidadTipo,

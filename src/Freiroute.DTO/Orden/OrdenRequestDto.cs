@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Freiroute.DTO.Orden;
@@ -67,6 +68,15 @@ public class OrdenRequestDto
 
     [SwaggerSchema(Description = "Instrucciones especiales de manejo")]
     public string? Instrucciones { get; set; }
+
+    // ── Integración PO/SO (HU-028) ───────────────────────────
+    [MaxLength(100)]
+    [SwaggerSchema(Description = "Número de Purchase Order del cliente (trazabilidad ERP/WMS)")]
+    public string? NumeroPo { get; set; }
+
+    [MaxLength(100)]
+    [SwaggerSchema(Description = "Número de Sales Order del cliente (independiente del PO)")]
+    public string? NumeroSo { get; set; }
 
     // ── Líneas de detalle ─────────────────────────────────────
     [SwaggerSchema(Description = "Líneas de detalle de mercancía")]

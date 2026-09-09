@@ -149,4 +149,46 @@ public class AuditoriaServiceTests
         result.TotalItems.Should().Be(1);
         result.Items.First().Modulo.Should().Be("auth");
     }
+
+    [Fact]
+    public async Task GetPagedAsync_CuandoRepositorioDevuelveJoin_PropagaNombreYEmailDelUsuario()
+    {
+        // G-08: el listado expone nombre y email del usuario vía JOIN
+        // (no solo el UUID del usuario que ejecutó la acción).
+        // Arrange
+        var empresaId = Guid.NewGuid();
+        var repos = new PagedResult<AuditoriaActividad>
+        {
+            Items = new List<AuditoriaActividad>
+            {
+                new()
+                {
+                    Id = Guid.NewGuid(),
+                    Modulo = "ordenes",
+                    Accion = "CREATE",
+                    UsuarioNombre = "Maria Lopez",
+                    EmailUsuario = "maria@empresa.com",
+                    FechaCreacion = DateTime.UtcNow
+                }
+            },
+            TotalItems = 1,
+            PageNumber = 1,
+            PageSize = 20
+        };
+
+        _repository
+            .Setup(r => r.GetPagedAsync(
+                empresaId, "ordenes", null, null, null, 1, 20))
+            .ReturnsAsync(repos);
+
+        // Act
+        var result = await _service.GetPagedAsync(
+            empresaId, "ordenes", null, null, null, 1, 20);
+
+        // Assert
+        result.Items.Should().HaveCount(1);
+        var item = result.Items.First();
+        item.UsuarioNombre.Should().Be("Maria Lopez");
+        item.EmailUsuario.Should().Be("maria@empresa.com");
+    }
 }

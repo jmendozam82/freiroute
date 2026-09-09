@@ -5,7 +5,7 @@
 @{
     ViewData["Title"] = "Órdenes de Transporte";
     ViewData["ActiveMenu"] = "ordenes";
-    string PageUrl(int p) => Url.Action("Index", new { estado = Model.Estado, prioridad = Model.Prioridad, busqueda = Model.Busqueda, page = p })!;
+    string PageUrl(int p) => Url.Action("Index", new { estado = Model.Estado, prioridad = Model.Prioridad, busqueda = Model.Busqueda, po = Model.Po, page = p })!;
 }
 
 <nav class="fr-breadcrumb" aria-label="Breadcrumb">
@@ -55,7 +55,7 @@
 <div class="fr-card mb-3">
     <div class="fr-card-body">
         <form method="get" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="fr-form-label" for="fEstado">Estado</label>
                 <select id="fEstado" name="estado" class="fr-form-control">
                     <option value="">Todos los estados</option>
@@ -75,10 +75,15 @@
                     }
                 </select>
             </div>
-            <div class="col-md-5">
+            <div class="col-md-3">
                 <label class="fr-form-label" for="fBusqueda">Buscar</label>
                 <input id="fBusqueda" type="text" name="busqueda" value="@Model.Busqueda" class="fr-form-control"
                        placeholder="Número de orden o referencia del cliente" aria-label="Buscar orden" />
+            </div>
+            <div class="col-md-3">
+                <label class="fr-form-label" for="fPo">N° PO</label>
+                <input id="fPo" type="text" name="po" value="@Model.Po" class="fr-form-control fr-id-code"
+                       placeholder="ORD-... / AHAA-..." aria-label="Filtrar por número de Purchase Order" />
             </div>
             <div class="col-md-2 d-flex gap-2">
                 <button type="submit" class="fr-btn fr-btn-primary w-100">
@@ -96,10 +101,12 @@
                 <tr>
                     <th>N° Orden</th>
                     <th>Cliente</th>
+                    <th>N° PO</th>
                     <th>Ruta</th>
                     <th>Peso</th>
                     <th>Prioridad</th>
                     <th>Entrega</th>
+                    <th>SLA</th>
                     <th>Estado</th>
                     <th>Canal</th>
                     <th class="text-end">Acciones</th>
@@ -109,7 +116,7 @@
                 @if (Model.Resultados.Items.Count() == 0)
                 {
                     <tr>
-                        <td colspan="9">
+                        <td colspan="11">
                             <div class="fr-empty">
                                 <div class="fr-empty-icon"><i class="ti ti-clipboard-list"></i></div>
                                 <div class="fr-empty-title">No hay órdenes</div>
@@ -130,17 +137,30 @@
                             }
                         </td>
                         <td>
+                            @if (!string.IsNullOrEmpty(o.NumeroPo))
+                            {
+                                <span class="fr-id-code" title="Purchase Order del cliente">@o.NumeroPo</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
                             <span class="text-muted">@o.OrigenNombre</span>
                             <i class="ti ti-arrow-right text-muted mx-1"></i>
                             <span>@o.DestinoNombre</span>
                         </td>
                         <td>@o.PesoKg.ToString("N0") kg</td>
                         <td>
-                            <span class="fr-badge @OrdenUiHelper.GetPrioridadClass(o.Prioridad)">@o.PrioridadLabel</span>
+                            @await Html.PartialAsync("_BadgePrioridad", o.Prioridad)
                         </td>
                         <td>@(o.FechaEntregaRequerida?.ToString("dd/MM/yyyy") ?? "—")</td>
                         <td>
-                            <span class="fr-badge @OrdenUiHelper.GetEstadoClass(o.Estado)">@o.EstadoLabel</span>
+                            @await Html.PartialAsync("_BadgeSla", o.SlaStatus)
+                        </td>
+                        <td>
+                            <span class="fr-badge @o.EstadoBadgeClass">@o.EstadoLabel</span>
                         </td>
                         <td>
                             <span class="fr-badge fr-badge-neutral" title="Canal de ingreso registrado por el sistema — no editable">@o.OrigenCreacion</span>

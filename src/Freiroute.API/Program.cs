@@ -49,6 +49,10 @@ public class Program
         // --- Job de fondo: procesamiento de órdenes recurrentes (HU-027 CA-06) ---
         builder.Services.AddHostedService<RecurrenciaOrdenesJob>();
 
+        // --- Jobs Sprint 5: priorización automática (HU-029 CA-08) y monitoreo SLA (HU-031) ---
+        builder.Services.AddHostedService<PrioridadOrdenesJob>();
+        builder.Services.AddHostedService<SlaMonitorJob>();
+
         // --- Auth JWT Base ---
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>

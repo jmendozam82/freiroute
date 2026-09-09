@@ -49,6 +49,13 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
     public Mock<IOrdenApiExternaService> OrdenApiExternaService { get; }
     public Mock<IPlantillaOrdenService> PlantillaOrdenService { get; }
 
+    // Servicios Sprint 5 — PO/SO, prioridades, SLA, rechazos y reclamos (HU-028 a HU-032).
+    public Mock<IOrdenPoService> OrdenPoService { get; }
+    public Mock<IPrioridadOrdenService> PrioridadOrdenService { get; }
+    public Mock<ISlaService> SlaService { get; }
+    public Mock<IRechazoEntregaService> RechazoEntregaService { get; }
+    public Mock<IReclamoService> ReclamoService { get; }
+
     public TestWebApplicationFactory()
     {
         AuthService = new Mock<IAuthService>();
@@ -77,6 +84,12 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         OrdenImportService = new Mock<IOrdenImportService>();
         OrdenApiExternaService = new Mock<IOrdenApiExternaService>();
         PlantillaOrdenService = new Mock<IPlantillaOrdenService>();
+
+        OrdenPoService = new Mock<IOrdenPoService>();
+        PrioridadOrdenService = new Mock<IPrioridadOrdenService>();
+        SlaService = new Mock<ISlaService>();
+        RechazoEntregaService = new Mock<IRechazoEntregaService>();
+        ReclamoService = new Mock<IReclamoService>();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -117,6 +130,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<IOrdenImportService>();
             services.RemoveAll<IOrdenApiExternaService>();
             services.RemoveAll<IPlantillaOrdenService>();
+            services.RemoveAll<IOrdenPoService>();
+            services.RemoveAll<IPrioridadOrdenService>();
+            services.RemoveAll<ISlaService>();
+            services.RemoveAll<IRechazoEntregaService>();
+            services.RemoveAll<IReclamoService>();
 
             services.AddSingleton(AuthService.Object);
             services.AddSingleton(EmpresaService.Object);
@@ -152,7 +170,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                     });
                 // Setup para Create → 201
                 mock.Setup(s => s.CreateAsync(
-                    It.IsAny<Freiroute.DTO.Orden.OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+                    It.IsAny<Freiroute.DTO.Orden.OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<string>()))
                     .ReturnsAsync(new Freiroute.DTO.Orden.OrdenResponseDto
                     {
                         Id = Guid.NewGuid(),
@@ -164,6 +182,11 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             services.AddScoped<IOrdenImportService>(_ => OrdenImportService.Object);
             services.AddScoped<IOrdenApiExternaService>(_ => OrdenApiExternaService.Object);
             services.AddScoped<IPlantillaOrdenService>(_ => PlantillaOrdenService.Object);
+            services.AddScoped<IOrdenPoService>(_ => OrdenPoService.Object);
+            services.AddScoped<IPrioridadOrdenService>(_ => PrioridadOrdenService.Object);
+            services.AddScoped<ISlaService>(_ => SlaService.Object);
+            services.AddScoped<IRechazoEntregaService>(_ => RechazoEntregaService.Object);
+            services.AddScoped<IReclamoService>(_ => ReclamoService.Object);
         });
     }
 

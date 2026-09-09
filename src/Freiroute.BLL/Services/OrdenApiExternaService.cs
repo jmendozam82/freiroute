@@ -1,7 +1,9 @@
+using System.Text.Json;
 using Freiroute.BLL.Interfaces;
 using Freiroute.DAL.Interfaces;
 using Freiroute.DTO.Orden;
 using Freiroute.Entity;
+using Freiroute.Utility.Constants;
 using Freiroute.Utility.Exceptions;
 
 namespace Freiroute.BLL.Services;
@@ -43,12 +45,9 @@ public class OrdenApiExternaService : IOrdenApiExternaService
         // Using an empty/system Guid for user
         var systemUserId = Guid.Empty; // Ideally this should be a system user or the API key user id, but we don't have user id here
         
-        var result = await _ordenService.CreateAsync(dto, empresaId, systemUserId);
+        var result = await _ordenService.CreateAsync(dto, empresaId, systemUserId, OrigenCreacion.Api);
         
-        // Ensure the origin is 'API' because CreateAsync might hardcode 'MANUAL'
-        // Let's modify the created order if needed, but the interface for CreateAsync doesn't accept origin directly, unless we set it.
-        // The spec CA-05 says `origen_creacion = 'API'`. I will just set it in the DB afterwards since I can't inject it in CreateAsync easily.
-        // However, a better approach would be to update it via a repository method or we can just leave it for now.
+        // (G-10) El origen 'API' se pasa al servicio — ver XML docs de IOrdenService.CreateAsync.
         
         return result;
     }
@@ -75,7 +74,7 @@ public class OrdenApiExternaService : IOrdenApiExternaService
             Modulo = "configuracion",
             Accion = "CREATE",
             EntidadId = id,
-            Detalles = $"Generación de API Key: {dto.Nombre}"
+            Detalles = JsonSerializer.Serialize(new { nombre = dto.Nombre })
         });
 
         return new ApiKeyResponseDto
@@ -111,9 +110,9 @@ public class OrdenApiExternaService : IOrdenApiExternaService
                 EmpresaId = empresaId,
                 UsuarioId = Guid.Empty,
                 Modulo = "configuracion",
-                Accion = "DELETE",
+                Accion = "DEACTIVATE",
                 EntidadId = apiKeyId,
-                Detalles = "Desactivación de API Key"
+                Detalles = JsonSerializer.Serialize(new { apiKeyId })
             });
         }
         return result;

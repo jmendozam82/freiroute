@@ -16,6 +16,7 @@ using Freiroute.DTO.Onboarding;
 using Freiroute.DTO.Configuracion;
 using Freiroute.DTO.Admin;
 using Freiroute.DTO.Orden;
+using Freiroute.DTO.Reclamo;
 using Freiroute.DTO.Ubicacion;
 using Freiroute.DTO.Zona;
 using Freiroute.DTO.Mercancia;
@@ -89,6 +90,11 @@ public static class DependencyInjection
         services.AddScoped<IImportacionOrdenRepository, ImportacionOrdenRepository>();
         services.AddScoped<IApiKeyTenantRepository,     ApiKeyTenantRepository>();
 
+        // ── Repositorios Sprint 5 (EP-04 Órdenes Avanzadas) ───────
+        services.AddScoped<IRechazoEntregaRepository,  RechazoEntregaRepository>();
+        services.AddScoped<IReclamoRepository,         ReclamoRepository>();
+        services.AddScoped<IReglaPrioridadRepository,  ReglaPrioridadRepository>();
+
         // ── 5. Infraestructura BLL ──────────────────────────────────
         services.AddSingleton<IJwtService, JwtService>();
         services.AddHttpClient<IEmailService, ResendEmailService>();
@@ -138,6 +144,13 @@ public static class DependencyInjection
         services.AddScoped<IOrdenApiExternaService, OrdenApiExternaService>();
         services.AddScoped<IPlantillaOrdenService, PlantillaOrdenService>();
 
+        // ── 6g. Servicios BLL Sprint 5 (EP-04 Órdenes Avanzadas) ──
+        services.AddScoped<IOrdenPoService, OrdenPoService>();
+        services.AddScoped<IPrioridadOrdenService, PrioridadOrdenService>();
+        services.AddScoped<ISlaService, SlaService>();
+        services.AddScoped<IRechazoEntregaService, RechazoEntregaService>();
+        services.AddScoped<IReclamoService, ReclamoService>();
+
         // ── 6e. Geocodificación Nominatim (ADR-014) via HttpClient ───
         //    User-Agent identificable y timeout 10s (política de uso de OSM);
         //    el servicio serializa internamente 1 request/segundo.
@@ -181,6 +194,12 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CambiarEstadoOrdenRequestDto>, BLL.Validators.CambiarEstadoOrdenValidator>();
         services.AddScoped<IValidator<SplitOrdenRequestDto>, BLL.Validators.SplitOrdenValidator>();
         services.AddScoped<IValidator<ConsolidarOrdenesRequestDto>, BLL.Validators.ConsolidarOrdenesValidator>();
+
+        // ── 7e. Validadores Sprint 5 (EP-04 Órdenes Avanzadas) ──
+        services.AddScoped<IValidator<PrioridadRequestDto>, BLL.Validators.PrioridadOrdenValidator>();
+        services.AddScoped<IValidator<RechazoEntregaRequestDto>, BLL.Validators.RechazoEntregaValidator>();
+        services.AddScoped<IValidator<ReclamoRequestDto>, BLL.Validators.ReclamoValidator>();
+        services.AddScoped<IValidator<ReclamoEstadoRequestDto>, BLL.Validators.ReclamoEstadoValidator>();
 
         return services;
     }

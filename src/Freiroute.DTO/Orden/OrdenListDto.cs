@@ -58,6 +58,12 @@ public class OrdenListDto
     [SwaggerSchema(Description = "Referencia del cliente")]
     public string? ReferenciaCliente { get; set; }
 
+    [SwaggerSchema(Description = "Número de Purchase Order del cliente (HU-028)")]
+    public string? NumeroPo { get; set; }
+
+    [SwaggerSchema(Description = "Estado calculado de SLA (HU-031): OK | EN_RIESGO | CRITICO | VENCIDO")]
+    public string SlaStatus { get; set; } = Freiroute.Utility.Constants.SlaStatus.Ok;
+
     [SwaggerSchema(Description = "Fecha de creación")]
     public DateTime FechaCreacion { get; set; }
 }

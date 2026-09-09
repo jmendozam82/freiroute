@@ -53,7 +53,7 @@ public class OrdenesController : TenantBaseController
     // ── GET: Índice ─────────────────────────────────────────────
     [HttpGet]
     public async Task<IActionResult> Index(
-        string? estado, string? prioridad, string? busqueda, int page = 1)
+        string? estado, string? prioridad, string? busqueda, string? po, int page = 1)
     {
         ViewData["ActiveMenu"] = "ordenes";
         ViewData["Title"] = "Órdenes de Transporte";
@@ -63,6 +63,7 @@ public class OrdenesController : TenantBaseController
             Q = busqueda,
             Estado = estado,
             Prioridad = prioridad,
+            Po = po,
             Page = page,
             PageSize = PageSize,
         };
@@ -75,9 +76,37 @@ public class OrdenesController : TenantBaseController
             Estado = estado,
             Prioridad = prioridad,
             Busqueda = busqueda,
+            Po = po,
         };
 
         return View(vm);
+    }
+
+    // ── GET: Órdenes en riesgo SLA (HU-031 CA-02) ────────────
+    /// <summary>
+    /// Vista de órdenes con entrega en las próximas 24 horas sin confirmar
+    /// tránsito. Los datos se cargan desde el cliente vía FrApi hacia
+    /// GET /api/ordenes/sla-en-riesgo (la API ya está verificada en Fase 4).
+    /// </summary>
+    [HttpGet]
+    public IActionResult SlaEnRiesgo()
+    {
+        ViewData["ActiveMenu"] = "ordenes";
+        ViewData["Title"] = "Órdenes en Riesgo SLA";
+        return View();
+    }
+
+    // ── GET: Órdenes críticas (HU-029 CA-04/CA-05) ────────────
+    /// <summary>
+    /// Vista de órdenes CRITICO/ALTO sin avance significativo. Los datos se
+    /// cargan desde el cliente vía FrApi hacia GET /api/ordenes/criticas.
+    /// </summary>
+    [HttpGet]
+    public IActionResult Criticas()
+    {
+        ViewData["ActiveMenu"] = "ordenes";
+        ViewData["Title"] = "Órdenes Críticas";
+        return View();
     }
 
     // ── GET: Crear ──────────────────────────────────────────────
@@ -306,6 +335,8 @@ public class OrdenesController : TenantBaseController
             FechaEntregaRequerida = orden.FechaEntregaRequerida,
             ReferenciaCliente = orden.ReferenciaCliente,
             Instrucciones = orden.Instrucciones,
+            NumeroPo = orden.NumeroPo,
+            NumeroSo = orden.NumeroSo,
         };
         await CargarMaestrosAsync(vm);
         return vm;

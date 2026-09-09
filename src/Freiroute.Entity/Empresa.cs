@@ -1,3 +1,5 @@
+using Freiroute.Utility.Constants;
+
 namespace Freiroute.Entity;
 
 /// <summary>
@@ -46,6 +48,7 @@ public class Empresa
     public string PrefijoEmbarque { get; set; } = "FR";                // VARCHAR(10) DEFAULT 'FR'
     public int ConsecutivoEmbarque { get; set; } = 1;                  // INTEGER DEFAULT 1
     public string PrefijoOrden { get; set; } = "ORD";                  // VARCHAR(10) DEFAULT 'ORD'
+    public decimal FactorReentrega { get; set; } = ConfiguracionDefaults.FactorReentregaDefault; // NUMERIC(4,2) DEFAULT 1.5 — multiplicador para re-entrega (HU-030 CA-08)
     public int ConsecutivoOrden { get; set; } = 1;                     // INTEGER DEFAULT 1
 
     // ── Numeración de carta de porte ──────────────────────────────

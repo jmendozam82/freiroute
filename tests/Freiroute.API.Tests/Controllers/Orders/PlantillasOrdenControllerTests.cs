@@ -45,7 +45,7 @@ public class PlantillasOrdenControllerTests : IClassFixture<TestWebApplicationFa
     }
 
 [Fact]
-    public async Task GuardarPlantilla_Retorna200()
+    public async Task GuardarPlantilla_Retorna201()
     {
         var client = _factory.CrearClientConToken(_validToken);
         var dto = new PlantillaOrdenRequestDto
@@ -61,8 +61,9 @@ public class PlantillasOrdenControllerTests : IClassFixture<TestWebApplicationFa
         var ordenId = Guid.NewGuid();
         var response = await client.PostAsJsonAsync($"/api/ordenes/{ordenId}/guardar-como-plantilla", dto);
         
-        // El controller responde Ok(ApiResponse<...>) → 200 (no CreatedAtAction)
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // G-09: Create responde 201 Created + Location al recurso GetById
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location.Should().NotBeNull();
 
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<PlantillaOrdenResponseDto>>();
         result.Should().NotBeNull();

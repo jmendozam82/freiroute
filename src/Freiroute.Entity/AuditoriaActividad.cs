@@ -13,6 +13,8 @@ public class AuditoriaActividad
     /// <summary>FK empresas(id) ON DELETE SET NULL — nullable porque el Super Admin opera sin tenant.</summary>
     public Guid? EmpresaId { get; set; }
     public Guid? UsuarioId { get; set; }                // FK usuarios(id)
+    public string? UsuarioNombre { get; set; }          // u.nombre vía JOIN — NO persistido (G-08)
+    public string? EmailUsuario { get; set; }           // u.email vía JOIN — NO persistido (G-08)
 
     public string Modulo { get; set; } = string.Empty;  // VARCHAR(100) NOT NULL — módulo del TMS
     public string Accion { get; set; } = string.Empty;  // LOGIN|LOGOUT|LOGIN_FAILED|CREATE|UPDATE|DEACTIVATE|EXPORT|CAMBIO_ESTADO

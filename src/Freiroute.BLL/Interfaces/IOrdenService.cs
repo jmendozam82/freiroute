@@ -1,4 +1,5 @@
 using Freiroute.DTO.Orden;
+using Freiroute.Utility.Constants;
 using Freiroute.Utility.Pagination;
 
 namespace Freiroute.BLL.Interfaces;
@@ -29,8 +30,12 @@ public interface IOrdenService
     /// Valida: cliente_id, origen_id, destino_id, tipo_mercancia_id,
     /// unidad_medida_id obligatorios; peso_kg > 0; cantidad > 0;
     /// fecha_entrega >= fecha_pickup; origen != destino.
+    /// <paramref name="origenCreacion"/> define el canal de ingreso de la
+    /// orden (MANUAL | CSV | API | RECURRENTE — G-10; HU-023 CA-05; HU-027 CA-06).
     /// </summary>
-    Task<OrdenResponseDto> CreateAsync(OrdenRequestDto dto, Guid empresaId, Guid usuarioId);
+    Task<OrdenResponseDto> CreateAsync(
+        OrdenRequestDto dto, Guid empresaId, Guid usuarioId,
+        string origenCreacion = OrigenCreacion.Manual);
 
     /// <summary>
     /// Actualiza una orden solo si está en estado DRAFT o CONFIRMED

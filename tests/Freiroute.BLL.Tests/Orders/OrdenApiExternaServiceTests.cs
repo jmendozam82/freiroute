@@ -82,7 +82,7 @@ public class OrdenApiExternaServiceTests
 
         await _service.CrearOrdenDesdeApiAsync(dto, empresaId);
 
-        _ordenServiceMock.Verify(s => s.CreateAsync(dto, empresaId, Guid.Empty), Times.Once);
+        _ordenServiceMock.Verify(s => s.CreateAsync(dto, empresaId, Guid.Empty, Freiroute.Utility.Constants.OrigenCreacion.Api), Times.Once);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class OrdenApiExternaServiceTests
 
         result.Should().BeTrue();
         _auditoriaRepoMock.Verify(a => a.RegistrarAsync(It.Is<AuditoriaActividad>(aa =>
-            aa.Accion == "DELETE" && aa.Modulo == "configuracion" && aa.EntidadId == id)), Times.Once);
+            aa.Accion == "DEACTIVATE" && aa.Modulo == "configuracion" && aa.EntidadId == id)), Times.Once);
     }
 
     [Fact]

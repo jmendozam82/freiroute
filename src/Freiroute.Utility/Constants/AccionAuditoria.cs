@@ -31,4 +31,13 @@ public static class AccionAuditoria
 
     // ── Reactivación (Sprint 2 — HU-013) ─────────────────────────
     public const string REACTIVAR = "REACTIVAR";
+
+    // ── Órdenes avanzadas (Sprint 5 — HU-028 a HU-032) ───────────
+    public const string VINCULAR_PO           = "VINCULAR_PO";
+    public const string AUTO_PRIORIDAD        = "AUTO_PRIORIDAD";
+    public const string CAMBIO_PRIORIDAD      = "CAMBIO_PRIORIDAD";
+    public const string RECHAZO_ENTREGA       = "RECHAZO_ENTREGA";
+    public const string CREAR_REENTREGA       = "CREAR_REENTREGA";
+    public const string CREAR_RECLAMO         = "CREAR_RECLAMO";
+    public const string CAMBIO_ESTADO_RECLAMO = "CAMBIO_ESTADO_RECLAMO";
 }

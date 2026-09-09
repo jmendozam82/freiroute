@@ -18,10 +18,12 @@ public interface IApiKeyTenantRepository
     Task<ApiKeyTenant?> GetByIdAsync(Guid id, Guid empresaId);
 
     /// <summary>
-    /// Obtiene una API Key por su hash. Usado en el middleware de
-    /// autenticación para validar requests de la API externa (HU-023).
+    /// Valida una API Key cruda (frk_live_...) comparándola en memoria (BCrypt.Verify)
+    /// contra los hashes almacenados. Retorna la key que matchea o null. La
+    /// verificación se hace en C#: jamás comparar la key cruda contra clave_hash
+    /// en SQL (G-14). Usado por la autenticación de la API externa (HU-023).
     /// </summary>
-    Task<ApiKeyTenant?> GetByClaveHashAsync(string claveHash);
+    Task<ApiKeyTenant?> GetByClaveHashAsync(string rawKey);
 
     /// <summary>Crea la API Key. Retorna el Id generado en BD.</summary>
     Task<Guid> CreateAsync(ApiKeyTenant entidad);

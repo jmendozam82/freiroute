@@ -1,0 +1,19 @@
+@* Vista parcial: Badge de SLA (HU-031). Model = SlaStatus: OK | EN_RIESGO | CRITICO | VENCIDO *@
+@model string
+@{
+    var (clase, label) = Model switch
+    {
+        "VENCIDO"   => ("fr-badge fr-badge-danger",  "Vencido"),
+        "CRITICO"   => ("fr-badge fr-badge-danger",  "Crítico"),
+        "EN_RIESGO" => ("fr-badge fr-badge-warning", "En riesgo"),
+        _           => ("fr-badge fr-badge-neutral", "OK")
+    };
+}
+@if (Model == "OK" || string.IsNullOrEmpty(Model))
+{
+    <span class="fr-badge fr-badge-neutral">OK</span>
+}
+else
+{
+    <span class="@clase">@label</span>
+}

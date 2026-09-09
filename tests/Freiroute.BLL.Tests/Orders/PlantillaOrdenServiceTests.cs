@@ -87,13 +87,13 @@ public class PlantillaOrdenServiceTests
         };
 
         _plantillaRepoMock.Setup(r => r.GetByIdAsync(plantillaId, empresaId)).ReturnsAsync(plantilla);
-        _ordenServiceMock.Setup(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), empresaId, usuarioId))
+        _ordenServiceMock.Setup(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), empresaId, usuarioId, OrigenCreacion.Recurrente))
             .ReturnsAsync(new OrdenResponseDto { Id = Guid.NewGuid(), Estado = OrdenEstado.Draft });
 
         var result = await _service.CrearOrdenDesdePlantillaAsync(plantillaId, empresaId, usuarioId);
 
         result.Should().NotBeNull();
-        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), empresaId, usuarioId), Times.Once);
+        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), empresaId, usuarioId, OrigenCreacion.Recurrente), Times.Once);
     }
 
 [Fact]
@@ -120,12 +120,12 @@ public class PlantillaOrdenServiceTests
         _plantillaRepoMock.Setup(r => r.GetByIdAsync(plantillaId, empresaId))
             .ReturnsAsync(plantillas[0]);
 
-        _ordenServiceMock.Setup(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+        _ordenServiceMock.Setup(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), OrigenCreacion.Recurrente))
             .ReturnsAsync(new OrdenResponseDto { Id = Guid.NewGuid() });
 
         await _service.ProcesarRecurrenciasPendientesAsync(DateOnly.FromDateTime(DateTime.UtcNow));
 
-        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Once);
+        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), OrigenCreacion.Recurrente), Times.Once);
         _plantillaRepoMock.Verify(r => r.UpdateProximaEjecucionAsync(plantillaId, empresaId, It.IsAny<DateOnly>()), Times.Once);
     }
 
@@ -145,14 +145,14 @@ public class PlantillaOrdenServiceTests
         _plantillaRepoMock.Setup(r => r.GetByIdAsync(p2.Id, emp2)).ReturnsAsync(p2);
 
         // Falla en el primero
-        _ordenServiceMock.SetupSequence(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+        _ordenServiceMock.SetupSequence(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), OrigenCreacion.Recurrente))
             .ThrowsAsync(new System.Exception("Error en 1"))
             .ReturnsAsync(new OrdenResponseDto { Id = Guid.NewGuid() });
 
         await _service.ProcesarRecurrenciasPendientesAsync(DateOnly.FromDateTime(DateTime.UtcNow));
 
 // Se deben haber llamado 2 veces, comprobando que no cortó por error
-        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Exactly(2));
+        _ordenServiceMock.Verify(s => s.CreateAsync(It.IsAny<OrdenRequestDto>(), It.IsAny<Guid>(), It.IsAny<Guid>(), OrigenCreacion.Recurrente), Times.Exactly(2));
         _plantillaRepoMock.Verify(r => r.UpdateProximaEjecucionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateOnly>()), Times.Once); // solo el segundo se actualiza
     }
 

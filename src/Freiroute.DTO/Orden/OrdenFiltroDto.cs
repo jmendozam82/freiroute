@@ -30,6 +30,9 @@ public class OrdenFiltroDto
     [SwaggerSchema(Description = "Filtrar por canal de creación")]
     public string? OrigenCreacion { get; set; }
 
+    [SwaggerSchema(Description = "Filtro exact match por numero_po (HU-028 CA-03)")]
+    public string? Po { get; set; }
+
     [SwaggerSchema(Description = "Filtrar por ID del shipment")]
     public Guid? ShipmentId { get; set; }
 

@@ -17,4 +17,7 @@ public class OrdenIndexViewModel
     public string? Prioridad { get; set; }
 
     public string? Busqueda { get; set; }
+
+    /// <summary>Filtro exact match por número de Purchase Order (HU-028 CA-03).</summary>
+    public string? Po { get; set; }
 }

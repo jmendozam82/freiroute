@@ -17,6 +17,7 @@ public class HistorialEstadoOrden
     public string EstadoNuevo { get; set; } = string.Empty; // VARCHAR(30) NOT NULL
     public string? Motivo { get; set; }                 // TEXT — opcional (requerido en cancelaciones)
     public Guid? UsuarioId { get; set; }                // FK usuarios(id) — quién ejecutó la transición
+    public string? UsuarioNombre { get; set; }          // u.nombre vía JOIN — NO persistido (G-17B)
 
     // ── Control ───────────────────────────────────────────────
     public bool Activo { get; set; } = true;            // Soft delete universal (ADR-005)

@@ -73,6 +73,8 @@ public class AuditoriaRepository : IAuditoriaRepository
     /// Consulta paginada del log con filtros opcionales (HU-008 CA-03/04).
     /// Los filtros se construyen dinámicamente sobre la base empresa_id (ADR-003).
     /// Campo ip_address se lee con cast ::text (la entidad usa string, no IPAddress).
+    /// G-08: LEFT JOIN a usuarios resuelve Nombre/Email de quien ejecutó la acción.
+    /// Todas las columnas van prefijadas con 'a.' por ambigüedad con la tabla usuarios.
     /// </summary>
     public async Task<PagedResult<AuditoriaActividad>> GetPagedAsync(
         Guid empresaId,
@@ -87,31 +89,31 @@ public class AuditoriaRepository : IAuditoriaRepository
         if (pageNumber < 1) pageNumber = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
-        var where = new List<string> { "empresa_id = @EmpresaId" };
+        var where = new List<string> { "a.empresa_id = @EmpresaId" };
         var parameters = new DynamicParameters();
         parameters.Add("EmpresaId", empresaId);
 
         if (!string.IsNullOrWhiteSpace(modulo))
         {
-            where.Add("modulo = @Modulo");
+            where.Add("a.modulo = @Modulo");
             parameters.Add("Modulo", modulo);
         }
 
         if (!string.IsNullOrWhiteSpace(accion))
         {
-            where.Add("accion = @Accion");
+            where.Add("a.accion = @Accion");
             parameters.Add("Accion", accion);
         }
 
         if (fechaDesde.HasValue)
         {
-            where.Add("fecha_creacion >= @FechaDesde");
+            where.Add("a.fecha_creacion >= @FechaDesde");
             parameters.Add("FechaDesde", fechaDesde.Value);
         }
 
         if (fechaHasta.HasValue)
         {
-            where.Add("fecha_creacion <= @FechaHasta");
+            where.Add("a.fecha_creacion <= @FechaHasta");
             parameters.Add("FechaHasta", fechaHasta.Value);
         }
 
@@ -121,7 +123,7 @@ public class AuditoriaRepository : IAuditoriaRepository
         // Total de registros (para calcular páginas)
         var sqlCount = $@"
             SELECT COUNT(*)
-            FROM auditoria_actividad
+            FROM auditoria_actividad a
             WHERE {whereSql}";
 
         var totalItems = await _connection.ExecuteScalarAsync<int>(sqlCount, parameters);
@@ -129,20 +131,23 @@ public class AuditoriaRepository : IAuditoriaRepository
         // Página de registros ordenados por fecha DESC (log más reciente primero)
         var sqlQuery = $@"
             SELECT
-                id             AS Id,
-                empresa_id     AS EmpresaId,
-                usuario_id     AS UsuarioId,
-                modulo         AS Modulo,
-                accion         AS Accion,
-                entidad_tipo   AS EntidadTipo,
-                entidad_id     AS EntidadId,
-                ip_address::text AS IpAddress,
-                user_agent     AS UserAgent,
-                detalles::text AS Detalles,
-                fecha_creacion AS FechaCreacion
-            FROM auditoria_actividad
+                a.id             AS Id,
+                a.empresa_id     AS EmpresaId,
+                a.usuario_id     AS UsuarioId,
+                a.modulo         AS Modulo,
+                a.accion         AS Accion,
+                a.entidad_tipo   AS EntidadTipo,
+                a.entidad_id     AS EntidadId,
+                a.ip_address::text AS IpAddress,
+                a.user_agent     AS UserAgent,
+                a.detalles::text AS Detalles,
+                a.fecha_creacion AS FechaCreacion,
+                u.nombre_completo  AS UsuarioNombre,
+                u.email            AS EmailUsuario
+            FROM auditoria_actividad a
+            LEFT JOIN usuarios u ON u.id = a.usuario_id AND u.empresa_id = a.empresa_id
             WHERE {whereSql}
-            ORDER BY fecha_creacion DESC
+            ORDER BY a.fecha_creacion DESC
             LIMIT @PageSize OFFSET @Offset";
 
         parameters.Add("PageSize", pageSize);

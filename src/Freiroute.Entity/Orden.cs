@@ -46,6 +46,10 @@ public class Orden
     public string? ReferenciaCliente { get; set; }      // VARCHAR(100)
     public string? Instrucciones { get; set; }          // TEXT
 
+    // ── Integración PO/SO (HU-028) ───────────────────────────
+    public string? NumeroPo { get; set; }               // VARCHAR(100) — Purchase Order del cliente (1:N)
+    public string? NumeroSo { get; set; }               // VARCHAR(100) — Sales Order del cliente
+
     // ── Estado FSM (ADR-019) ─────────────────────────────────
     public string Estado { get; set; } = Freiroute.Utility.Constants.OrdenEstado.Draft; // VARCHAR(30) DEFAULT 'DRAFT'
 
@@ -56,6 +60,11 @@ public class Orden
     // ── Canal de ingreso (HU-022 / HU-023 / HU-027) ─────────
     public string OrigenCreacion { get; set; } = Freiroute.Utility.Constants.OrigenCreacion.Manual; // VARCHAR(20) DEFAULT 'MANUAL'
     public Guid? ApiKeyId { get; set; }                 // FK api_keys_tenant(id) — nullable
+
+    // ── Nombres denormalizados vía JOIN (G-18) ────────────────
+    public string? ClienteNombre { get; set; }          // c.nombre (clientes) — NO persistido
+    public string? OrigenNombre { get; set; }           // uo.nombre (ubicaciones) — NO persistido
+    public string? DestinoNombre { get; set; }          // ud.nombre (ubicaciones) — NO persistido
 
     // ── Auditoría estándar ───────────────────────────────────
     public bool Activo { get; set; } = true;            // Soft delete universal (ADR-005)

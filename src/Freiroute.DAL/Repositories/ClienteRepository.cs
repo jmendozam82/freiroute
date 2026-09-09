@@ -379,4 +379,26 @@ public class ClienteRepository : IClienteRepository
             new { Id = contactoId, EmpresaId = empresaId });
         return rows > 0;
     }
+
+    // ── Sprint 5: SLA (HU-031) ────────────────────────────────────────
+
+    /// <summary>
+    /// Clientes activos con prioridad VIP (HU-031 CA-01) — la BLL los usa
+    /// para calcular la fecha de entrega requerida esperada y las alertas
+    /// de SLA. La entidad Cliente ya expone sla_dias_entrega y la ventana
+    /// (sla_ventana_inicio/fin).
+    /// </summary>
+    public async Task<IEnumerable<Cliente>> GetClientesSlaVipAsync(Guid empresaId)
+    {
+        const string sql = $@"
+            SELECT {Col}
+            FROM clientes
+            WHERE empresa_id = @EmpresaId
+              AND activo = true
+              AND tipo_cliente = 'VIP'
+            ORDER BY nombre ASC";
+
+        return await _connection.QueryAsync<Cliente>(
+            sql, new { EmpresaId = empresaId });
+    }
 }

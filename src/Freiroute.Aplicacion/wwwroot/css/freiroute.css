@@ -379,6 +379,15 @@ body {
 .fr-badge-neutral  { background: var(--fr-neutral-light);  color: var(--fr-neutral);
                      border: 1px solid var(--fr-border); }
 
+/* Prioridad CRITICO — badge pulsante (HU-029 CA-07) */
+@keyframes fr-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+.fr-badge-critico--pulse {
+    animation: fr-pulse 1.6s ease-in-out infinite;
+}
+
 /* ── Botones ──────────────────────────────────────────────── */
 .fr-btn {
   display: inline-flex; align-items: center; gap: 6px;

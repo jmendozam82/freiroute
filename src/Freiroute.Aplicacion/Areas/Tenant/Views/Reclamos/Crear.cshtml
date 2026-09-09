@@ -1,0 +1,272 @@
+@{
+    ViewData["Title"] = "Nuevo Reclamo";
+    ViewData["ActiveMenu"] = "reclamos";
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-area="Tenant" asp-controller="Reclamos" asp-action="Index">Reclamos</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">Nuevo reclamo</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title">Nuevo reclamo</h1>
+        <div class="fr-page-subtitle">Registre un reclamo formal del cliente vinculado a una orden (HU-032)</div>
+    </div>
+</div>
+
+<form id="frReclamoForm" novalidate>
+    @Html.AntiForgeryToken()
+
+    <!-- ── Orden vinculada ────────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Orden vinculada</div>
+        </div>
+        <div class="fr-card-body">
+            <p class="fr-form-hint">Busque la orden por su número de Purchase Order (PO) o la seleccione por número de orden.</p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fr-form-label fr-form-required" for="buscadorOrdenes">Buscar orden</label>
+                    <div class="input-group">
+                        <input id="buscadorOrdenes" type="text" class="fr-form-control"
+                               placeholder="N° de orden o PO (ej: ORD-2026-00012)" aria-label="Buscar orden por número o PO" />
+                        <button type="button" class="btn fr-btn-primary" id="btnBuscarOrden">
+                            <i class="ti ti-search"></i>
+                        </button>
+                    </div>
+                    <div id="resultadosOrdenes" class="mt-2"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="fr-form-label" for="ordenSeleccionada">Orden seleccionada</label>
+                    <input id="ordenSeleccionada" type="text" class="fr-form-control" readonly
+                           placeholder="Seleccione una orden de la búsqueda" aria-label="Orden seleccionada" />
+                    <input type="hidden" id="inputOrdenId" />
+                    <span class="fr-form-error" id="errorOrdenId"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Datos del reclamo ──────────────────────────────────── -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <div class="fr-card-title">Datos del reclamo</div>
+        </div>
+        <div class="fr-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="fr-form-label fr-form-required" for="tipoReclamo">Tipo</label>
+                    <select id="tipoReclamo" class="fr-form-control">
+                        <option value="">Seleccione el tipo</option>
+                        <option value="DANO">Daño</option>
+                        <option value="PERDIDA">Pérdida</option>
+                        <option value="RETRASO">Retraso</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                    <span class="fr-form-error" id="errorTipo"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="fr-form-label" for="montoReclamado">Monto reclamado</label>
+                    <input id="montoReclamado" type="number" step="0.01" min="0" class="fr-form-control"
+                           placeholder="0.00" aria-label="Monto reclamado" />
+                    <span class="fr-form-error" id="errorMonto"></span>
+                </div>
+                <div class="col-12">
+                    <label class="fr-form-label fr-form-required" for="descripcionReclamo">Descripción</label>
+                    <textarea id="descripcionReclamo" class="fr-form-control" rows="4" maxlength="2000"
+                              placeholder="Detalle del reclamo: qué ocurrió, cuándo y qué evidencia respalda" aria-label="Descripción del reclamo"></textarea>
+                    <span class="fr-form-error" id="errorDescripcion"></span>
+                </div>
+                <div class="col-12">
+                    <label class="fr-form-label" for="referenciasEvidencia">Evidencia (URLs)</label>
+                    <div id="evidenciaContainer">
+                        <div class="input-group mb-2">
+                            <input type="url" class="fr-form-control fr-id-code evidencia-url"
+                                   placeholder="https://... (URL firmada de Supabase Storage o enlace público)" aria-label="URL de evidencia" />
+                            <button type="button" class="btn fr-btn-danger fr-btn-sm" title="Quitar evidencia" aria-label="Quitar evidencia">
+                                <i class="ti ti-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnAgregarEvidencia">
+                        <i class="ti ti-plus"></i> Agregar evidencia
+                    </button>
+                    <span class="fr-form-error" id="errorEvidencias"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4 pt-3" style="border-top:1px solid var(--fr-border)">
+        <button type="submit" class="fr-btn fr-btn-primary" id="btnGuardarReclamo">
+            <i class="ti ti-device-floppy"></i> Guardar reclamo
+        </button>
+        <a asp-area="Tenant" asp-controller="Reclamos" asp-action="Index" class="fr-btn fr-btn-ghost">Cancelar</a>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    // ── Estado de la selección ───────────────────────────────────
+    let ordenesEncontradas = [];
+
+    const esc = s => String(s ?? '').replace(/[&<>"']/g,
+        c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    // ── Búsqueda de órdenes por PO/número ────────────────────────
+    // GET /api/ordenes/por-po/{numero} devuelve ApiResponse<IEnumerable<OrdenListDto>>.
+    async function buscarOrden() {
+        const q = document.getElementById('buscadorOrdenes').value.trim();
+        const cont = document.getElementById('resultadosOrdenes');
+        if (!q) {
+            cont.innerHTML = '';
+            return;
+        }
+        let resp;
+        try {
+            resp = await FrApi.get('/api/ordenes/por-po/' + encodeURIComponent(q));
+        } catch {
+            cont.innerHTML = '<div class="fr-form-error">Error de red al buscar la orden.</div>';
+            return;
+        }
+        if (!resp?.success) {
+            cont.innerHTML = `<div class="fr-form-error">${esc(resp?.message || 'No se pudo buscar la orden')}</div>`;
+            return;
+        }
+        ordenesEncontradas = resp.data || [];
+        if (!ordenesEncontradas.length) {
+            cont.innerHTML = '<div class="text-muted small">Sin resultados. Verifique el número o el PO.</div>';
+            return;
+        }
+        cont.innerHTML = ordenesEncontradas.map(o => `
+            <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm w-100 text-start mb-1"
+                    data-id="${o.id}" data-numero="${esc(o.numeroOrden || '')}"
+                    data-cliente="${esc(o.clienteNombre)}" data-ruta="${esc(o.origenNombre)} → ${esc(o.destinoNombre)}">
+                <span class="fr-id-code">${esc(o.numeroOrden || '—')}</span>
+                <span class="text-muted ms-2">${esc(o.clienteNombre)}</span>
+                <span class="text-muted ms-2">${esc(o.origenNombre)} → ${esc(o.destinoNombre)}</span>
+            </button>
+        `).join('');
+
+        cont.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', () => seleccionarOrden(btn.dataset));
+        });
+    }
+
+    function seleccionarOrden(d) {
+        document.getElementById('inputOrdenId').value = d.id;
+        document.getElementById('ordenSeleccionada').value = `${d.numero} · ${d.cliente} · ${d.ruta}`;
+        document.getElementById('errorOrdenId').textContent = '';
+        document.getElementById('buscadorOrdenes').value = d.numero;
+        document.getElementById('resultadosOrdenes').innerHTML = '';
+    }
+
+    document.getElementById('btnBuscarOrden')?.addEventListener('click', buscarOrden);
+    document.getElementById('buscadorOrdenes')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); buscarOrden(); }
+    });
+
+    // ── Evidencia dinámica ───────────────────────────────────────
+    function crearFilaEvidencia(url) {
+        const div = document.createElement('div');
+        div.className = 'input-group mb-2';
+        div.innerHTML = `
+            <input type="url" class="fr-form-control fr-id-code evidencia-url"
+                   placeholder="https://... (URL firmada de Supabase Storage o enlace público)"
+                   value="${esc(url || '')}" aria-label="URL de evidencia" />
+            <button type="button" class="btn fr-btn-danger fr-btn-sm" title="Quitar evidencia" aria-label="Quitar evidencia">
+                <i class="ti ti-x"></i>
+            </button>`;
+        div.querySelector('button').addEventListener('click', () => div.remove());
+        return div;
+    }
+
+    document.getElementById('btnAgregarEvidencia')?.addEventListener('click', () => {
+        document.getElementById('evidenciaContainer').appendChild(crearFilaEvidencia(''));
+    });
+
+    // Inicializa los botones de quitar de la fila existente.
+    document.querySelectorAll('#evidenciaContainer .input-group button').forEach(btn => {
+        btn.addEventListener('click', () => btn.closest('.input-group').remove());
+    });
+
+    // ── Validación jQuery Validate en español (mensajes ES) ──────
+    $.validator.addMethod('esRequeridoOrden', function (value) {
+        return !!value;
+    }, 'Seleccione una orden de la búsqueda');
+
+    // Compensación H-03: el backend aún no valida referencias de evidencia
+    // como URLs absolutas (ReclamoValidator). Validamos en cliente mientras
+    // BackendDev aplica la regla (Uri.TryCreate Absolute).
+    $.validator.addMethod('esUrlValida', function (value) {
+        if (!value) return true;
+        try {
+            const u = new URL(value, window.location.origin);
+            return u.protocol === 'http:' || u.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }, 'Ingrese una URL válida (http/https)');
+
+    const validator = $('#frReclamoForm').validate({
+        rules: {
+            inputOrdenId: { esRequeridoOrden: true },
+            tipoReclamo: { required: true },
+            montoReclamo: { number: true, min: 0 }
+        },
+        messages: {
+            tipoReclamo: { required: 'El tipo de reclamo es obligatorio' },
+            montoReclamo: { number: 'Ingrese un monto válido', min: 'El monto debe ser mayor o igual a 0' }
+        },
+        errorElement: 'span',
+        errorClass: 'fr-form-error',
+        highlight: function (el) {
+            $(el).closest('div').find('.fr-form-control, .fr-form-control select').addClass('is-invalid');
+        },
+        unhighlight: function (el) {
+            $(el).closest('div').find('.fr-form-control, .fr-form-control select').removeClass('is-invalid');
+        },
+        submitHandler: async function (form, e) {
+            e.preventDefault();
+            await guardarReclamo();
+        }
+    });
+
+    // ── Envío: POST /api/reclamos ────────────────────────────────
+    async function guardarReclamo() {
+        // Validación manual de evidencias (H-03 compensación en cliente)
+        const urls = [...document.querySelectorAll('.evidencia-url')]
+            .map(i => i.value.trim())
+            .filter(Boolean);
+        const montoRaw = document.getElementById('montoReclamo').value.trim();
+        const monto = montoRaw === '' ? null : parseFloat(montoRaw);
+
+        const body = {
+            ordenId: document.getElementById('inputOrdenId').value,
+            tipo: document.getElementById('tipoReclamo').value,
+            descripcion: document.getElementById('descripcionReclamo').value.trim(),
+            montoReclamado: monto,
+            referenciasEvidencia: urls
+        };
+
+        const btn = document.getElementById('btnGuardarReclamo');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post('/api/reclamos', body);
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Reclamo creado correctamente');
+                setTimeout(() => window.location.href = '@Url.Action("Index")', 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // ── Toast de TempData ─────────────────────────────────────────
+    const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
+    const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
+    if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+</script>
+}

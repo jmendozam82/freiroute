@@ -56,6 +56,7 @@ public class EmpresaRepository : IEmpresaRepository
                 onboarding_paso_actual AS OnboardingPasoActual,
                 onboarding_completado  AS OnboardingCompletado,
                 activo                 AS Activo,
+                factor_reentrega       AS FactorReentrega,
                 fecha_creacion         AS FechaCreacion,
                 fecha_modificacion     AS FechaModificacion
             FROM empresas
@@ -102,6 +103,7 @@ public class EmpresaRepository : IEmpresaRepository
                 onboarding_paso_actual AS OnboardingPasoActual,
                 onboarding_completado  AS OnboardingCompletado,
                 activo                 AS Activo,
+                factor_reentrega       AS FactorReentrega,
                 fecha_creacion         AS FechaCreacion,
                 fecha_modificacion     AS FechaModificacion
             FROM empresas
@@ -151,6 +153,7 @@ public class EmpresaRepository : IEmpresaRepository
                 onboarding_paso_actual AS OnboardingPasoActual,
                 onboarding_completado  AS OnboardingCompletado,
                 activo                 AS Activo,
+                factor_reentrega       AS FactorReentrega,
                 fecha_creacion         AS FechaCreacion,
                 fecha_modificacion     AS FechaModificacion
             FROM empresas
@@ -197,6 +200,7 @@ public class EmpresaRepository : IEmpresaRepository
                 onboarding_paso_actual AS OnboardingPasoActual,
                 onboarding_completado  AS OnboardingCompletado,
                 activo                 AS Activo,
+                factor_reentrega       AS FactorReentrega,
                 fecha_creacion         AS FechaCreacion,
                 fecha_modificacion     AS FechaModificacion
             FROM empresas";

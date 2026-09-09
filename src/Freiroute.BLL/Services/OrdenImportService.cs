@@ -193,7 +193,7 @@ public class OrdenImportService : IOrdenImportService
             Modulo = "ordenes",
             Accion = "IMPORTAR_ORDENES",
             EntidadId = impId,
-            Detalles = $"Importación de {filasOk} órdenes correctamente desde {nombreArchivo}"
+            Detalles = JsonSerializer.Serialize(new { filasOk, filasError, nombreArchivo })
         });
 
         return new ImportacionOrdenResultDto

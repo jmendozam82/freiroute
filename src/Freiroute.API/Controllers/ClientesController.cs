@@ -2,6 +2,8 @@ using Freiroute.API.Attributes;
 using Freiroute.API.Extensions;
 using Freiroute.BLL.Interfaces;
 using Freiroute.DTO.Cliente;
+using Freiroute.DTO.Orden;
+using Freiroute.DTO.Reclamo;
 using Freiroute.Utility.ApiResponse;
 using Freiroute.Utility.Constants;
 using Freiroute.Utility.Pagination;
@@ -21,10 +23,17 @@ namespace Freiroute.API.Controllers;
 public class ClientesController : ControllerBase
 {
     private readonly IClienteService _clienteService;
+    private readonly ISlaService _slaService;
+    private readonly IReclamoService _reclamoService;
 
-    public ClientesController(IClienteService clienteService)
+    public ClientesController(
+        IClienteService clienteService,
+        ISlaService slaService,
+        IReclamoService reclamoService)
     {
         _clienteService = clienteService;
+        _slaService = slaService;
+        _reclamoService = reclamoService;
     }
 
     /// <summary>Lista paginada de clientes con filtros por tipo, estado de crédito y texto.</summary>
@@ -162,6 +171,28 @@ public class ClientesController : ControllerBase
         var empresaId = User.GetTenantEfectivo(HttpContext);
         await _clienteService.DeactivateContactoAsync(id, contactoId, empresaId);
         return Ok(ApiResponse<string>.Ok(string.Empty, "Contacto desactivado"));
+    }
+
+    // ── Sprint 5: SLA y reclamos (HU-031 · HU-032) ─────────────────
+
+    /// <summary>Cumplimiento SLA del cliente en los últimos 30 días (HU-031 CA-03).</summary>
+    [HttpGet("{id:guid}/sla-cumplimiento")]
+    [RequirePermission(ModuloPermiso.Clientes, PermissionType.Read)]
+    public async Task<ActionResult<ApiResponse<SlaClienteResponseDto>>> GetSlaCumplimiento(Guid id)
+    {
+        var empresaId = User.GetTenantEfectivo(HttpContext);
+        var data = await _slaService.GetCumplimientoClienteAsync(id, empresaId);
+        return Ok(ApiResponse<SlaClienteResponseDto>.Ok(data));
+    }
+
+    /// <summary>Reclamos de un cliente del tenant (HU-032 CA-10).</summary>
+    [HttpGet("{id:guid}/reclamos")]
+    [RequirePermission(ModuloPermiso.Clientes, PermissionType.Read)]
+    public async Task<IActionResult> GetReclamos(Guid id)
+    {
+        var empresaId = User.GetTenantEfectivo(HttpContext);
+        var items = await _reclamoService.GetByClienteAsync(id, empresaId);
+        return Ok(ApiResponse<IEnumerable<ReclamoListDto>>.Ok(items));
     }
 
     /// <summary>DTO de entrada del cambio de estado de crédito (no existe en Freiroute.DTO).</summary>

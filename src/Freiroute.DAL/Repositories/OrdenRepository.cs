@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using Freiroute.DTO.Orden;
 using Freiroute.Entity;
 using Freiroute.DAL.Interfaces;
 using Freiroute.Utility.Pagination;
@@ -54,7 +55,10 @@ public class OrdenRepository : IOrdenRepository
         o.fecha_creacion          AS FechaCreacion,
         o.fecha_modificacion      AS FechaModificacion,
         o.creado_por              AS CreadoPor,
-        o.modificado_por          AS ModificadoPor";
+        o.modificado_por          AS ModificadoPor,
+        c.nombre                  AS ClienteNombre,
+        uo.nombre                 AS OrigenNombre,
+        ud.nombre                 AS DestinoNombre";
 
     // Subconjunto de columnas para el listado paginado (sin texto pesado:
     // instrucciones, valor_declarado, etc. — se cargan en GetByIdAsync).
@@ -79,7 +83,11 @@ public class OrdenRepository : IOrdenRepository
         o.es_split                AS EsSplit,
         o.origen_creacion         AS OrigenCreacion,
         o.fecha_creacion          AS FechaCreacion,
-        o.fecha_modificacion      AS FechaModificacion";
+        o.fecha_modificacion      AS FechaModificacion,
+        c.nombre                  AS ClienteNombre,
+        uo.nombre                 AS OrigenNombre,
+        ud.nombre                 AS DestinoNombre,
+        o.numero_po               AS NumeroPo";
 
     private readonly IDbConnection _connection;
 
@@ -103,7 +111,7 @@ public class OrdenRepository : IOrdenRepository
         string? shipmentId = null, string? q = null,
         DateOnly? fechaPickupDesde = null, DateOnly? fechaPickupHasta = null,
         DateOnly? fechaEntregaDesde = null, DateOnly? fechaEntregaHasta = null,
-        bool? esSplit = null)
+        bool? esSplit = null, string? po = null)
     {
         // Valores seguros de paginación (RNF-01.4)
         if (page < 1) page = 1;
@@ -193,6 +201,14 @@ public class OrdenRepository : IOrdenRepository
         {
             where.Add("o.es_split = @EsSplit");
             parameters.Add("EsSplit", esSplit.Value);
+        }
+
+        // HU-028 CA-01: filtro por número de Purchase Order exacto
+        // (la BLL envía el valor de OrdenFiltroDto.Po).
+        if (!string.IsNullOrWhiteSpace(po))
+        {
+            where.Add("o.numero_po = @Po");
+            parameters.Add("Po", po);
         }
 
         var whereSql = string.Join(" AND ", where);
@@ -311,6 +327,8 @@ public class OrdenRepository : IOrdenRepository
                 fecha_entrega_requerida,
                 fecha_confirmacion,
                 referencia_cliente,
+                numero_po,
+                numero_so,
                 instrucciones,
                 estado,
                 es_split,
@@ -342,6 +360,8 @@ public class OrdenRepository : IOrdenRepository
                 @FechaEntregaRequerida,
                 @FechaConfirmacion,
                 @ReferenciaCliente,
+                @NumeroPo,
+                @NumeroSo,
                 @Instrucciones,
                 @Estado,
                 @EsSplit,
@@ -432,6 +452,8 @@ public class OrdenRepository : IOrdenRepository
                 fecha_entrega_requerida = @FechaEntregaRequerida,
                 fecha_confirmacion      = @FechaConfirmacion,
                 referencia_cliente      = @ReferenciaCliente,
+                numero_po               = @NumeroPo,
+                numero_so               = @NumeroSo,
                 instrucciones           = @Instrucciones,
                 estado                  = @Estado,
                 es_split                = @EsSplit,
@@ -492,7 +514,11 @@ public class OrdenRepository : IOrdenRepository
     {
         const string sql = @"
             UPDATE ordenes
-            SET estado = @EstadoNuevo
+            SET estado = @EstadoNuevo,
+                fecha_confirmacion = CASE
+                    WHEN @EstadoNuevo = 'CONFIRMED' THEN COALESCE(fecha_confirmacion, now())
+                    ELSE fecha_confirmacion
+                END
             WHERE id = @Id
               AND empresa_id = @EmpresaId
               AND activo = true";
@@ -548,6 +574,7 @@ public class OrdenRepository : IOrdenRepository
                 h.estado_nuevo       AS EstadoNuevo,
                 h.motivo             AS Motivo,
                 h.usuario_id         AS UsuarioId,
+                u.nombre_completo   AS UsuarioNombre,
                 h.activo             AS Activo,
                 h.fecha_creacion     AS FechaCreacion,
                 h.fecha_modificacion AS FechaModificacion
@@ -657,6 +684,8 @@ public class OrdenRepository : IOrdenRepository
                 fecha_entrega_requerida,
                 fecha_confirmacion,
                 referencia_cliente,
+                numero_po,
+                numero_so,
                 instrucciones,
                 estado,
                 es_split,
@@ -688,6 +717,8 @@ public class OrdenRepository : IOrdenRepository
                 @FechaEntregaRequerida,
                 @FechaConfirmacion,
                 @ReferenciaCliente,
+                @NumeroPo,
+                @NumeroSo,
                 @Instrucciones,
                 @Estado,
                 @EsSplit,
@@ -781,5 +812,192 @@ public class OrdenRepository : IOrdenRepository
         {
             if (wasClosed) _connection.Close();
         }
+    }
+
+    // ── Sprint 5: PO/SO, SLA y prioridades (HU-028, HU-029, HU-031) ──────
+
+    /// <summary>
+    /// Busca todas las órdenes activas con un número de PO EXACTO del
+    /// mismo tenant (HU-028 CA-05 — GET /api/ordenes/por-po/{numero}).
+    /// La BLL valida el formato antes de llamar. Coherente con la
+    /// interfaz IOrdenPoService (búsqueda exacta, no ILIKE).
+    /// </summary>
+    public async Task<IEnumerable<Orden>> GetPorPoAsync(string numeroPo, Guid empresaId)
+    {
+        const string sql = $@"
+            SELECT {ColOrden}
+            FROM ordenes o
+            INNER JOIN clientes    c  ON c.id  = o.cliente_id AND c.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones uo ON uo.id = o.origen_id  AND uo.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones ud ON ud.id = o.destino_id AND ud.empresa_id = o.empresa_id
+            WHERE o.numero_po = @NumeroPo
+              AND o.empresa_id = @EmpresaId
+              AND o.activo = true
+            ORDER BY o.fecha_creacion DESC";
+
+        return await _connection.QueryAsync<Orden>(
+            sql, new { NumeroPo = numeroPo, EmpresaId = empresaId });
+    }
+
+    /// <summary>
+    /// Órdenes críticas (HU-029 CA-04): prioridad CRITICO o ALTO cuyo
+    /// último cambio de estado (historial_estados_orden) supera las 4 horas
+    /// sin avanzar. Excluye estados terminales. Las consume el endpoint
+    /// GET /api/ordenes/criticas y el job PrioridadOrdenesJob (ADR-013).
+    /// </summary>
+    public async Task<IEnumerable<Orden>> GetCriticasAsync(Guid empresaId)
+    {
+        const string sql = $@"
+            SELECT {ColOrden}
+            FROM ordenes o
+            INNER JOIN clientes    c  ON c.id  = o.cliente_id AND c.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones uo ON uo.id = o.origen_id  AND uo.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones ud ON ud.id = o.destino_id AND ud.empresa_id = o.empresa_id
+            WHERE o.empresa_id = @EmpresaId
+              AND o.activo = true
+              AND o.prioridad IN ('CRITICO', 'ALTO')
+              AND o.estado NOT IN ('DELIVERED', 'CLOSED', 'CANCELLED')
+              AND (
+                  SELECT MAX(h.fecha_creacion)
+                  FROM historial_estados_orden h
+                  WHERE h.orden_id = o.id
+                    AND h.empresa_id = o.empresa_id
+              ) < now() - interval '4 hours'
+            ORDER BY
+                CASE o.prioridad WHEN 'CRITICO' THEN 0 ELSE 1 END,
+                o.fecha_entrega_requerida ASC NULLS LAST";
+
+        return await _connection.QueryAsync<Orden>(
+            sql, new { EmpresaId = empresaId });
+    }
+
+    /// <summary>
+    /// Órdenes con SLA en riesgo (HU-031 CA-02): entrega requerida dentro
+    /// de las próximas 24 h (incluye ya vencidas sin estado terminal) y
+    /// estado no terminal. Las consume la BLL para alertas y el dashboard SLA.
+    /// </summary>
+    public async Task<IEnumerable<Orden>> GetSlaEnRiesgoAsync(Guid empresaId)
+    {
+        const string sql = $@"
+            SELECT {ColOrden}
+            FROM ordenes o
+            INNER JOIN clientes    c  ON c.id  = o.cliente_id AND c.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones uo ON uo.id = o.origen_id  AND uo.empresa_id = o.empresa_id
+            INNER JOIN ubicaciones ud ON ud.id = o.destino_id AND ud.empresa_id = o.empresa_id
+            WHERE o.empresa_id = @EmpresaId
+              AND o.activo = true
+              AND o.estado NOT IN ('DELIVERED', 'CLOSED', 'CANCELLED')
+              AND o.fecha_entrega_requerida IS NOT NULL
+              AND o.fecha_entrega_requerida <= now() + interval '24 hours'
+            ORDER BY o.fecha_entrega_requerida ASC";
+
+        return await _connection.QueryAsync<Orden>(
+            sql, new { EmpresaId = empresaId });
+    }
+
+    /// <summary>
+    /// Persiste la fecha/hora real de entrega al registrar el POD
+    /// (HU-031 CA-04). Sin filtro de activo — una orden puede registrar
+    /// su fecha real aunque haya sido desactivada posteriormente.
+    /// </summary>
+    public async Task<bool> UpdateFechaEntregaRealAsync(
+        Guid ordenId, Guid empresaId, DateTime fechaEntregaReal)
+    {
+        const string sql = @"
+            UPDATE ordenes
+            SET fecha_entrega_real = @FechaEntregaReal
+            WHERE id = @Id
+              AND empresa_id = @EmpresaId";
+
+        var rows = await _connection.ExecuteAsync(sql,
+            new { Id = ordenId, EmpresaId = empresaId, FechaEntregaReal = fechaEntregaReal });
+        return rows > 0;
+    }
+
+    /// <summary>
+    /// Métricas SLA de un cliente en el período (HU-031 CA-05): total de
+    /// entregas reales registradas y cuántas cumplieron la fecha requerida.
+    /// </summary>
+    public async Task<(int TotalOrdenes, int OrdenesATiempo)> GetSlaClienteAsync(
+        Guid clienteId, Guid empresaId, DateTime desde, DateTime hasta)
+    {
+        const string sql = @"
+            SELECT
+                COUNT(*) AS TotalOrdenes,
+                COUNT(*) FILTER (
+                    WHERE fecha_entrega_real <= fecha_entrega_requerida
+                ) AS OrdenesATiempo
+            FROM ordenes
+            WHERE empresa_id = @EmpresaId
+              AND cliente_id = @ClienteId
+              AND activo = true
+              AND estado IN ('DELIVERED', 'INVOICED', 'CLOSED')
+              AND fecha_entrega_real IS NOT NULL
+              AND fecha_entrega_real BETWEEN @Desde AND @Hasta";
+
+        var resultado = await _connection.QuerySingleAsync(sql,
+            new
+            {
+                EmpresaId = empresaId,
+                ClienteId = clienteId,
+                Desde = desde,
+                Hasta = hasta
+            });
+
+        return (
+            TotalOrdenes: (int)resultado.TotalOrdenes,
+            OrdenesATiempo: (int)resultado.OrdenesATiempo
+        );
+    }
+
+    /// <summary>
+    /// Reporte de cumplimiento SLA por cliente en el período (HU-031 CA-07).
+    /// Dapper mapea los campos agregados; PorcentajeCumplimiento y
+    /// OrdenesTardias los calcula la BLL al construir el DTO de respuesta.
+    /// </summary>
+    public async Task<IEnumerable<SlaReporteItemDto>> GetSlaReporteAsync(
+        Guid empresaId, DateTime desde, DateTime hasta)
+    {
+        const string sql = @"
+            SELECT
+                c.id              AS ClienteId,
+                c.nombre          AS ClienteNombre,
+                c.tipo_cliente    AS TipoCliente,
+                COUNT(o.id)       AS TotalOrdenes,
+                COUNT(*) FILTER (
+                    WHERE o.fecha_entrega_real IS NOT NULL
+                      AND o.fecha_entrega_real <= o.fecha_entrega_requerida
+                ) AS OrdenesATiempo
+            FROM ordenes o
+            INNER JOIN clientes c ON c.id = o.cliente_id
+            WHERE o.empresa_id = @EmpresaId
+              AND o.activo = true
+              AND o.estado IN ('DELIVERED', 'INVOICED', 'CLOSED')
+              AND o.fecha_entrega_real IS NOT NULL
+              AND o.fecha_entrega_real BETWEEN @Desde AND @Hasta
+            GROUP BY c.id, c.nombre, c.tipo_cliente
+            ORDER BY c.nombre ASC";
+
+        return await _connection.QueryAsync<SlaReporteItemDto>(sql,
+            new { EmpresaId = empresaId, Desde = desde, Hasta = hasta });
+    }
+
+    /// <summary>
+    /// Elevación automática de prioridad (HU-029 CA-03). La BLL valida
+    /// la transición de la FSM antes de llamar.
+    /// </summary>
+    public async Task<bool> UpdatePrioridadAsync(
+        Guid ordenId, Guid empresaId, string prioridad)
+    {
+        const string sql = @"
+            UPDATE ordenes
+            SET prioridad = @Prioridad
+            WHERE id = @Id
+              AND empresa_id = @EmpresaId
+              AND activo = true";
+
+        var rows = await _connection.ExecuteAsync(sql,
+            new { Id = ordenId, EmpresaId = empresaId, Prioridad = prioridad });
+        return rows > 0;
     }
 }

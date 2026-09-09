@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using Freiroute.BLL.Interfaces;
 using Freiroute.DAL.Interfaces;
@@ -52,7 +53,7 @@ public class OrdenService : IOrdenService
             filtro.ShipmentId?.ToString(), filtro.Q,
             filtro.FechaPickupDesde, filtro.FechaPickupHasta,
             filtro.FechaEntregaDesde, filtro.FechaEntregaHasta,
-            filtro.EsSplit);
+            filtro.EsSplit, filtro.Po);
 
         var dtos = result.Items.Select(MapearAListDto).ToList();
 
@@ -79,7 +80,9 @@ public class OrdenService : IOrdenService
         return dto;
     }
 
-    public async Task<OrdenResponseDto> CreateAsync(OrdenRequestDto dto, Guid empresaId, Guid usuarioId)
+    public async Task<OrdenResponseDto> CreateAsync(
+        OrdenRequestDto dto, Guid empresaId, Guid usuarioId,
+        string origenCreacion = OrigenCreacion.Manual)
     {
         await _ordenValidator.ValidateAndThrowAsync(dto);
 
@@ -104,13 +107,25 @@ public class OrdenService : IOrdenService
             ReferenciaCliente = dto.ReferenciaCliente,
             Instrucciones = dto.Instrucciones,
             Estado = OrdenEstado.Draft,
-            OrigenCreacion = "MANUAL",
+            OrigenCreacion = origenCreacion,
             CreadoPor = usuarioId,
             ModificadoPor = usuarioId
         };
 
         var ordenId = await _ordenRepository.CreateAsync(orden);
         orden.Id = ordenId;
+
+        // G-17A (HU-021 CA-16): la orden nace en DRAFT; su primer estado se
+        // registra en historial_estados_orden — auditoría completa desde el origen.
+        await _ordenRepository.RegistrarHistorialEstadoAsync(new HistorialEstadoOrden
+        {
+            EmpresaId = empresaId,
+            OrdenId = ordenId,
+            EstadoAnterior = null,
+            EstadoNuevo = OrdenEstado.Draft,
+            Motivo = "Creación de orden",
+            UsuarioId = usuarioId
+        });
 
         if (dto.Lineas != null && dto.Lineas.Any())
         {
@@ -137,7 +152,7 @@ public class OrdenService : IOrdenService
             Modulo = "ordenes",
             Accion = "CREATE",
             EntidadId = ordenId,
-            Detalles = $"Creación de orden (Ref: {dto.ReferenciaCliente})"
+            Detalles = JsonSerializer.Serialize(new { referenciaCliente = dto.ReferenciaCliente, origenCreacion })
         });
 
         return await GetByIdAsync(ordenId, empresaId) ?? throw new BusinessException("Error al recuperar orden", "ERROR_ORDEN");
@@ -202,7 +217,7 @@ public class OrdenService : IOrdenService
             Modulo = "ordenes",
             Accion = "UPDATE",
             EntidadId = id,
-            Detalles = $"Actualización de orden"
+            Detalles = JsonSerializer.Serialize(new { ordenId = id })
         });
 
         return await GetByIdAsync(id, empresaId) ?? throw new BusinessException("Error al recuperar orden", "ERROR_ORDEN");
@@ -227,9 +242,9 @@ public class OrdenService : IOrdenService
                 EmpresaId = empresaId,
                 UsuarioId = usuarioId,
                 Modulo = "ordenes",
-                Accion = "DELETE",
+                Accion = "DEACTIVATE",
                 EntidadId = id,
-                Detalles = "Eliminación (soft delete) de orden"
+                Detalles = JsonSerializer.Serialize(new { ordenId = id })
             });
         }
 
@@ -280,7 +295,7 @@ public class OrdenService : IOrdenService
             Modulo = "ordenes",
             Accion = "CAMBIO_ESTADO",
             EntidadId = id,
-            Detalles = $"{orden.Estado} -> {dto.EstadoNuevo}"
+            Detalles = JsonSerializer.Serialize(new { estadoAnterior = orden.Estado, estadoNuevo = dto.EstadoNuevo })
         });
 
         return await GetByIdAsync(id, empresaId) ?? throw new BusinessException("Error al recuperar orden", "ERROR_ORDEN");
@@ -295,6 +310,7 @@ public class OrdenService : IOrdenService
             EstadoAnterior = h.EstadoAnterior,
             EstadoNuevo = h.EstadoNuevo,
             Motivo = h.Motivo,
+            UsuarioNombre = h.UsuarioNombre,
             FechaCreacion = h.FechaCreacion
         });
     }
@@ -454,9 +470,10 @@ public class OrdenService : IOrdenService
             OrigenCreacion = orden.OrigenCreacion,
             ReferenciaCliente = orden.ReferenciaCliente,
             FechaCreacion = orden.FechaCreacion,
-            ClienteNombre = orden.ClienteId.ToString(), // TODO: Cargar nombres desde Repositorio en lista
-            OrigenNombre = orden.OrigenId.ToString(),
-            DestinoNombre = orden.DestinoId.ToString()
+            NumeroPo = orden.NumeroPo,
+            ClienteNombre = orden.ClienteNombre ?? string.Empty,   // G-18: nombres reales vía JOIN
+            OrigenNombre = orden.OrigenNombre ?? string.Empty,
+            DestinoNombre = orden.DestinoNombre ?? string.Empty
         };
     }
 
@@ -467,8 +484,11 @@ public class OrdenService : IOrdenService
             Id = orden.Id,
             NumeroOrden = orden.NumeroOrden,
             ClienteId = orden.ClienteId,
+            ClienteNombre = orden.ClienteNombre ?? string.Empty,   // G-18: nombres reales vía JOIN
             OrigenId = orden.OrigenId,
+            OrigenNombre = orden.OrigenNombre ?? string.Empty,
             DestinoId = orden.DestinoId,
+            DestinoNombre = orden.DestinoNombre ?? string.Empty,
             TipoMercanciaId = orden.TipoMercanciaId,
             UnidadMedidaId = orden.UnidadMedidaId,
             TipoEmbalajeId = orden.TipoEmbalajeId,
@@ -482,6 +502,8 @@ public class OrdenService : IOrdenService
             FechaPickupSolicitada = orden.FechaPickupSolicitada,
             FechaEntregaRequerida = orden.FechaEntregaRequerida,
             ReferenciaCliente = orden.ReferenciaCliente,
+            NumeroPo = orden.NumeroPo,
+            NumeroSo = orden.NumeroSo,
             Instrucciones = orden.Instrucciones,
             Estado = orden.Estado,
             EstadoLabel = OrdenEstado.GetLabel(orden.Estado),

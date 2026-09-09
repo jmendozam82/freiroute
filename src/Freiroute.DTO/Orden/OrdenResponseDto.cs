@@ -116,6 +116,17 @@ public class OrdenResponseDto
     [SwaggerSchema(Description = "Instrucciones especiales de manejo")]
     public string? Instrucciones { get; set; }
 
+    // ── Integración PO/SO (HU-028) ───────────────────────────
+    [SwaggerSchema(Description = "Número de Purchase Order del cliente")]
+    public string? NumeroPo { get; set; }
+
+    [SwaggerSchema(Description = "Número de Sales Order del cliente")]
+    public string? NumeroSo { get; set; }
+
+    // ── SLA (HU-031) ─────────────────────────────────────────
+    [SwaggerSchema(Description = "Estado calculado de SLA: OK | EN_RIESGO | CRITICO | VENCIDO — calculado en BLL")]
+    public string SlaStatus { get; set; } = Freiroute.Utility.Constants.SlaStatus.Ok;
+
     // ── Estado FSM ────────────────────────────────────────────
     [SwaggerSchema(Description = "Estado actual de la orden (FSM)")]
     public string Estado { get; set; } = string.Empty;

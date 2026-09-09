@@ -20,7 +20,7 @@ namespace Freiroute.BLL.Tests.Orders;
 public class NumeracionOrdenConcurrencyTests
 {
     [Fact(Skip = "Requiere base Supabase local (supabase start). CI-only.")]
-    public async Task GenerarNumeroOrden_Concurrente_GeneraNumerosUnicosYConsecutivos()
+    public void GenerarNumeroOrden_Concurrente_GeneraNumerosUnicosYConsecutivos()
     {
         throw new NotImplementedException(
             "Implementación con Npgsql + supabase start: " +
@@ -30,7 +30,7 @@ public class NumeracionOrdenConcurrencyTests
     }
 
     [Fact(Skip = "Requiere base Supabase local (supabase start). CI-only.")]
-    public async Task GenerarNumeroOrden_MismaEmpresaAnio_NoLanzaConflictosDeLlaveUnica()
+    public void GenerarNumeroOrden_MismaEmpresaAnio_NoLanzaConflictosDeLlaveUnica()
     {
         throw new NotImplementedException(
             "Implementación con Npgsql: verificar que la restricción única " +

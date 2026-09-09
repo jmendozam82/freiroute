@@ -11,6 +11,8 @@ public class AuditoriaActivityResponseDto
     public Guid Id { get; set; }
     public Guid? EmpresaId { get; set; }
     public Guid? UsuarioId { get; set; }
+    public string? UsuarioNombre { get; set; }          // G-08: nombre de quien ejecutó la acción (JOIN usuarios)
+    public string? EmailUsuario { get; set; }           // G-08: email de quien ejecutó la acción (JOIN usuarios)
     public string Modulo { get; set; } = string.Empty;
     public string Accion { get; set; } = string.Empty;
     public string? EntidadTipo { get; set; }

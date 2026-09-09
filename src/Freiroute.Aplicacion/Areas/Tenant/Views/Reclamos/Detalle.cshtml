@@ -1,0 +1,231 @@
+@using Freiroute.DTO.Reclamo
+@using Freiroute.Utility.Constants
+@model ReclamoResponseDto
+@{
+    ViewData["Title"] = Model.NumeroReclamo ?? "Reclamo";
+    ViewData["ActiveMenu"] = "reclamos";
+    var transicionesPermitidas = EstadoReclamo.Transiciones.TryGetValue(Model.Estado, out var t) ? t : [];
+}
+
+<nav class="fr-breadcrumb" aria-label="Breadcrumb">
+    <a asp-area="Tenant" asp-controller="Reclamos" asp-action="Index">Reclamos</a>
+    <span class="fr-breadcrumb-sep">/</span>
+    <span aria-current="page">@(Model.NumeroReclamo ?? "Reclamo")</span>
+</nav>
+
+<div class="fr-page-header">
+    <div>
+        <h1 class="fr-page-title d-flex align-items-center gap-2 flex-wrap">
+            <span class="fr-id-code">@(Model.NumeroReclamo ?? "Reclamo")</span>
+            @await Html.PartialAsync("_BadgeEstadoReclamo", Model.Estado)
+        </h1>
+        <div class="fr-page-subtitle">
+            @Model.ClienteNombre · Orden <span class="fr-id-code">@Model.OrdenNumero</span>
+        </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        @if (User.HasPermission("ordenes", "UPDATE") && transicionesPermitidas.Length > 0)
+        {
+            <button type="button" class="fr-btn fr-btn-primary" id="btnCambiarEstadoReclamo"
+                    title="Cambiar estado del reclamo" aria-label="Cambiar estado del reclamo">
+                <i class="ti ti-arrow-right"></i> Cambiar estado
+            </button>
+        }
+        <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Detalle" asp-route-id="@Model.OrdenId"
+           class="fr-btn fr-btn-secondary">
+            <i class="ti ti-clipboard-list"></i> Ver orden
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <!-- ── Información del reclamo ─────────────────────────── -->
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Información del reclamo</div>
+            </div>
+            <div class="fr-card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 fr-form-label">Orden vinculada</dt>
+                    <dd class="col-sm-8">
+                        <span class="fr-id-code">@Model.OrdenNumero</span>
+                    </dd>
+                    <dt class="col-sm-4 fr-form-label">Cliente</dt>
+                    <dd class="col-sm-8 fw-semibold">@Model.ClienteNombre</dd>
+                    <dt class="col-sm-4 fr-form-label">Tipo</dt>
+                    <dd class="col-sm-8 text-uppercase">@Model.Tipo</dd>
+                    <dt class="col-sm-4 fr-form-label">Monto reclamado</dt>
+                    <dd class="col-sm-8">@(Model.MontoReclamado?.ToString("N2") ?? "—")</dd>
+                    <dt class="col-sm-4 fr-form-label">Fecha de creación</dt>
+                    <dd class="col-sm-8">@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>
+                    <dt class="col-sm-4 fr-form-label">Última modificación</dt>
+                    <dd class="col-sm-8">@Model.FechaModificacion.ToString("dd/MM/yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- ── Descripción ─────────────────────────────────────── -->
+        <div class="fr-card mt-4">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Descripción</div>
+            </div>
+            <div class="fr-card-body">
+                <p class="mb-0 text-body">@Model.Descripcion</p>
+            </div>
+        </div>
+
+        <!-- ── Evidencia ───────────────────────────────────────── -->
+        @if (Model.ReferenciasEvidencia is { Count: > 0 })
+        {
+            <div class="fr-card mt-4">
+                <div class="fr-card-header">
+                    <div class="fr-card-title">Evidencia (@Model.ReferenciasEvidencia.Count)</div>
+                </div>
+                <div class="fr-card-body">
+                    <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                        @foreach (var url in Model.ReferenciasEvidencia)
+                        {
+                            <li>
+                                <a href="@url" target="_blank" rel="noopener" class="fr-link fr-id-code"
+                                   title="Abrir evidencia" aria-label="Abrir evidencia">
+                                    <i class="ti ti-link"></i> @url
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-5">
+        <!-- ── Historial de estados ────────────────────────────── -->
+        <div class="fr-card">
+            <div class="fr-card-header">
+                <div class="fr-card-title">Historial de estados</div>
+            </div>
+            <div class="fr-card-body">
+                @if (Model.Historial.Count == 0)
+                {
+                    <div class="fr-empty py-3">
+                        <div class="fr-empty-icon"><i class="ti ti-history"></i></div>
+                        <div class="fr-empty-title">Sin movimientos</div>
+                        <div class="fr-empty-text">No hay transiciones registradas para este reclamo.</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex flex-column gap-3">
+                        @foreach (var h in Model.Historial)
+                        {
+                            <div class="d-flex gap-3">
+                                <div class="flex-shrink-0 pt-1">
+                                    @await Html.PartialAsync("_BadgeEstadoReclamo", h.EstadoNuevo)
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">
+                                        @if (!string.IsNullOrEmpty(h.EstadoAnterior))
+                                        {
+                                            <span class="text-muted">@h.EstadoAnterior</span>
+                                            <i class="ti ti-arrow-right text-muted"></i>
+                                        }
+                                        @h.EstadoNuevo
+                                    </div>
+                                    <div class="text-muted small">
+                                        @h.FechaCreacion.ToString("dd/MM/yyyy HH:mm") · @(h.UsuarioNombre ?? "Sistema")
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(h.Motivo))
+                                    {
+                                        <div class="text-muted small"><em>@h.Motivo</em></div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: cambiar estado del reclamo (HU-032 CA-04) ─────── -->
+<div class="modal fade" id="modalEstadoReclamo" tabindex="-1" aria-labelledby="modalEstadoReclamoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEstadoReclamoTitle">Cambiar estado del reclamo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">El motivo es obligatorio para registrar la transición (CA-04).</p>
+                <div class="mb-3">
+                    <label class="fr-form-label fr-form-required" for="selectEstadoReclamoNuevo">Estado nuevo</label>
+                    <select id="selectEstadoReclamoNuevo" class="fr-form-control">
+                        <option value="">Seleccione el estado</option>
+                        @foreach (var destino in transicionesPermitidas)
+                        {
+                            <option value="@destino">@destino</option>
+                        }
+                    </select>
+                    <span class="fr-form-error" id="errorEstadoNuevo"></span>
+                </div>
+                <div class="mb-3">
+                    <label class="fr-form-label fr-form-required" for="inputMotivoReclamo">Motivo</label>
+                    <textarea id="inputMotivoReclamo" class="fr-form-control" rows="3" maxlength="500"
+                              placeholder="Motivo de la transición (obligatorio)" aria-label="Motivo de la transición"></textarea>
+                    <span class="fr-form-error" id="errorMotivoReclamo"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarEstadoReclamo">
+                    <i class="ti ti-device-floppy"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── Cambio de estado (PATCH /api/reclamos/{id}/estado) ───────
+    document.getElementById('btnCambiarEstadoReclamo')?.addEventListener('click', () => {
+        document.getElementById('selectEstadoReclamoNuevo').value = '';
+        document.getElementById('inputMotivoReclamo').value = '';
+        document.getElementById('errorEstadoNuevo').textContent = '';
+        document.getElementById('errorMotivoReclamo').textContent = '';
+        FrModal.show('modalEstadoReclamo');
+    });
+
+    document.getElementById('btnConfirmarEstadoReclamo')?.addEventListener('click', async () => {
+        const estadoNuevo = document.getElementById('selectEstadoReclamoNuevo').value;
+        const motivo = document.getElementById('inputMotivoReclamo').value.trim();
+
+        document.getElementById('errorEstadoNuevo').textContent = '';
+        document.getElementById('errorMotivoReclamo').textContent = '';
+
+        if (!estadoNuevo) {
+            document.getElementById('errorEstadoNuevo').textContent = 'Seleccione el estado nuevo';
+            return;
+        }
+        if (!motivo) {
+            document.getElementById('errorMotivoReclamo').textContent = 'El motivo es obligatorio';
+            return;
+        }
+
+        const btn = document.getElementById('btnConfirmarEstadoReclamo');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.patch('/api/reclamos/@Model.Id/estado', { estadoNuevo, motivo });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Estado actualizado correctamente');
+                FrModal.hide('modalEstadoReclamo');
+                setTimeout(() => window.location.reload(), 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+</script>
+}

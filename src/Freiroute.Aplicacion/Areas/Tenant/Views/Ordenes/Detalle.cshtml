@@ -54,6 +54,14 @@
                     <i class="ti ti-trash"></i> Desactivar borrador
                 </button>
             }
+
+            @if (Model.Estado == OrdenEstado.InTransit)
+            {
+                <button type="button" class="fr-btn fr-btn-danger" id="btnRechazarEntrega"
+                        title="Registrar rechazo de entrega (HU-030)" aria-label="Registrar rechazo de entrega">
+                    <i class="ti ti-x-circle"></i> Rechazar entrega
+                </button>
+            }
         }
     </div>
 </div>
@@ -72,6 +80,13 @@
         <div class="fr-card">
             <div class="fr-card-header">
                 <div class="fr-card-title">Información general</div>
+                @if (User.HasPermission("ordenes", "UPDATE") && esEditable)
+                {
+                    <button type="button" class="fr-btn fr-btn-ghost fr-btn-sm" id="btnEditarPo"
+                            title="Vincular número de PO/SO (HU-028)" aria-label="Vincular PO/SO">
+                        <i class="ti ti-link"></i> PO/SO
+                    </button>
+                }
             </div>
             <div class="fr-card-body">
                 <dl class="row mb-0">
@@ -87,6 +102,28 @@
                     <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.TipoEmbalajeNombre) ? "—" : Model.TipoEmbalajeNombre)</dd>
                     <dt class="col-sm-3 fr-form-label">Tarifa aplicada</dt>
                     <dd class="col-sm-9">@(string.IsNullOrEmpty(Model.TarifaNombre) ? "Sin tarifa" : Model.TarifaNombre)</dd>
+                    <dt class="col-sm-3 fr-form-label">N° PO</dt>
+                    <dd class="col-sm-9">
+                        @if (string.IsNullOrEmpty(Model.NumeroPo))
+                        {
+                            <span class="text-muted">Sin PO vinculado</span>
+                        }
+                        else
+                        {
+                            <span class="fr-id-code">@Model.NumeroPo</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-3 fr-form-label">N° SO</dt>
+                    <dd class="col-sm-9">
+                        @if (string.IsNullOrEmpty(Model.NumeroSo))
+                        {
+                            <span class="text-muted">Sin SO vinculado</span>
+                        }
+                        else
+                        {
+                            <span class="fr-id-code">@Model.NumeroSo</span>
+                        }
+                    </dd>
                     <dt class="col-sm-3 fr-form-label">Shipment</dt>
                     <dd class="col-sm-9">
                         @if (string.IsNullOrEmpty(Model.ShipmentNumero))
@@ -193,6 +230,28 @@
             </div>
         }
 
+        <!-- ── Re-entregas (solo FAILED_DELIVERY) ──────────────── -->
+        @if (Model.Estado == OrdenEstado.FailedDelivery)
+        {
+            <div class="fr-card mt-4">
+                <div class="fr-card-header">
+                    <div class="fr-card-title">Re-entregas (HU-030)</div>
+                    @if (User.HasPermission("ordenes", "UPDATE"))
+                    {
+                        <button type="button" class="fr-btn fr-btn-primary fr-btn-sm" id="btnGenerarReentrega"
+                                title="Generar re-entrega" aria-label="Generar re-entrega">
+                            <i class="ti ti-plus"></i> Generar re-entrega
+                        </button>
+                    }
+                </div>
+                <div class="fr-card-body">
+                    <div id="reentregasContainer">
+                        <span class="text-muted">Cargando re-entregas…</span>
+                    </div>
+                </div>
+            </div>
+        }
+
         <!-- ── Historial de estados ────────────────────────────── -->
         <div class="fr-card mt-4">
             <div class="fr-card-header">
@@ -241,7 +300,11 @@
                     <dd class="col-sm-6 text-end">@Model.NivelServicioLabel</dd>
                     <dt class="col-sm-6 fr-form-label">Prioridad</dt>
                     <dd class="col-sm-6 text-end">
-                        <span class="fr-badge @OrdenUiHelper.GetPrioridadClass(Model.Prioridad)">@Model.PrioridadLabel</span>
+                        @await Html.PartialAsync("_BadgePrioridad", Model.Prioridad)
+                    </dd>
+                    <dt class="col-sm-6 fr-form-label">SLA</dt>
+                    <dd class="col-sm-6 text-end">
+                        @await Html.PartialAsync("_BadgeSla", Model.SlaStatus)
                     </dd>
                     <dt class="col-sm-6 fr-form-label">Recogida</dt>
                     <dd class="col-sm-6 text-end">@(Model.FechaPickupSolicitada?.ToString("dd/MM/yyyy") ?? "—")</dd>
@@ -284,6 +347,100 @@
                 <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarCambioEstado">
                     <i class="ti ti-device-floppy"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: editar PO/SO (HU-028) ─────────────────────────── -->
+<div class="modal fade" id="modalEditarPo" tabindex="-1" aria-labelledby="modalEditarPoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEditarPoTitle">Vincular PO / SO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">Los números de Purchase Order y Sales Order permiten trazabilidad con el ERP/WMS del cliente (HU-028).</p>
+                <div class="mb-3">
+                    <label class="fr-form-label" for="inputNumeroPo">N° PO</label>
+                    <input id="inputNumeroPo" type="text" maxlength="100" class="fr-form-control fr-id-code"
+                           value="@Model.NumeroPo" placeholder="Purchase Order del cliente" aria-label="Número de Purchase Order" />
+                </div>
+                <div class="mb-3">
+                    <label class="fr-form-label" for="inputNumeroSo">N° SO</label>
+                    <input id="inputNumeroSo" type="text" maxlength="100" class="fr-form-control fr-id-code"
+                           value="@Model.NumeroSo" placeholder="Sales Order del cliente" aria-label="Número de Sales Order" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnGuardarPo">
+                    <i class="ti ti-device-floppy"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: rechazo de entrega (HU-030) ───────────────────── -->
+<div class="modal fade" id="modalRechazo" tabindex="-1" aria-labelledby="modalRechazoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalRechazoTitle">Registrar rechazo de entrega</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">Al registrar el rechazo la orden pasará a <strong>Entrega fallida</strong> y podrá generar una re-entrega.</p>
+                <div class="mb-3">
+                    <label class="fr-form-label fr-form-required" for="selectMotivoRechazo">Motivo</label>
+                    <select id="selectMotivoRechazo" class="fr-form-control">
+                        <option value="">Seleccione el motivo</option>
+                        <option value="CLIENTE_AUSENTE">Cliente ausente</option>
+                        <option value="DIRECCION_INCORRECTA">Dirección incorrecta</option>
+                        <option value="MERCANCIA_DANADA">Mercancía dañada</option>
+                        <option value="RECHAZO_CLIENTE">Rechazo del cliente</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="fr-form-label" for="textareaDescripcionRechazo">Descripción</label>
+                    <textarea id="textareaDescripcionRechazo" class="fr-form-control" rows="3" maxlength="500"
+                              placeholder="Detalle del rechazo (opcional)" aria-label="Descripción del rechazo"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-danger" id="btnConfirmarRechazo">
+                    <i class="ti ti-x-circle"></i> Confirmar rechazo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: generar re-entrega (HU-030) ───────────────────── -->
+<div class="modal fade" id="modalReentrega" tabindex="-1" aria-labelledby="modalReentregaTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalReentregaTitle">Generar re-entrega</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">La re-entrega hereda cliente, origen, destino, mercancía y unidad de medida de la orden original. Solo se indican instrucciones especiales.</p>
+                <div class="mb-3">
+                    <label class="fr-form-label" for="textareaInstruccionesReentrega">Instrucciones especiales</label>
+                    <textarea id="textareaInstruccionesReentrega" class="fr-form-control" rows="3" maxlength="1000"
+                              placeholder="Instrucciones para la re-entrega (opcional)" aria-label="Instrucciones de la re-entrega"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarReentrega">
+                    <i class="ti ti-plus"></i> Generar re-entrega
                 </button>
             </div>
         </div>
@@ -338,10 +495,130 @@
         });
     });
 
-    // ── Historial de estados (GET /api/ordenes/{id}/historial) ───
+    // ── Editar PO/SO (PATCH /api/ordenes/{id}/po — HU-028) ──────
+    document.getElementById('btnEditarPo')?.addEventListener('click', () => FrModal.show('modalEditarPo'));
+
+    document.getElementById('btnGuardarPo')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnGuardarPo');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.patch('/api/ordenes/@Model.Id/po', {
+                numeroPo: document.getElementById('inputNumeroPo').value.trim() || null,
+                numeroSo: document.getElementById('inputNumeroSo').value.trim() || null
+            });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('PO/SO actualizado');
+                FrModal.hide('modalEditarPo');
+                setTimeout(() => window.location.reload(), 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Rechazo de entrega (POST /api/ordenes/{id}/rechazo — HU-030) ─
+    document.getElementById('btnRechazarEntrega')?.addEventListener('click', () => {
+        document.getElementById('selectMotivoRechazo').value = '';
+        document.getElementById('textareaDescripcionRechazo').value = '';
+        FrModal.show('modalRechazo');
+    });
+
+    document.getElementById('btnConfirmarRechazo')?.addEventListener('click', async () => {
+        const motivo = document.getElementById('selectMotivoRechazo').value;
+        if (!motivo) {
+            FrToast.warning('Seleccione el motivo del rechazo');
+            return;
+        }
+        const btn = document.getElementById('btnConfirmarRechazo');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post('/api/ordenes/@Model.Id/rechazo', {
+                motivo,
+                descripcion: document.getElementById('textareaDescripcionRechazo').value.trim() || null
+            });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Rechazo registrado — la orden pasó a Entrega fallida');
+                FrModal.hide('modalRechazo');
+                setTimeout(() => window.location.reload(), 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Generar re-entrega (POST /api/ordenes/{id}/re-entrega — HU-030) ─
+    document.getElementById('btnGenerarReentrega')?.addEventListener('click', () => {
+        document.getElementById('textareaInstruccionesReentrega').value = '';
+        FrModal.show('modalReentrega');
+    });
+
+    document.getElementById('btnConfirmarReentrega')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnConfirmarReentrega');
+        btn.disabled = true;
+        try {
+            const body = {
+                instrucciones: document.getElementById('textareaInstruccionesReentrega').value.trim() || null
+            };
+            const resp = await FrApi.post('/api/ordenes/@Model.Id/re-entrega', body);
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Re-entrega creada');
+                FrModal.hide('modalReentrega');
+                setTimeout(() => window.location.reload(), 800);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Historial de re-entregas (GET /api/ordenes/{id}/re-entregas) ─
     const esc = s => String(s ?? '').replace(/[&<>"']/g,
         c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+    (async () => {
+        const container = document.getElementById('reentregasContainer');
+        if (!container) return;
+        const resp = await FrApi.get('/api/ordenes/@Model.Id/re-entregas');
+        if (!resp?.success) {
+            container.innerHTML = '<span class="text-muted">No se pudieron cargar las re-entregas.</span>';
+            return;
+        }
+        const items = resp.data;
+        if (!items?.length) {
+            container.innerHTML = '<span class="text-muted">Sin re-entregas generadas.</span>';
+            return;
+        }
+        container.innerHTML = `
+            <div class="fr-table-responsive">
+                <table class="fr-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>N° Orden</th>
+                            <th>Ruta</th>
+                            <th>Peso</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map(r => `
+                            <tr>
+                                <td><span class="fr-id-code">${esc(r.numeroOrden || '—')}</span></td>
+                                <td><span class="text-muted">${esc(r.origenNombre)}</span> <i class="ti ti-arrow-right text-muted mx-1"></i> <span>${esc(r.destinoNombre)}</span></td>
+                                <td>${Number(r.pesoKg || 0).toLocaleString('es-ES')} kg</td>
+                                <td><span class="fr-badge ${FrBadge.claseEstado(r.estado)}">${esc(r.estadoLabel)}</span></td>
+                                <td class="text-end">
+                                    <a href="detalle/${r.id}" class="fr-btn fr-btn-ghost fr-btn-sm" title="Ver re-entrega" aria-label="Ver re-entrega ${r.numeroOrden || r.id}">
+                                        <i class="ti ti-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    })();
+
+    // ── Historial de estados (GET /api/ordenes/{id}/historial) ───
     (async () => {
         const container = document.getElementById('historialContainer');
         const resp = await FrApi.get('/api/ordenes/@Model.Id/historial');

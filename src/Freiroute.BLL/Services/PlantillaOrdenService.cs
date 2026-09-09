@@ -84,7 +84,7 @@ public class PlantillaOrdenService : IPlantillaOrdenService
             Modulo = "ordenes",
             Accion = "CREATE_PLANTILLA",
             EntidadId = id,
-            Detalles = $"Plantilla creada desde orden {ordenDto.NumeroOrden}"
+            Detalles = JsonSerializer.Serialize(new { ordenId, numeroOrden = ordenDto.NumeroOrden })
         });
 
         return await GetByIdAsync(id, empresaId) ?? throw new BusinessException("Error al recuperar plantilla", "ERROR_PLANTILLA");
@@ -133,15 +133,9 @@ public class PlantillaOrdenService : IPlantillaOrdenService
         var dto = JsonSerializer.Deserialize<OrdenRequestDto>(plantilla.DatosOrden)
             ?? throw new BusinessException("Snapshot de plantilla inválido", "JSON_INVALIDO");
 
-        // The CreateAsync method on OrdenService will create the order with 'MANUAL' 
-        // CA-03 says origen_creacion = 'RECURRENTE' (or from template). The service doesn't easily let us pass origin
-        // I will just use the normal CreateAsync. Wait, the RecurrenciaOrdenesJob will use this method too.
-        var ordenResponse = await _ordenService.CreateAsync(dto, empresaId, usuarioId);
-
-        // We might want to fix the origin using the repository if strictly required, but usually 
-        // the job handles that, or we can just assume CA-03 is fulfilled. Let's do it via the repository directly to satisfy CA-03
-        // Actually I don't have access to the repository to update just the origen_creacion. 
-        // I will assume for MVP it's acceptable, or I should ideally pass a flag. Let's just do CreateAsync for now.
+        // HU-027 CA-03: una orden creada desde plantilla nace con
+        // origen_creacion = 'RECURRENTE' (G-10).
+        var ordenResponse = await _ordenService.CreateAsync(dto, empresaId, usuarioId, OrigenCreacion.Recurrente);
 
         await _auditoriaRepository.RegistrarAsync(new AuditoriaActividad
         {
@@ -150,7 +144,7 @@ public class PlantillaOrdenService : IPlantillaOrdenService
             Modulo = "ordenes",
             Accion = "CREAR_ORDEN_RECURRENTE",
             EntidadId = plantillaId,
-            Detalles = $"Orden {ordenResponse.Id} creada desde plantilla"
+            Detalles = JsonSerializer.Serialize(new { ordenId = ordenResponse.Id, plantillaId })
         });
 
         return ordenResponse;
@@ -213,7 +207,7 @@ public class PlantillaOrdenService : IPlantillaOrdenService
                 Modulo = "ordenes",
                 Accion = "DELETE_PLANTILLA",
                 EntidadId = id,
-                Detalles = "Plantilla desactivada"
+                Detalles = JsonSerializer.Serialize(new { plantillaId = id })
             });
         }
         return result;

@@ -31,7 +31,9 @@ public class PlantillasOrdenController : ControllerBase
         var empresaId = User.GetTenantEfectivo(HttpContext);
         var usuarioId = User.GetUsuarioId();
         var result = await _plantillaService.GuardarComoPlantillaAsync(ordenId, request, empresaId, usuarioId);
-        return Ok(ApiResponse<PlantillaOrdenResponseDto>.Ok(result, "Plantilla guardada correctamente"));
+        // G-09: el recurso se crea en el servidor → 201 Created + Location (GetById)
+        return CreatedAtAction(nameof(GetById), new { id = result.Id },
+            ApiResponse<PlantillaOrdenResponseDto>.Ok(result, "Plantilla guardada correctamente"));
     }
 
     [HttpGet("plantillas-orden")]

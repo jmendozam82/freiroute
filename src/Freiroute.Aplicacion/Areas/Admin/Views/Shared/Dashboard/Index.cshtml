@@ -38,6 +38,16 @@
         <div class="fr-kpi-value kpi-green">0%</div>
         <div class="fr-kpi-delta" style="color:var(--fr-text-muted)">Sin datos</div>
     </div>
+    <div class="fr-kpi-card" id="kpi-criticas">
+        <div class="fr-kpi-label">Órdenes Críticas</div>
+        <div class="fr-kpi-value kpi-red">—</div>
+        <div class="fr-kpi-delta down">CRÍTICO / ALTO sin avance</div>
+    </div>
+    <div class="fr-kpi-card" id="kpi-sla-riesgo">
+        <div class="fr-kpi-label">SLA en Riesgo</div>
+        <div class="fr-kpi-value kpi-amber">—</div>
+        <div class="fr-kpi-delta down">Próximas 24 h sin tránsito</div>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -84,3 +94,31 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    // ── KPIs operacionales (Sprint 5) ─────────────────────────────
+    // El dashboard del tenant raíz muestra las órdenes del tenant efectivo
+    // (para el Super Admin, la del tenant raíz al no impersonar).
+    (async () => {
+        try {
+            const [criticas, sla] = await Promise.all([
+                FrApi.get('/api/ordenes/criticas'),
+                FrApi.get('/api/ordenes/sla-en-riesgo'),
+            ]);
+
+            const kpiCriticas = document.querySelector('#kpi-criticas .fr-kpi-value');
+            if (kpiCriticas && criticas?.success) {
+                kpiCriticas.textContent = (criticas.data || []).length;
+            }
+
+            const kpiSla = document.querySelector('#kpi-sla-riesgo .fr-kpi-value');
+            if (kpiSla && sla?.success) {
+                kpiSla.textContent = (sla.data || []).length;
+            }
+        } catch {
+            // KPIs permanecen con "—" si la API no responde (sin interrumpir el dashboard)
+        }
+    })();
+</script>
+}

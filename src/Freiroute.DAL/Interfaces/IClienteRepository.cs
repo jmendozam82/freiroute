@@ -57,4 +57,13 @@ public interface IClienteRepository
 
     /// <summary>Soft delete de un contacto: activo = false.</summary>
     Task<bool> DeactivateContactoAsync(Guid contactoId, Guid empresaId);
+
+    // ── Sprint 5: SLA (HU-031) ────────────────────────────────────────
+
+    /// <summary>
+    /// Clientes activos con prioridad VIP (para alertas/cálculo de SLA —
+    /// HU-031 CA-01). Los campos sla_dias_entrega y sla_ventana se usan
+    /// para calcular la fecha requerida esperada.
+    /// </summary>
+    Task<IEnumerable<Cliente>> GetClientesSlaVipAsync(Guid empresaId);
 }

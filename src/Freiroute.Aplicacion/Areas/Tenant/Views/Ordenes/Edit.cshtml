@@ -235,6 +235,19 @@ else if (rutaBloqueada)
                         <span class="fr-badge fr-badge-warning"><i class="ti ti-alert-triangle"></i> La fecha de entrega debe ser posterior a la fecha de recogida</span>
                     </div>
                 </div>
+                <div class="col-md-6">
+                    <label asp-for="NumeroPo" class="fr-form-label"></label>
+                    <input asp-for="NumeroPo" maxlength="100" class="fr-form-control fr-id-code"
+                           placeholder="Purchase Order del cliente (ej: PO-000123)" aria-label="Número de Purchase Order" disabled="@(camposBloqueados)" />
+                    <small class="form-text text-muted">Trazabilidad con el ERP/WMS del cliente</small>
+                    <span asp-validation-for="NumeroPo" class="fr-form-error"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="NumeroSo" class="fr-form-label"></label>
+                    <input asp-for="NumeroSo" maxlength="100" class="fr-form-control fr-id-code"
+                           placeholder="Sales Order del cliente (opcional)" aria-label="Número de Sales Order" disabled="@(camposBloqueados)" />
+                    <span asp-validation-for="NumeroSo" class="fr-form-error"></span>
+                </div>
                 <div class="col-12">
                     <label asp-for="Instrucciones" class="fr-form-label"></label>
                     <textarea asp-for="Instrucciones" maxlength="1000" rows="3" class="fr-form-control"

@@ -1,0 +1,12 @@
+@* Vista parcial: Badge de prioridad (HU-029). Model = Prioridad: CRITICO | ALTO | NORMAL | BAJO *@
+@model string
+@{
+    var (clase, label, pulseClass) = Model switch
+    {
+        "CRITICO" => ("fr-badge fr-badge-danger",  "Crítico", "fr-badge-critico--pulse"),
+        "ALTO"    => ("fr-badge fr-badge-warning", "Alto",    ""),
+        "BAJO"    => ("fr-badge fr-badge-neutral", "Bajo",    ""),
+        _         => ("fr-badge fr-badge-neutral", "Normal",  "")
+    };
+}
+<span class="@clase @pulseClass">@label</span>

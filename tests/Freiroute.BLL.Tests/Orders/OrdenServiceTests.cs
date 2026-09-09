@@ -127,11 +127,10 @@ public class OrdenServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_CuandoDtoValido_NoRegistraHistorialInicial()
+    public async Task CreateAsync_CuandoDtoValido_RegistraHistorialInicialDraft()
     {
-        // CA-04 HU-024: el historial_estados_orden se registra en las transiciones
-        // (CambiarEstadoAsync), NO en la creación. La orden nace DRAFT y el primer
-        // registro de historial llega con el primer cambio de estado.
+        // G-17A (HU-021 CA-16): la orden nace en DRAFT; su primer estado se
+        // registra en historial_estados_orden — auditoría completa desde el origen.
         var empresaId = Guid.NewGuid();
         var usuarioId = Guid.NewGuid();
         var dto = new OrdenBuilder().BuildRequestDto();
@@ -142,7 +141,12 @@ public class OrdenServiceTests
 
         await _service.CreateAsync(dto, empresaId, usuarioId);
 
-        _ordenRepoMock.Verify(r => r.RegistrarHistorialEstadoAsync(It.IsAny<HistorialEstadoOrden>()), Times.Never);
+        _ordenRepoMock.Verify(r => r.RegistrarHistorialEstadoAsync(
+            It.Is<HistorialEstadoOrden>(h =>
+                h.OrdenId == nuevoId &&
+                h.EstadoAnterior == null &&
+                h.EstadoNuevo == OrdenEstado.Draft &&
+                h.Motivo == "Creación de orden")), Times.Once);
     }
 
     [Fact]
@@ -739,7 +743,7 @@ public class OrdenServiceTests
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
                 It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(),
-                It.IsAny<bool?>()))
+                It.IsAny<bool?>(), It.IsAny<string?>()))
             .ReturnsAsync(new PagedResult<Orden>
             {
                 Items = new List<Orden> { orden },
@@ -828,7 +832,7 @@ public class OrdenServiceTests
 
         result.Should().BeTrue();
         _auditoriaMock.Verify(a => a.RegistrarAsync(It.Is<AuditoriaActividad>(aa =>
-            aa.Accion == "DELETE" && aa.Modulo == "ordenes")), Times.Once);
+            aa.Accion == "DEACTIVATE" && aa.Modulo == "ordenes")), Times.Once);
     }
 
     [Fact]
@@ -842,6 +846,77 @@ public class OrdenServiceTests
         await act.Should().ThrowAsync<BusinessException>()
             .WithMessage("*DRAFT*");
         _ordenRepoMock.Verify(r => r.DeactivateAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
+
+    // ── Tests de deuda técnica Sprint 5 — G-15 y G-18 ──────────────
+
+    [Fact]
+    public async Task CreateAsync_RegistraAuditoriaConDetallesJsonValido()
+    {
+        // G-15: los campos de auditoría Detalles SIEMPRE se pasan como JSON
+        // serializado (JsonSerializer.Serialize), nunca como texto plano —
+        // el cast ::jsonb del repositorio falla con error 22P02 si no.
+        var empresaId = Guid.NewGuid();
+        var usuarioId = Guid.NewGuid();
+        var dto = new OrdenBuilder().BuildRequestDto();
+        dto.ReferenciaCliente = "REF-2026-0042";
+        var nuevoId = Guid.NewGuid();
+
+        _ordenRepoMock.Setup(r => r.CreateAsync(It.IsAny<Orden>())).ReturnsAsync(nuevoId);
+        _ordenRepoMock.Setup(r => r.GetByIdAsync(nuevoId, empresaId)).ReturnsAsync(new Orden());
+
+        await _service.CreateAsync(dto, empresaId, usuarioId);
+
+        _auditoriaMock.Verify(a => a.RegistrarAsync(It.Is<AuditoriaActividad>(aa =>
+            aa.Modulo == "ordenes" &&
+            aa.Accion == "CREATE" &&
+            aa.Detalles != null &&
+            aa.Detalles.Contains("\"referenciaCliente\"") &&
+            aa.Detalles.Contains("\"origenCreacion\"") &&
+            aa.Detalles.Contains("REF-2026-0042") &&
+            !aa.Detalles.StartsWith("Creación"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_MapeaNombresLegiblesViaJoin()
+    {
+        // G-18: clienteNombre/origenNombre/destinoNombre del listado vienen
+        // del JOIN del repositorio (nombres legibles) — nunca UUIDs crudos.
+        var empresaId = Guid.NewGuid();
+        var orden = new Orden
+        {
+            Id = Guid.NewGuid(),
+            EmpresaId = empresaId,
+            Estado = OrdenEstado.Confirmed,
+            NumeroOrden = "ORD-2026-00001",
+            ClienteNombre = "Distribuidora ABC S.A.",
+            OrigenNombre = "Almacen Managua",
+            DestinoNombre = "Bodega Leon"
+        };
+        _ordenRepoMock.Setup(r => r.GetAllAsync(
+                It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>(),
+                It.IsAny<bool?>(), It.IsAny<string?>()))
+            .ReturnsAsync(new PagedResult<Orden>
+            {
+                Items = new List<Orden> { orden },
+                TotalItems = 1,
+                PageNumber = 1,
+                PageSize = 20
+            });
+
+        var result = await _service.GetAllAsync(empresaId, new OrdenFiltroDto { Page = 1, PageSize = 20 });
+
+        var item = result.Items.Single();
+        item.ClienteNombre.Should().Be("Distribuidora ABC S.A.");
+        item.OrigenNombre.Should().Be("Almacen Managua");
+        item.DestinoNombre.Should().Be("Bodega Leon");
+        // Los nombres NO deben verse como UUIDs (síntoma del JOIN faltante).
+        Guid.TryParse(item.ClienteNombre, out _).Should().BeFalse();
+        Guid.TryParse(item.OrigenNombre, out _).Should().BeFalse();
+        Guid.TryParse(item.DestinoNombre, out _).Should().BeFalse();
     }
 }
 
