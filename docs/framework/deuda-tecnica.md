@@ -16,12 +16,28 @@
 |---|---|---|---|---|---|---|
 | G-01 | Sprint 1 | HU-006 | Permisos Aprobar y Exportar no modelados | Medio | Sprint 10-12 | 🔴 Abierto |
 | G-02 | Sprint 1 | HU-008 | Vista/UI de exportación de auditoría | Bajo | Sprint 3 | 🟢 Cerrado |
-| G-03 | Sprint 2 | HU-010 | Cálculo automático de descuento anual | Bajo | Sprint 4 | 🔴 Abierto |
+| G-03 | Sprint 2 | HU-010 | Cálculo automático de descuento anual | Bajo | Sprint 4 | 🟢 Cerrado |
 | G-04 | Sprint 2 | HU-013 | UI de creación directa de usuario sin validar | Bajo | Sprint 3 smoke test | 🟡 Parcial |
 | G-05 | Sprint 2 | HU-014 | Moneda secundaria e idioma del sistema | Medio | Sprint 6 | 🔴 Abierto |
 | G-06 | Sprint 1 | HU-007 | Recuperación de contraseña — Fix A/B/D completados · Fix C verificado en Fase 5 | Alto | Sprint 3 | 🟢 Cerrado |
-| G-07 | Sprint 3 | HU-015 | UbicacionRequestDto no expone CodigoPostal/horarios/instrucciones en Edit | Bajo | Sprint 4 | 🔴 Abierto |
+| G-07 | Sprint 3 | HU-015 | UbicacionRequestDto no expone CodigoPostal/horarios/instrucciones en Edit | Bajo | Sprint 4 | 🟢 Cerrado |
 | G-08 | Sprint 3 | HU-008 | AuditoriaActivityResponseDto muestra UUID sin nombre/email del usuario | Bajo | Sprint 5 | 🔴 Abierto |
+| G-09 | Sprint 4 | HU-027 | guardar-como-plantilla responde 200 (esperado 201) | Baja | Sprint 5 | 🔴 Abierto |
+| G-10 | Sprint 4 | HU-027 | Órdenes desde plantilla con origenCreacion=MANUAL (esperado RECURRENTE) | Media | Sprint 5 | 🔴 Abierto |
+| G-11 | Sprint 4 | HU-026 | Falta test PUT /api/ordenes/{id}/abonos (FrApi.patch) | Baja | Sprint 5 | 🔴 Abierto |
+| G-12 | Sprint 4 | HU-022 | Cobertura OrdenesController 52.4% < 60% (API tests) | Baja | Sprint 5 | 🔴 Abierto |
+| G-13 | Sprint 4 | HU-022 | POST /api/ordenes/consolidar → 500 FK 23503 (no inserta shipment) | Alta | Sprint 6 | 🔴 Abierto |
+| G-14 | Sprint 4 | HU-023 | /api/v1/orders rechaza key válida con 401 (validación rota, no usa BCrypt.Verify) | Alta | Sprint 5 | 🔴 Abierto |
+| G-15 | Sprint 4 | HU-008 | Auditoría de órdenes falla en silencio: Detalles no es JSON válido (22P02) | Alta | Sprint 5 | 🔴 Abierto |
+| G-16 | Sprint 4 | HU-027 | Plantilla guarda datosOrden "{}" (snapshot vacío) | Media | Sprint 5 | 🔴 Abierto |
+| G-17 | Sprint 4 | HU-021 | Historial de estados: 1 sola entrada, ordenId=Guid.Empty, usuarioNombre=null, fechaConfirmacion=null | Baja | Sprint 5 | 🔴 Abierto |
+| G-18 | Sprint 4 | HU-021 | Listado devuelve UUIDs crudos en clienteNombre/origenNombre/destinoNombre | Baja | Sprint 5 | 🔴 Abierto |
+| G-19 | Sprint 4 | HU-024 | Detalle de orden PARTIALLY_SPLIT no lista sub-órdenes (count 0) | Baja | Sprint 6 | 🔴 Abierto |
+
+> ℹ️ **Nota de renumeración (Sprint 4):** el checklist del smoke test Sprint 4 se refería
+> a los gaps de plantillas como "G-08..G-11", pero el documento ya tenía el G-08
+> asignado (HU-008 auditoría, Sprint 3). Se renumeraron a **G-09..G-12** para no
+> colisionar; los bugs nuevos del smoke (S7/S9/S12) son **G-13..G-19**.
 
 **Leyenda:** 🔴 Abierto · 🟡 Parcial (API existe, UI pendiente) · 🟢 Cerrado
 
@@ -187,6 +203,13 @@ Agregar label debajo del campo `precioAnual`:
 
 **Impacto en tablas:** Ninguno
 **Impacto en código:** Solo frontend — 10 líneas de JavaScript
+
+**✅ Cerrado — Sprint 4 (smoke test S11):**
+Evidencia: `Areas/Admin/Views/Planes/Create.cshtml` (L271-280) y
+`Edit.cshtml` (L263-272) implementan la sugerencia dinámica
+`Sugerido: ${(mensual * 10).toFixed(2)} (10 meses — 2 meses gratis)`
+sin autocompletar el campo `PrecioAnual` (solo orienta al operador).
+Con `precioMensual=100` → muestra "Sugerido: $1000.00 (10 meses — 2 meses gratis)".
 
 ---
 
@@ -390,6 +413,203 @@ await _sesionRepository
 
 ---
 
+### G-09 · HU-027 · guardar-como-plantilla responde 200 (esperado 201)
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** Nada (el flujo funciona; solo el status code es incorrecto)
+
+**Descripción del gap:**
+`POST /api/ordenes/{id}/guardar-como-plantilla` responde **200 OK**.
+El criterio de aceptación HU-027 (CA-01) espera **201 Created** (recurso nuevo).
+
+**Evidencia (smoke test S10):** response 200, plantilla creada y listada
+(`0db2b414-b1dd-433a-ba8e-a765077c06ea`, "Envio semanal ABC").
+
+**Resolución (Sprint 5 — @BackendDev):** devolver `201 Created`
+en `PlantillaOrdenService` / `OrdenesController` + test de integración.
+
+---
+
+### G-10 · HU-027 · Órdenes desde plantilla con origenCreacion=MANUAL
+
+**Sprint origen:** Sprint 4 — **Severidad:** Media
+**Bloquea:** Trazabilidad del canal de ingreso (el sistema no distingue
+órdenes recurrentes de las manuales)
+
+**Descripción del gap:**
+Al crear una orden desde una plantilla (HU-027 CA-02), el campo
+`origen_creacion` queda en `MANUAL`. Se espera `RECURRENTE`
+(la orden nace de una recurrencia programada).
+
+**Evidencia (smoke test S10):** POST desde plantilla → 201, `origen_creacion="MANUAL"`.
+
+**Resolución (Sprint 5 — @BackendDev):** `PlantillaOrdenService.CrearDesdePlantillaAsync`
+debe setear `OrigenCreacion = OrigenCreacionOrden.Recurrente` + test unitario.
+
+---
+
+### G-11 · HU-026 · Falta test de abonos con FrApi.patch
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** Nada (el fix `FrApi.patch` retrocompatible ya está en Fase 5)
+
+**Descripción del gap:**
+No existe test QA para `PUT /api/ordenes/{id}/abonos` usando el patrón
+`FrApi.patch` (el problema que rompía la consumición del API desde
+MVC con jQuery `$.ajax({method:'PATCH'})`).
+
+**Resolución (Sprint 5 — @QA):** test de integración que consume
+`/api/ordenes/{id}/abonos` con PATCH vía FrApi y verifica 200 + suma de abono.
+
+---
+
+### G-12 · HU-022 · Cobertura OrdenesController 52.4% < 60%
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** Umbral del pipeline CI solo si se habilita para controllers nuevos
+
+**Descripción del gap:**
+Cobertura de `OrdenesController` = **52.4%**, inferior al umbral API del 60%
+(AGENTS.md R29). Los flujos no cubiertos: importar CSV, consolidar/desconsolidar,
+split, abonos y endpoints de plantillas.
+
+**Resolución (Sprint 5 — @QA):** tests de integración para los endpoints
+faltantes hasta ≥60%.
+
+---
+
+### G-13 · HU-022 · POST /api/ordenes/consolidar → 500 FK 23503 ⚠️ NUEVO (smoke S7)
+
+**Sprint origen:** Sprint 4 — **Severidad:** ALTA
+**Bloquea:** HU-024 CA-03 (consolidación) — el flujo queda ❌ en el smoke test
+
+**Descripción del gap:**
+`POST /api/ordenes/consolidar` lanza **500** con
+`23503: foreign key constraint "ordenes_shipment_id_fkey"`.
+`OrdenService.ConsolidarAsync` genera `Guid.NewGuid()` como shipment **sin
+insertar el registro** (comentario: "We mock shipment creation... belongs to
+Sprint 7"); `ShipmentRepository.CreateAsync` existe en DAL pero no se invoca.
+Además `ShipmentResumenDto` expone `CantidadOrdenes` (el checklist esperaba
+`totalOrdenes`).
+
+**Evidencia (smoke test S7):** 500 en consolidar; desconsolidar con
+`"Solo se pueden desconsolidar órdenes en estado ASSIGNED"` (422) ✓.
+
+**Resolución (Sprint 6 — @BackendDev, antes de EP-05 embarques):**
+insertar el shipment real (o devolver 501 con la HU de embarques si se
+pospone el módulo), y alinear `ShipmentResumenDto` al nombre del checklist.
+
+---
+
+### G-14 · HU-023 · /api/v1/orders rechaza key válida con 401 ⚠️ NUEVO (smoke S9)
+
+**Sprint origen:** Sprint 4 — **Severidad:** ALTA
+**Bloquea:** HU-023 CA-02 (integración externa) — el flujo queda ❌ en el smoke test
+
+**Descripción del gap:**
+Una API key recién creada (`frk_live_...`, validada como `activo=true`)
+devuelve **401 "API Key inválida o inactiva."** al consultar `/api/v1/orders`.
+Causa raíz: `ApiKeyTenantRepository.GetByClaveHashAsync` compara
+`clave_hash = @valorCrudo` directamente (nunca matchea tras el hashing bcrypt de
+la clave) y `OrdenApiExternaService.ValidarApiKeyAsync` pasa la clave cruda.
+**No se usa `BCrypt.Verify` en ningún punto.** Los tests mockean el repositorio
+y no detectan el fallo. Sin key → 401 ✓ · key inválida → 401 ✓ · `rawKey=null`
+en GET ✓ (CA-08) · `ultimoUso` no verificable mientras la validación esté rota.
+
+**Resolución (Sprint 5 — @BackendDev, prioritario):**
+`GetByClaveHashAsync` debe traer el registro por `clave_hash` (hash del id de la
+key o similar estable) y `ValidarApiKeyAsync` debe ejecutar `BCrypt.Verify(clave, hash)`;
+test de integración real (sin mock) cubriendo el 401→200.
+
+---
+
+### G-15 · HU-008 · Auditoría de órdenes falla en silencio ⚠️ NUEVO (smoke S12)
+
+**Sprint origen:** Sprint 4 — **Severidad:** ALTA
+**Bloquea:** HU-008 CA-03 (trazabilidad completa) — módulo `ordenes` sin registros
+
+**Descripción del gap:**
+`AuditoriaRepository.RegistrarAsync` castea `@Detalles::jsonb`, pero los
+servicios de órdenes (`OrdenService`, `OrdenImportService`,
+`PlantillaOrdenService`) pasan `Detalles` como **texto plano**
+("Creación de orden (Ref: ...)") → `22P02: invalid input syntax for type json`.
+El repositorio **no propaga excepciones por diseño** (correcto), pero el
+resultado es la pérdida silenciosa de TODA la auditoría de órdenes:
+`GET /api/auditoria?modulo=ordenes` → `total=0` (existen 92 registros de
+auth/configuracion/onboarding que sí serializan JSON). Evidencia en
+`api-sprint4.log`: `ERR Fallo al registrar auditoría. Modulo=ordenes, Accion=CREATE ... 22P02`.
+
+**Resolución (Sprint 5 — @BackendDev, prioritario):**
+serializar `Detalles` con `JsonSerializer` en los servicios del módulo ordenes
+(patrón ya usado por auth/configuracion) o quitar el cast `::jsonb` del INSERT
+(y `::text` del SELECT) en `AuditoriaRepository`. Verificar después con
+`GET /api/auditoria?modulo=ordenes`.
+
+---
+
+### G-16 · HU-027 · Plantilla guarda datosOrden "{}" ⚠️ NUEVO (smoke S10)
+
+**Sprint origen:** Sprint 4 — **Severidad:** Media
+**Bloquea:** HU-027 CA-01 (la plantilla no captura el snapshot de la orden)
+
+**Descripción del gap:**
+Al guardar como plantilla, `datosOrden` queda como `"{}"` (JSON vacío),
+aunque `esRecurrente`, `frecuencia=SEMANAL` y `proximaEjecucion=2026-09-15`
+se guardan bien. El snapshot del cuerpo de la orden no se persiste.
+
+**Resolución (Sprint 5 — @BackendDev):** capturar el DTO de la orden
+(`OrdenRequestDto`) serializado en `datosOrden` al crear la plantilla.
+
+---
+
+### G-17 · HU-021 · Historial de estados incompleto ⚠️ NUEVO (smoke S4)
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** HU-008 CA-01/02 (el historial debe reflejar Inicio → Borrador)
+
+**Descripción del gap (desviaciones menores, verificadas vía API):**
+- El historial de una orden solo contiene la transición DRAFT→CONFIRMED
+  (falta el registro de creación "Inicio → Borrador").
+- `ordenId=Guid.Empty` en las entradas del historial.
+- `usuarioNombre=null` en las entradas (falta JOIN con usuarios).
+- `fechaConfirmacion=null` tras confirmar la orden (el campo no se actualiza).
+
+**Resolución (Sprint 5 — @BackendDev):** registrar el historial de creación,
+mapear `OrdenId`, enriquecer con el nombre del usuario (patrón G-08) y
+persistir `fecha_confirmacion` en la transición a CONFIRMED.
+
+---
+
+### G-18 · HU-021 · Listado devuelve UUIDs crudos en nombres ⚠️ NUEVO (smoke S2)
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** UX del listado (los nombres no se resuelven)
+
+**Descripción del gap:**
+`GET /api/ordenes` (paginado) devuelve `clienteNombre`, `origenNombre` y
+`destinoNombre` como **UUIDs crudos** en lugar de los nombres legibles
+(Distribuidora ABC S.A., Almacen Managua, Bodega Leon).
+
+**Resolución (Sprint 5 — @BackendDev):** JOIN con catálogos en el query del
+listado (mismo patrón que ya resuelve `tipoMercanciaNombre`, etc.).
+
+---
+
+### G-19 · HU-024 · Detalle PARTIALLY_SPLIT no lista sub-órdenes ⚠️ NUEVO (smoke S6)
+
+**Sprint origen:** Sprint 4 — **Severidad:** Baja
+**Bloquea:** UX del detalle (no se ven las sub-órdenes del split)
+
+**Descripción del gap:**
+`GET /api/ordenes/{id}` de la orden original tras un split válido muestra
+`subOrdenesCount=0` y no incluye la lista de sub-órdenes (el split SÍ creó
+las 2 sub-órdenes CONFIRMED — verificadas individualmente).
+
+**Resolución (Sprint 6 — @BackendDev):** devolver las sub-órdenes en el
+detalle (JOIN por `orden_padre_id`) o al menos el count correcto.
+
+---
+
 ## Plan de resolución por sprint
 
 ```
@@ -400,16 +620,28 @@ Sprint 3 — CERRADO:
 Sprint 3 smoke test (pendiente):
   G-04 → Validar UI de creación directa de usuario            🟡
 
-Sprint 4:
-  G-03 → @FrontendDev: sugerencia de descuento anual en planes
-  G-07 → @BackendDev: enriquecer UbicacionResponseDto con
-          campos faltantes (CodigoPostal, horarios, instrucciones)
+Sprint 4 — CERRADO:
+  G-03 → Sugerencia de descuento anual sin autocompletar (Create+Edit) 🟢
+  G-07 → UbicacionResponseDto enriquecido (Fix en commit 71b5f7d)       🟢
 
 Sprint 5:
-  G-08 → @BackendDev: enriquecer AuditoriaActivityResponseDto
-          con NombreUsuario y EmailUsuario (JOIN con tabla usuarios)
+  G-09 → @BackendDev: guardar-como-plantilla → 201 Created
+  G-10 → @BackendDev: origen_creacion=RECURRENTE en órdenes de plantilla
+  G-11 → @QA: test PATCH /api/ordenes/{id}/abonos (FrApi.patch)
+  G-12 → @QA: subir cobertura OrdenesController a ≥60%
+  G-14 → @BackendDev (prioritario): fix validación API key externa
+          (BCrypt.Verify + test real sin mock) — HU-023 CA-02
+  G-15 → @BackendDev (prioritario): auditoría de órdenes (serializar
+          Detalles como JSON o quitar cast ::jsonb) — HU-008
+  G-16 → @BackendDev: snapshot real en datosOrden (plantillas)
+  G-17 → @BackendDev: historial completo (creación, OrdenId, usuario,
+          fecha_confirmacion)
+  G-18 → @BackendDev: JOIN nombres en listado de órdenes
 
-Sprint 6 (antes de EP-05 Carriers):
+Sprint 6 (antes de EP-05 Carriers/embarques):
+  G-13 → @BackendDev: consolidar debe insertar shipment real
+          (o 501 explícito) — HU-024 CA-03
+  G-19 → @BackendDev: sub-órdenes en detalle de PARTIALLY_SPLIT
   G-05 → @IngenieroDatos + @BackendDev + @FrontendDev:
           moneda secundaria + idioma del sistema
 
