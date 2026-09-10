@@ -34,6 +34,7 @@ public class EmpresaService : IEmpresaService
     private readonly IValidator<EmpresaRequestDto> _validator;
     private readonly IAuditoriaService _auditoria;
     private readonly IEmailService _emailService;
+    private readonly IStorageService _storageService;
     private readonly ILogger<EmpresaService> _logger;
 
     // Duración de la suscripción TRIAL inicial (ADR-004).
@@ -52,6 +53,7 @@ public class EmpresaService : IEmpresaService
         IValidator<EmpresaRequestDto> validator,
         IAuditoriaService auditoria,
         IEmailService emailService,
+        IStorageService storageService,
         ILogger<EmpresaService> logger)
     {
         _empresaRepository = empresaRepository;
@@ -66,6 +68,7 @@ public class EmpresaService : IEmpresaService
         _validator = validator;
         _auditoria = auditoria;
         _emailService = emailService;
+        _storageService = storageService;
         _logger = logger;
     }
 
@@ -194,14 +197,22 @@ public class EmpresaService : IEmpresaService
     public async Task<EmpresaResponseDto?> GetByIdAsync(Guid id)
     {
         var empresa = await _empresaRepository.GetByIdAsync(id);
-        return empresa is null ? null : MapToResponseDto(empresa);
+        if (empresa is null) return null;
+        var dto = MapToResponseDto(empresa);
+        await FirmarLogoAsync(dto);
+        return dto;
     }
 
     /// <summary>Obtiene todas las empresas (panel Super Admin — sin filtro de tenant).</summary>
     public async Task<IEnumerable<EmpresaResponseDto>> GetAllAsync(bool incluirInactivos = false)
     {
         var empresas = await _empresaRepository.GetAllAsync(incluirInactivos);
-        return empresas.Select(MapToResponseDto);
+        var dtos = empresas.Select(MapToResponseDto).ToList();
+        foreach (var dto in dtos)
+        {
+            await FirmarLogoAsync(dto);
+        }
+        return dtos;
     }
 
     /// <summary>Actualiza los datos de una empresa (SUPER_ADMIN).</summary>
@@ -290,6 +301,20 @@ public class EmpresaService : IEmpresaService
     }
 
     // ── Helpers ─────────────────────────────────────────────────────
+
+    private async Task FirmarLogoAsync(EmpresaResponseDto dto)
+    {
+        if (!string.IsNullOrEmpty(dto.LogoUrl))
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(dto.LogoUrl, "logos-tenants/([^?]+)");
+            var path = match.Success ? match.Groups[1].Value : dto.LogoUrl;
+
+            if (!path.StartsWith("http"))
+            {
+                dto.LogoUrl = await _storageService.GetSignedUrlAsync("logos-tenants", path);
+            }
+        }
+    }
 
     /// <summary>
     /// Crea los 5 perfiles base del tenant (ADMIN, DISPATCHER, OPERADOR,
