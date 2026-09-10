@@ -56,7 +56,7 @@ public class AccountController : TenantBaseController
             Email = usuario.Email,
             Telefono = usuario.Telefono,
             FotoUrl = fotoUrl,
-            PerfilNombre = usuario.PerfilNombre,
+            PerfilNombre = usuario.PerfilNombre ?? string.Empty,
             TotpHabilitado = config2fa?.TotpHabilitado ?? false
         };
 

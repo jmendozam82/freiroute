@@ -31,6 +31,7 @@ public class EmpresaServiceTests
     private readonly Mock<IValidator<EmpresaRequestDto>> _validator;
     private readonly Mock<IAuditoriaService> _auditoria;
     private readonly Mock<IEmailService> _emailService;
+    private readonly Mock<IStorageService> _storageService;
     private readonly Mock<ILogger<EmpresaService>> _logger;
     private readonly EmpresaService _service;
 
@@ -48,6 +49,7 @@ public class EmpresaServiceTests
         _validator = new Mock<IValidator<EmpresaRequestDto>>();
         _auditoria = new Mock<IAuditoriaService>();
         _emailService = new Mock<IEmailService>();
+        _storageService = new Mock<IStorageService>();
         _logger = new Mock<ILogger<EmpresaService>>();
 
         _validator
@@ -68,6 +70,7 @@ public class EmpresaServiceTests
             _validator.Object,
             _auditoria.Object,
             _emailService.Object,
+            _storageService.Object,
             _logger.Object);
     }
 
