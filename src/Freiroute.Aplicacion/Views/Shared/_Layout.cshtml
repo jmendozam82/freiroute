@@ -183,11 +183,22 @@ else
                             <i class="ti ti-user-shield fr-icon"></i>
                             <span>Perfiles</span>
                         </a>
-                        <a asp-area="Admin" asp-controller="Configuracion" asp-action="Index"
-                           class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
-                            <i class="ti ti-settings fr-icon"></i>
-                            <span>Configuración</span>
-                        </a>
+                        @if (User.EsSuperAdmin())
+                        {
+                            <a asp-area="Admin" asp-controller="Configuracion" asp-action="Index"
+                               class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
+                                <i class="ti ti-settings fr-icon"></i>
+                                <span>Configuración Global</span>
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-area="Tenant" asp-controller="Configuracion" asp-action="Index"
+                               class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "config" ? "active" : "")">
+                                <i class="ti ti-settings fr-icon"></i>
+                                <span>Configuración</span>
+                            </a>
+                        }
                         <a asp-area="Admin" asp-controller="Auditoria" asp-action="Index"
                            class="fr-sidebar-item @(ViewData["ActiveMenu"]?.ToString() == "auditoria" ? "active" : "")">
                             <i class="ti ti-clipboard-data fr-icon"></i>
