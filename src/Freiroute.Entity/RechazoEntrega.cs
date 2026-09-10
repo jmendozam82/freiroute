@@ -19,5 +19,6 @@ public class RechazoEntrega
 
     // ── Auditoría estándar ───────────────────────────────────
     public DateTime FechaCreacion { get; set; }         // TIMESTAMPTZ DEFAULT NOW()
+    public DateTime FechaModificacion { get; set; }     // TIMESTAMPTZ DEFAULT NOW()
     public bool Activo { get; set; } = true;            // Soft delete universal (ADR-005)
 }

@@ -5,7 +5,7 @@ namespace Freiroute.Entity;
 /// Corresponde a la tabla 'codigos_2fa_temporales'.
 /// Los códigos expiran en 10 minutos. Se purgan por el job de vencimientos.
 /// NOTA: NO tiene empresa_id — se resuelve a través de usuario_id (ADR-005).
-/// NO tiene campo 'activo' — se controla por fecha_expiracion y uso.
+/// Ahora incluye campo 'activo' y 'fecha_modificacion' (ADR-005).
 /// </summary>
 public class Codigo2faTempora
 {
@@ -25,4 +25,6 @@ public class Codigo2faTempora
 
     // ── Timestamp ─────────────────────────────────────────────────
     public DateTime FechaCreacion { get; set; }         // TIMESTAMPTZ NOT NULL
+    public DateTime FechaModificacion { get; set; }     // TIMESTAMPTZ NOT NULL
+    public bool Activo { get; set; } = true;            // BOOLEAN NOT NULL DEFAULT true
 }

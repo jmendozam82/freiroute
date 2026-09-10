@@ -4,7 +4,6 @@ namespace Freiroute.Entity;
 /// Contacto de un cliente con rol diferenciado. El contacto principal
 /// recibe las notificaciones del sistema.
 /// Corresponde a la tabla 'contactos_cliente' (HU-019).
-/// SIN FechaModificacion — los contactos son relativamente simples.
 /// </summary>
 public class ContactoCliente
 {
@@ -19,4 +18,5 @@ public class ContactoCliente
     public bool EsPrincipal { get; set; } = false;      // BOOLEAN DEFAULT false
     public bool Activo { get; set; } = true;            // Soft delete universal (ADR-005)
     public DateTime FechaCreacion { get; set; }         // TIMESTAMPTZ DEFAULT NOW()
+    public DateTime FechaModificacion { get; set; }     // TIMESTAMPTZ DEFAULT NOW()
 }

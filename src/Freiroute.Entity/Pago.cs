@@ -3,7 +3,7 @@ namespace Freiroute.Entity;
 /// <summary>
 /// Entidad que representa un pago de suscripción registrado en el sistema.
 /// Corresponde a la tabla 'pagos'. Es INMUTABLE — no se edita ni elimina nunca.
-/// NO tiene campo 'activo' ni 'fecha_modificacion' (ADR-004).
+/// Ahora incluye campo 'activo' y 'fecha_modificacion' (ADR-005).
 /// </summary>
 public class Pago
 {
@@ -33,5 +33,6 @@ public class Pago
 
     // ── Timestamp inmutable ───────────────────────────────────────
     public DateTime FechaCreacion { get; set; }         // TIMESTAMPTZ NOT NULL
-    // SIN FechaModificacion — los pagos son inmutables
+    public DateTime FechaModificacion { get; set; }     // TIMESTAMPTZ NOT NULL
+    public bool Activo { get; set; } = true;            // BOOLEAN NOT NULL DEFAULT true
 }
