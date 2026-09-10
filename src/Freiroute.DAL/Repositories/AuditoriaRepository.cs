@@ -89,9 +89,19 @@ public class AuditoriaRepository : IAuditoriaRepository
         if (pageNumber < 1) pageNumber = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
-        var where = new List<string> { "a.empresa_id = @EmpresaId" };
+        var where = new List<string>();
         var parameters = new DynamicParameters();
-        parameters.Add("EmpresaId", empresaId);
+        
+        if (empresaId != Guid.Empty)
+        {
+            where.Add("a.empresa_id = @EmpresaId");
+            parameters.Add("EmpresaId", empresaId);
+        }
+        else 
+        {
+            // Dummy condition to avoid empty WHERE clause if no other filters
+            where.Add("1 = 1");
+        }
 
         if (!string.IsNullOrWhiteSpace(modulo))
         {

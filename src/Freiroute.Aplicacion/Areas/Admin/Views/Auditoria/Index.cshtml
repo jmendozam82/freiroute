@@ -93,6 +93,10 @@
                         <th>Módulo</th>
                         <th>Acción</th>
                         <th>Entidad</th>
+                        @if (User.EsSuperAdmin())
+                        {
+                            <th>Empresa ID</th>
+                        }
                         <th>Usuario</th>
                         <th>IP</th>
                         <th>Detalles</th>
@@ -130,6 +134,7 @@
         'CAMBIAR_PLAN': 'fr-badge-warning', 'REGISTRAR_PAGO': 'fr-badge-success'
     };
 
+    const isSuperAdmin = @(User.EsSuperAdmin() ? "true" : "false");
     let page = 1, totalPages = 1, totalItems = 0;
 
     function filtrosActuales() {
@@ -173,7 +178,8 @@
                 <td>
                     ${a.entidadTipo ? `<div>${a.entidadTipo}</div><span class="fr-id-code">${(a.entidadId || '').toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}
                 </td>
-                <td>${a.usuarioId ? `<span class="fr-id-code" title="${a.usuarioId}">${a.usuarioId.toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}</td>
+                ${isSuperAdmin ? `<td>${a.empresaId ? `<span class="fr-id-code" title="${a.empresaId}">${a.empresaId.toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}</td>` : ''}
+                <td>${a.usuarioNombre ? `<div>${a.usuarioNombre}</div><span class="text-muted" style="font-size: 11px;">${a.emailUsuario}</span>` : a.usuarioId ? `<span class="fr-id-code" title="${a.usuarioId}">${a.usuarioId.toString().slice(0, 8)}…</span>` : '<span class="text-muted">—</span>'}</td>
                 <td>${a.ipAddress || '<span class="text-muted">—</span>'}</td>
                 <td>
                     ${a.detalles
