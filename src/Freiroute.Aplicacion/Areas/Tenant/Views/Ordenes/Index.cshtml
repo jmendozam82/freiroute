@@ -311,18 +311,22 @@
             const result = await resp.json();
 
             if (resp.ok) {
-                if (result.data && result.data.conErrores) {
-                    FrToast.warning(`Importación parcial: ${result.data.creadas} creadas, ${result.data.fallidas} fallidas`);
+                const dto = result.data;
+                const creadas = dto ? dto.filasOk : 0;
+                const fallidas = dto ? dto.filasError : 0;
+                const conErrores = fallidas > 0;
+
+                if (conErrores) {
+                    FrToast.warning(`Importación parcial: ${creadas} creadas, ${fallidas} fallidas`);
                     let html = '<ul>';
-                    for (let err of result.data.errores) {
-                        html += `<li>Fila ${err.fila}: ${err.error}</li>`;
+                    for (let err of dto.detalleErrores) {
+                        html += `<li>Fila ${err.fila} [${err.campo}]: ${err.error}</li>`;
                     }
                     html += '</ul>';
                     errContainer.innerHTML = html;
                     errContainer.classList.remove('d-none');
                     btn.disabled = false;
                 } else {
-                    const creadas = result.data ? result.data.creadas : 0;
                     FrToast.success(`Importación exitosa: ${creadas} órdenes creadas`);
                     FrModal.hide('modalImportarCsv');
                     setTimeout(() => window.location.reload(), 1500);
