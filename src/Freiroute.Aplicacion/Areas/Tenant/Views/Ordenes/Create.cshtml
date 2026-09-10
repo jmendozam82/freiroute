@@ -17,6 +17,11 @@
         <h1 class="fr-page-title">Nueva orden</h1>
         <div class="fr-page-subtitle">Registre la solicitud de transporte. Se guarda como borrador hasta confirmarla (HU-021)</div>
     </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="fr-btn fr-btn-secondary" id="btnUsarPlantilla" title="Crear orden desde plantilla (HU-027)">
+            <i class="ti ti-template"></i> Usar plantilla
+        </button>
+    </div>
 </div>
 
 <form id="frOrdenForm" method="post" novalidate>
@@ -232,6 +237,32 @@
     </div>
 </form>
 
+<!-- ── Modal: Usar Plantilla (HU-027) ───────────────────── -->
+<div class="modal fade" id="modalUsarPlantilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Usar Plantilla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="fr-form-label">Seleccione una plantilla</label>
+                    <select id="selectPlantillaOpcion" class="fr-form-control">
+                        <option value="">Cargando plantillas...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarUsarPlantilla">
+                    <i class="ti ti-check"></i> Crear orden
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -278,5 +309,53 @@
         const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
         const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
         if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+
+        // ── Usar Plantilla (HU-027) ──────────────────────────
+        document.getElementById('btnUsarPlantilla')?.addEventListener('click', async () => {
+            const select = document.getElementById('selectPlantillaOpcion');
+            select.innerHTML = '<option value="">Cargando plantillas...</option>';
+            FrModal.show('modalUsarPlantilla');
+
+            try {
+                const resp = await FrApi.get('/api/plantillas-orden');
+                if (resp?.success && resp.data) {
+                    if (resp.data.length === 0) {
+                        select.innerHTML = '<option value="">No hay plantillas guardadas</option>';
+                    } else {
+                        select.innerHTML = '<option value="">Seleccione una plantilla</option>' + 
+                            resp.data.map(p => `<option value="${p.id}">${String(p.nombre).replace(/</g, '&lt;')}</option>`).join('');
+                    }
+                } else {
+                    select.innerHTML = '<option value="">Error al cargar plantillas</option>';
+                }
+            } catch (e) {
+                select.innerHTML = '<option value="">Error al cargar plantillas</option>';
+            }
+        });
+
+        document.getElementById('btnConfirmarUsarPlantilla')?.addEventListener('click', async () => {
+            const plantillaId = document.getElementById('selectPlantillaOpcion').value;
+            if (!plantillaId) {
+                FrToast.warning('Seleccione una plantilla');
+                return;
+            }
+
+            const btn = document.getElementById('btnConfirmarUsarPlantilla');
+            btn.disabled = true;
+            try {
+                const resp = await FrApi.post(`/api/plantillas-orden/${plantillaId}/crear-orden`);
+                FrApi.handleResponse(resp, () => {
+                    FrToast.success('Orden creada exitosamente a partir de la plantilla');
+                    FrModal.hide('modalUsarPlantilla');
+                    if (resp.data && resp.data.id) {
+                        window.location.href = `/Tenant/Ordenes/Edit/${resp.data.id}`;
+                    } else {
+                        window.location.href = '/Tenant/Ordenes';
+                    }
+                });
+            } finally {
+                btn.disabled = false;
+            }
+        });
     </script>
 }

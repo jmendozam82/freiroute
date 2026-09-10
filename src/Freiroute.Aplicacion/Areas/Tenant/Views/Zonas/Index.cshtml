@@ -15,6 +15,13 @@
         <div class="fr-page-subtitle">Cobertura geográfica por polígono, códigos postales, ciudades o departamentos</div>
     </div>
     <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnExportarGeojson" aria-label="Exportar GeoJSON">
+            <i class="ti ti-download"></i> Exportar GeoJSON
+        </button>
+        <button type="button" class="fr-btn fr-btn-ghost" id="btnImportarGeojson" aria-label="Importar GeoJSON">
+            <i class="ti ti-upload"></i> Importar GeoJSON
+        </button>
+        <input type="file" id="fileGeojson" accept=".geojson,application/geo+json" class="d-none" />
         <button type="button" class="fr-btn fr-btn-ghost" id="btnVerificarPunto" aria-label="Verificar punto en zonas">
             <i class="ti ti-crosshair"></i> Verificar punto
         </button>
@@ -241,6 +248,69 @@
             FrModal.hide('modalZonaUbicaciones');
             cargarZonas();
         });
+    });
+
+    // ── Exportar / Importar GeoJSON (HU-016) ───────────────────
+    document.getElementById('btnExportarGeojson').addEventListener('click', () => {
+        const features = zonas
+            .filter(z => z.poligonoGeojson)
+            .map(z => {
+                try {
+                    return {
+                        type: 'Feature',
+                        geometry: JSON.parse(z.poligonoGeojson),
+                        properties: {
+                            codigo: z.codigo,
+                            nombre: z.nombre,
+                            colorHex: z.colorHex
+                        }
+                    };
+                } catch { return null; }
+            })
+            .filter(f => f != null);
+
+        if (features.length === 0) {
+            FrToast.warning('No hay zonas con polígonos válidos para exportar.');
+            return;
+        }
+
+        const geojson = {
+            type: 'FeatureCollection',
+            features: features
+        };
+
+        const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/geo+json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `zonas-freiroute-${new Date().toISOString().split('T')[0]}.geojson`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btnImportarGeojson').addEventListener('click', () => {
+        document.getElementById('fileGeojson').click();
+    });
+
+    document.getElementById('fileGeojson').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const geojson = JSON.parse(evt.target.result);
+                // Si existiera el endpoint de importación:
+                // const resp = await FrApi.post('/api/zonas-entrega/importar-geojson', geojson);
+                FrToast.success('Simulación: Archivo GeoJSON procesado correctamente.');
+                // cargarZonas();
+            } catch (err) {
+                FrToast.error('El archivo no es un GeoJSON válido.');
+            } finally {
+                e.target.value = ''; // Reset input
+            }
+        };
+        reader.readAsText(file);
     });
 
     cargarZonas();

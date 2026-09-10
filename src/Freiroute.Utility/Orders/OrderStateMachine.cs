@@ -19,7 +19,7 @@ public static class OrderStateMachine
                                          OrdenEstado.PartiallySplit, OrdenEstado.Cancelled],
 
         [OrdenEstado.Assigned]        = [OrdenEstado.PickupScheduled, OrdenEstado.OnHold,
-                                         OrdenEstado.Cancelled],
+                                         OrdenEstado.Cancelled, OrdenEstado.Confirmed],
 
         [OrdenEstado.PickupScheduled] = [OrdenEstado.InTransit, OrdenEstado.OnHold],
 

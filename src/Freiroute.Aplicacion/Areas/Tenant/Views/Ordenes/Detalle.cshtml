@@ -47,6 +47,19 @@
                 </a>
             }
 
+            @if (Model.Estado == OrdenEstado.Draft || Model.Estado == OrdenEstado.Confirmed)
+            {
+                <button type="button" class="fr-btn fr-btn-secondary" id="btnDividirOrden"
+                        title="Dividir orden (Split HU-026)" aria-label="Dividir orden">
+                    <i class="ti ti-arrows-split"></i> Dividir orden
+                </button>
+            }
+
+            <button type="button" class="fr-btn fr-btn-secondary" id="btnGuardarPlantilla"
+                    title="Guardar como plantilla (HU-027)" aria-label="Guardar como plantilla">
+                <i class="ti ti-template"></i> Guardar plantilla
+            </button>
+
             @if (Model.Estado == OrdenEstado.Draft)
             {
                 <button type="button" class="fr-btn fr-btn-danger" id="btnDesactivarOrden"
@@ -382,6 +395,67 @@
             </div>
         </div>
     </div>
+    </div>
+</div>
+
+<!-- ── Modal: Dividir Orden (Split) (HU-026) ───────────────────── -->
+<div class="modal fade" id="modalSplitOrden" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dividir Orden (Split)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fr-form-hint">Seleccione en cuántas partes desea dividir la orden. La suma de los pesos de las sub-órdenes debe igualar a <strong>@Model.PesoKg.ToString("N0") kg</strong>.</p>
+                <div class="mb-3">
+                    <label class="fr-form-label">Cantidad de sub-órdenes</label>
+                    <input type="number" id="inputNumSplits" class="fr-form-control" min="2" max="10" value="2" />
+                </div>
+                <div id="splitContainer" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarSplit">
+                    <i class="ti ti-arrows-split"></i> Confirmar división
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Guardar como Plantilla (HU-027) ───────────────────── -->
+<div class="modal fade" id="modalGuardarPlantilla" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Guardar como Plantilla</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="fr-form-label fr-form-required">Nombre de la plantilla</label>
+                    <input type="text" id="inputNombrePlantilla" class="fr-form-control" placeholder="Ej: Ruta semanal a Managua" />
+                </div>
+                <div class="mb-3">
+                    <label class="fr-form-label">Recurrencia (opcional)</label>
+                    <select id="selectRecurrenciaPlantilla" class="fr-form-control">
+                        <option value="">Sin recurrencia</option>
+                        <option value="DIARIA">Diaria</option>
+                        <option value="SEMANAL">Semanal</option>
+                        <option value="QUINCENAL">Quincenal</option>
+                        <option value="MENSUAL">Mensual</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarPlantilla">
+                    <i class="ti ti-template"></i> Guardar plantilla
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ── Modal: rechazo de entrega (HU-030) ───────────────────── -->
@@ -646,5 +720,100 @@
             </div>
         `).join('');
     })();
+
+    // ── Dividir Orden (Split) (HU-026) ───────────────────────────
+    document.getElementById('btnDividirOrden')?.addEventListener('click', () => {
+        generarCamposSplit(2);
+        document.getElementById('inputNumSplits').value = 2;
+        FrModal.show('modalSplitOrden');
+    });
+
+    document.getElementById('inputNumSplits')?.addEventListener('change', (e) => {
+        let val = parseInt(e.target.value) || 2;
+        if (val < 2) val = 2;
+        if (val > 10) val = 10;
+        e.target.value = val;
+        generarCamposSplit(val);
+    });
+
+    function generarCamposSplit(cantidad) {
+        const container = document.getElementById('splitContainer');
+        if (!container) return;
+        const total = @Model.PesoKg.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        const parte = Math.floor(total / cantidad);
+        let html = '';
+        for (let i = 1; i <= cantidad; i++) {
+            const peso = (i === cantidad) ? (total - (parte * (cantidad - 1))) : parte;
+            html += `
+                <div class="mb-2 d-flex gap-2 align-items-center">
+                    <label style="width: 120px">Sub-orden ${i}:</label>
+                    <input type="number" class="fr-form-control input-split-peso" data-idx="${i}" value="${peso}" step="0.01" min="1" />
+                    <span class="text-muted">kg</span>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    document.getElementById('btnConfirmarSplit')?.addEventListener('click', async () => {
+        const inputs = document.querySelectorAll('.input-split-peso');
+        let suma = 0;
+        const splits = [];
+        inputs.forEach(inp => {
+            const val = parseFloat(inp.value) || 0;
+            suma += val;
+            splits.push({ cantidad: 1, pesoKg: val });
+        });
+        
+        const total = @Model.PesoKg.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        if (Math.abs(suma - total) > 0.1) {
+            FrToast.warning(`La suma de los pesos (${suma} kg) debe ser igual al peso total (${total} kg)`);
+            return;
+        }
+
+        const btn = document.getElementById('btnConfirmarSplit');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post(`/api/ordenes/@Model.Id/split`, { splits });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Orden dividida exitosamente');
+                FrModal.hide('modalSplitOrden');
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ── Guardar como Plantilla (HU-027) ──────────────────────────
+    document.getElementById('btnGuardarPlantilla')?.addEventListener('click', () => {
+        document.getElementById('inputNombrePlantilla').value = '';
+        document.getElementById('selectRecurrenciaPlantilla').value = '';
+        FrModal.show('modalGuardarPlantilla');
+    });
+
+    document.getElementById('btnConfirmarPlantilla')?.addEventListener('click', async () => {
+        const nombre = document.getElementById('inputNombrePlantilla').value.trim();
+        const recurrencia = document.getElementById('selectRecurrenciaPlantilla').value;
+        if (!nombre) {
+            FrToast.warning('El nombre de la plantilla es obligatorio');
+            return;
+        }
+        
+        const btn = document.getElementById('btnConfirmarPlantilla');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post(`/api/ordenes/@Model.Id/guardar-como-plantilla`, {
+                nombre: nombre,
+                frecuenciaRecurrencia: recurrencia || null
+            });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Plantilla guardada correctamente');
+                FrModal.hide('modalGuardarPlantilla');
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
 </script>
 }

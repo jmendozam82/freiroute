@@ -22,6 +22,10 @@
     <div class="d-flex gap-2 align-items-center">
         @if (User.HasPermission("ordenes", "CREATE"))
         {
+            <button type="button" class="fr-btn fr-btn-secondary" id="btnImportarCsv"
+                    title="Importar órdenes desde CSV/Excel (HU-022)" aria-label="Importar órdenes desde CSV/Excel">
+                <i class="ti ti-upload"></i> Importar CSV
+            </button>
             <a asp-area="Tenant" asp-controller="Ordenes" asp-action="Create" class="fr-btn fr-btn-primary">
                 <i class="ti ti-plus"></i> Nueva orden
             </a>
@@ -94,11 +98,23 @@
     </div>
 </div>
 
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+        @if (User.HasPermission("embarques", "CREATE"))
+        {
+            <button type="button" class="fr-btn fr-btn-primary d-none" id="btnConsolidarSeleccionadas">
+                <i class="ti ti-box-multiple"></i> Consolidar seleccionadas (<span id="countSeleccionadas">0</span>)
+            </button>
+        }
+    </div>
+</div>
+
 <div class="fr-table-wrapper">
     <div class="fr-table-responsive">
         <table class="fr-table">
             <thead>
                 <tr>
+                    <th><input type="checkbox" id="chkAllOrdenes" class="form-check-input" aria-label="Seleccionar todas" /></th>
                     <th>N° Orden</th>
                     <th>Cliente</th>
                     <th>N° PO</th>
@@ -116,7 +132,7 @@
                 @if (Model.Resultados.Items.Count() == 0)
                 {
                     <tr>
-                        <td colspan="11">
+                        <td colspan="12">
                             <div class="fr-empty">
                                 <div class="fr-empty-icon"><i class="ti ti-clipboard-list"></i></div>
                                 <div class="fr-empty-title">No hay órdenes</div>
@@ -128,6 +144,12 @@
                 @foreach (var o in Model.Resultados.Items)
                 {
                     <tr>
+                        <td>
+                            @if (o.Estado == OrdenEstado.Draft || o.Estado == OrdenEstado.Confirmed)
+                            {
+                                <input type="checkbox" class="form-check-input chk-orden" value="@o.Id" data-estado="@o.Estado" aria-label="Seleccionar orden" />
+                            }
+                        </td>
                         <td><span class="fr-id-code">@(string.IsNullOrEmpty(o.NumeroOrden) ? "—" : o.NumeroOrden)</span></td>
                         <td>
                             <div class="fw-semibold">@o.ClienteNombre</div>
@@ -196,11 +218,174 @@
     })
 </div>
 
+<!-- ── Modal: Importar CSV (HU-022) ────────────────────────── -->
+<div class="modal fade" id="modalImportarCsv" tabindex="-1" aria-labelledby="modalImportarCsvTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalImportarCsvTitle">Importar órdenes desde CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Descargue la plantilla, complétela y suba el archivo para crear múltiples órdenes masivamente (Fail-soft).</p>
+                <div class="mb-4">
+                    <a href="/api/importaciones-orden/plantilla" class="fr-btn fr-btn-ghost fr-btn-sm" download>
+                        <i class="ti ti-download"></i> Descargar plantilla CSV
+                    </a>
+                </div>
+                <div class="mb-3">
+                    <label class="fr-form-label" for="fileCsv">Archivo CSV</label>
+                    <input type="file" id="fileCsv" accept=".csv,.xlsx" class="fr-form-control" />
+                </div>
+                <div id="importErrorContainer" class="d-none fr-form-error mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarImportar">
+                    <i class="ti ti-upload"></i> Iniciar importación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Consolidar Órdenes (HU-025) ──────────────────── -->
+<div class="modal fade" id="modalConsolidar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Consolidar Órdenes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea crear un Shipment (Embarque) que agrupe las <strong id="lblCantConsolidar">0</strong> órdenes seleccionadas?</p>
+                <div class="fr-form-hint">Las órdenes seleccionadas deben tener compatibilidad en zona o ruta para consolidarse.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="fr-btn fr-btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="fr-btn fr-btn-primary" id="btnConfirmarConsolidar">
+                    <i class="ti ti-check"></i> Consolidar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
     // ── Toast de TempData (server-side create/edit) ─────────────
     const frToastMsg = '@(TempData["FrToast"]?.ToString() ?? "")';
     const frToastTipo = '@(TempData["FrToastTipo"]?.ToString() ?? "success")';
     if (frToastMsg) FrToast.show(frToastMsg, frToastTipo);
+
+    // ── Importar CSV (HU-022) ───────────────────────────────────
+    document.getElementById('btnImportarCsv')?.addEventListener('click', () => {
+        document.getElementById('fileCsv').value = '';
+        document.getElementById('importErrorContainer').classList.add('d-none');
+        document.getElementById('importErrorContainer').innerHTML = '';
+        FrModal.show('modalImportarCsv');
+    });
+
+    document.getElementById('btnConfirmarImportar')?.addEventListener('click', async () => {
+        const fileInput = document.getElementById('fileCsv');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            FrToast.warning('Seleccione un archivo CSV');
+            return;
+        }
+
+        const btn = document.getElementById('btnConfirmarImportar');
+        btn.disabled = true;
+        const errContainer = document.getElementById('importErrorContainer');
+        errContainer.classList.add('d-none');
+        errContainer.innerHTML = '';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const resp = await fetch('/api/importaciones-orden', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + FrAuth.getToken() },
+                body: formData
+            });
+            const result = await resp.json();
+
+            if (resp.ok) {
+                if (result.data && result.data.conErrores) {
+                    FrToast.warning(`Importación parcial: ${result.data.creadas} creadas, ${result.data.fallidas} fallidas`);
+                    let html = '<ul>';
+                    for (let err of result.data.errores) {
+                        html += `<li>Fila ${err.fila}: ${err.error}</li>`;
+                    }
+                    html += '</ul>';
+                    errContainer.innerHTML = html;
+                    errContainer.classList.remove('d-none');
+                    btn.disabled = false;
+                } else {
+                    const creadas = result.data ? result.data.creadas : 0;
+                    FrToast.success(`Importación exitosa: ${creadas} órdenes creadas`);
+                    FrModal.hide('modalImportarCsv');
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            } else {
+                FrApi.handleResponse(result);
+                btn.disabled = false;
+            }
+        } catch (err) {
+            FrToast.error('Error al subir el archivo');
+            btn.disabled = false;
+        }
+    });
+
+    // ── Consolidar Órdenes (HU-025) ─────────────────────────────
+    const chkAll = document.getElementById('chkAllOrdenes');
+    const chkOrdenes = document.querySelectorAll('.chk-orden');
+    const btnConsolidar = document.getElementById('btnConsolidarSeleccionadas');
+    const countSpan = document.getElementById('countSeleccionadas');
+
+    function updateConsolidarBtn() {
+        const count = document.querySelectorAll('.chk-orden:checked').length;
+        if (count > 1) {
+            btnConsolidar?.classList.remove('d-none');
+            if (countSpan) countSpan.textContent = count;
+        } else {
+            btnConsolidar?.classList.add('d-none');
+        }
+    }
+
+    chkAll?.addEventListener('change', (e) => {
+        chkOrdenes.forEach(chk => chk.checked = e.target.checked);
+        updateConsolidarBtn();
+    });
+
+    chkOrdenes.forEach(chk => {
+        chk.addEventListener('change', updateConsolidarBtn);
+    });
+
+    btnConsolidar?.addEventListener('click', () => {
+        const count = document.querySelectorAll('.chk-orden:checked').length;
+        document.getElementById('lblCantConsolidar').textContent = count;
+        FrModal.show('modalConsolidar');
+    });
+
+    document.getElementById('btnConfirmarConsolidar')?.addEventListener('click', async () => {
+        const selected = Array.from(document.querySelectorAll('.chk-orden:checked')).map(c => c.value);
+        if (selected.length < 2) return;
+
+        const btn = document.getElementById('btnConfirmarConsolidar');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post('/api/ordenes/consolidar', {
+                ordenesIds: selected
+            });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Órdenes consolidadas correctamente');
+                FrModal.hide('modalConsolidar');
+                setTimeout(() => window.location.reload(), 1000);
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
 </script>
 }

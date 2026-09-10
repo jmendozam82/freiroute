@@ -388,10 +388,7 @@ public class OrdenService : IOrdenService
             var orden = await _ordenRepository.GetByIdAsync(ordenId, empresaId)
                 ?? throw new NotFoundException($"Orden {ordenId} no encontrada", ordenId);
 
-            if (orden.Estado != OrdenEstado.Confirmed)
-            {
-                throw new BusinessException($"La orden {ordenId} no está en estado CONFIRMED", "ESTADO_INVALIDO");
-            }
+            OrderStateMachine.AssertTransition(orden.Estado, OrdenEstado.Assigned);
 
             // In a real implementation we would create a Shipment if null, or use an existing one
             // the spec says we assign shipment. 
@@ -417,6 +414,16 @@ public class OrdenService : IOrdenService
                 UsuarioId = usuarioId
             };
             await _ordenRepository.RegistrarHistorialEstadoAsync(historial);
+
+            await _auditoriaRepository.RegistrarAsync(new AuditoriaActividad
+            {
+                EmpresaId = empresaId,
+                UsuarioId = usuarioId,
+                Modulo = "ordenes",
+                Accion = "CAMBIO_ESTADO",
+                EntidadId = ordenId,
+                Detalles = JsonSerializer.Serialize(new { estadoAnterior = orden.Estado, estadoNuevo = OrdenEstado.Assigned, shipmentId = shipmentId })
+            });
         }
 
         return new ShipmentResumenDto { Id = idToReturn, Estado = "PLANNED" };
@@ -427,10 +434,7 @@ public class OrdenService : IOrdenService
         var orden = await _ordenRepository.GetByIdAsync(ordenId, empresaId)
             ?? throw new NotFoundException("Orden no encontrada", ordenId);
 
-        if (orden.Estado != OrdenEstado.Assigned)
-        {
-            throw new BusinessException("Solo se pueden desconsolidar órdenes en estado ASSIGNED", "ESTADO_INVALIDO");
-        }
+        OrderStateMachine.AssertTransition(orden.Estado, OrdenEstado.Confirmed);
 
         await _ordenRepository.AsignarShipmentAsync(ordenId, null, OrdenEstado.Confirmed, empresaId);
 
@@ -444,6 +448,16 @@ public class OrdenService : IOrdenService
             UsuarioId = usuarioId
         };
         await _ordenRepository.RegistrarHistorialEstadoAsync(historial);
+
+        await _auditoriaRepository.RegistrarAsync(new AuditoriaActividad
+        {
+            EmpresaId = empresaId,
+            UsuarioId = usuarioId,
+            Modulo = "ordenes",
+            Accion = "CAMBIO_ESTADO",
+            EntidadId = ordenId,
+            Detalles = JsonSerializer.Serialize(new { estadoAnterior = orden.Estado, estadoNuevo = OrdenEstado.Confirmed, accion = "DESCONSOLIDACION" })
+        });
 
         return await GetByIdAsync(ordenId, empresaId) ?? throw new BusinessException("Error al recuperar orden", "ERROR_ORDEN");
     }

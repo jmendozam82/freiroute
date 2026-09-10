@@ -1,4 +1,4 @@
-﻿@model Freiroute.DTO.Configuracion.ConfiguracionResponseDto
+@model Freiroute.DTO.Configuracion.ConfiguracionResponseDto
 @{
     ViewData["Title"] = "Configuración";
     ViewData["ActiveMenu"] = "config";
@@ -33,6 +33,12 @@
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-numeracion" data-bs-toggle="tab" data-bs-target="#tab-numeracion-content" type="button" role="tab">Numeración</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-api" data-bs-toggle="tab" data-bs-target="#tab-api-content" type="button" role="tab">Integraciones / API</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-suscripcion" data-bs-toggle="tab" data-bs-target="#tab-suscripcion-content" type="button" role="tab">Mi Suscripción</button>
     </li>
 </ul>
 
@@ -354,6 +360,137 @@
             </div>
         </div>
     </div>
+
+    <!-- Tab: API / Integraciones (HU-023) -->
+    <div class="tab-pane fade" id="tab-api-content" role="tabpanel">
+        <div class="fr-card">
+            <div class="fr-card-body">
+                <h5 class="fr-card-title">Claves de API (API Keys)</h5>
+                <p class="text-muted mb-4">Genere una clave de API para autenticar sistemas externos (ERP, WMS) y crear órdenes automáticamente a través de la API REST (HU-023).</p>
+                
+                <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+                    <i class="ti ti-alert-triangle fs-4 me-3"></i>
+                    <div>
+                        <strong>Por seguridad</strong>, la clave generada solo se mostrará una vez. Guárdela en un lugar seguro. Si la pierde, deberá generar una nueva.
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mb-4">
+                    <input type="text" id="inputNombreApiKey" class="fr-form-control" placeholder="Nombre de la integración (ej: SAP ERP)" style="max-width: 300px;" />
+                    <button type="button" class="fr-btn fr-btn-primary" id="btnGenerarApiKey">
+                        <i class="ti ti-key"></i> Generar nueva clave
+                    </button>
+                </div>
+
+                <div id="newApiKeyContainer" class="d-none mb-4 p-3" style="background:var(--fr-blue-tint); border:1px solid var(--fr-action-blue); border-radius:8px;">
+                    <h6 style="color:var(--fr-navy-primary)">¡Clave generada exitosamente!</h6>
+                    <p class="small text-muted mb-2">Copie esta clave ahora. No podrá verla de nuevo.</p>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="inputNewApiKey" class="fr-form-control fr-id-code" readonly />
+                        <button type="button" class="fr-btn fr-btn-secondary" id="btnCopiarApiKey" title="Copiar al portapapeles">
+                            <i class="ti ti-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="listaApiKeysContainer">
+                    <span class="text-muted">Cargando claves existentes...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Suscripción (HU-011) -->
+    <div class="tab-pane fade" id="tab-suscripcion-content" role="tabpanel">
+        <div class="fr-card mb-4">
+            <div class="fr-card-body text-center py-5">
+                <div class="mb-3">
+                    <span class="fr-badge fr-badge-success mb-2" style="font-size:14px; padding:6px 12px">Plan Pro Activo</span>
+                </div>
+                <h2 class="mb-1" style="color:var(--fr-navy-primary)">$99.00 <span style="font-size:14px; font-weight:normal; color:var(--fr-text-muted)">/ mes</span></h2>
+                <p class="text-muted">Próximo cobro: 15 de Octubre, 2026</p>
+                <button type="button" class="fr-btn fr-btn-primary mt-3">Administrar plan</button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="fr-card h-100">
+                    <div class="fr-card-header">
+                        <span class="fr-card-title">Límites de tu plan</span>
+                    </div>
+                    <div class="fr-card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="small fw-bold">Usuarios activos</span>
+                                <span class="small text-muted">12 / 20</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 60%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="small fw-bold">Órdenes este mes</span>
+                                <span class="small text-muted">450 / 1000</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar" style="background-color: var(--fr-action-blue); width: 45%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="small fw-bold">Almacenamiento</span>
+                                <span class="small text-muted">2.4 GB / 10 GB</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 24%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="fr-card h-100">
+                    <div class="fr-card-header">
+                        <span class="fr-card-title">Últimas Facturas</span>
+                    </div>
+                    <div class="fr-card-body p-0">
+                        <table class="table fr-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>15 Sep 2026</td>
+                                    <td>$99.00</td>
+                                    <td><span class="fr-badge fr-badge-success">Pagada</span></td>
+                                    <td class="text-end"><button class="fr-btn fr-btn-ghost fr-btn-sm"><i class="ti ti-download"></i></button></td>
+                                </tr>
+                                <tr>
+                                    <td>15 Ago 2026</td>
+                                    <td>$99.00</td>
+                                    <td><span class="fr-badge fr-badge-success">Pagada</span></td>
+                                    <td class="text-end"><button class="fr-btn fr-btn-ghost fr-btn-sm"><i class="ti ti-download"></i></button></td>
+                                </tr>
+                                <tr>
+                                    <td>15 Jul 2026</td>
+                                    <td>$99.00</td>
+                                    <td><span class="fr-badge fr-badge-success">Pagada</span></td>
+                                    <td class="text-end"><button class="fr-btn fr-btn-ghost fr-btn-sm"><i class="ti ti-download"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -523,6 +660,107 @@ $(document).ready(function() {
             FrToast.success('Logo eliminado');
             setTimeout(() => location.reload(), 1000);
         });
+    });
+
+    // ── API Keys (HU-023) ───────────────────────────────────────
+    function cargarApiKeys() {
+        const container = document.getElementById('listaApiKeysContainer');
+        FrApi.get('/api/configuracion/api-keys').then(resp => {
+            if (!resp?.success) {
+                container.innerHTML = '<span class="text-muted">Error al cargar API Keys.</span>';
+                return;
+            }
+            if (!resp.data || resp.data.length === 0) {
+                container.innerHTML = '<span class="text-muted">No hay claves de API generadas.</span>';
+                return;
+            }
+            
+            let html = `
+                <div class="fr-table-responsive">
+                    <table class="fr-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Últimos 4</th>
+                                <th>Creado</th>
+                                <th>Último uso</th>
+                                <th>Estado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            resp.data.forEach(k => {
+                const badge = k.activo ? '<span class="fr-badge fr-badge-success">Activa</span>' : '<span class="fr-badge fr-badge-neutral">Inactiva</span>';
+                const ultimoUso = k.fechaUltimoAcceso ? new Date(k.fechaUltimoAcceso).toLocaleDateString('es-ES') : 'Nunca';
+                html += `
+                    <tr>
+                        <td class="fw-semibold">${String(k.nombre || '—').replace(/</g, '&lt;')}</td>
+                        <td><span class="fr-id-code">•••• ${String(k.ultimosCuatro || '—').replace(/</g, '&lt;')}</span></td>
+                        <td>${new Date(k.fechaCreacion).toLocaleDateString('es-ES')}</td>
+                        <td>${ultimoUso}</td>
+                        <td>${badge}</td>
+                        <td class="text-end">
+                            ${k.activo ? `<button class="fr-btn fr-btn-ghost fr-btn-sm text-danger btn-revocar-key" data-id="${k.id}" title="Revocar"><i class="ti ti-trash"></i></button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+
+            document.querySelectorAll('.btn-revocar-key').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if (!confirm('¿Está seguro de revocar esta clave? Los sistemas que la usen dejarán de tener acceso.')) return;
+                    const id = e.currentTarget.getAttribute('data-id');
+                    e.currentTarget.disabled = true;
+                    try {
+                        const r = await FrApi.delete(`/api/configuracion/api-keys/${id}`);
+                        FrApi.handleResponse(r, () => {
+                            FrToast.success('Clave revocada');
+                            cargarApiKeys();
+                        });
+                    } catch {
+                        FrToast.error('Error al revocar la clave');
+                    }
+                });
+            });
+        });
+    }
+
+    document.getElementById('tab-api')?.addEventListener('shown.bs.tab', () => {
+        cargarApiKeys();
+    });
+
+    document.getElementById('btnGenerarApiKey')?.addEventListener('click', async () => {
+        const nombreInput = document.getElementById('inputNombreApiKey');
+        const nombre = nombreInput.value.trim();
+        if (!nombre) {
+            FrToast.warning('Ingrese un nombre para identificar la clave');
+            return;
+        }
+
+        const btn = document.getElementById('btnGenerarApiKey');
+        btn.disabled = true;
+        try {
+            const resp = await FrApi.post('/api/configuracion/api-keys', { nombre });
+            FrApi.handleResponse(resp, () => {
+                FrToast.success('Clave de API generada');
+                nombreInput.value = '';
+                document.getElementById('inputNewApiKey').value = resp.data.rawKey;
+                document.getElementById('newApiKeyContainer').classList.remove('d-none');
+                cargarApiKeys();
+            });
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('btnCopiarApiKey')?.addEventListener('click', () => {
+        const input = document.getElementById('inputNewApiKey');
+        input.select();
+        document.execCommand('copy');
+        FrToast.success('Clave copiada al portapapeles');
     });
 });
 </script>

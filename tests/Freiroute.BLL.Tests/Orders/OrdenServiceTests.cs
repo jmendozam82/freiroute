@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -801,7 +801,7 @@ public class OrdenServiceTests
         var act = async () => await _service.DesconsolidarAsync(orden.Id, orden.EmpresaId, Guid.NewGuid());
 
         await act.Should().ThrowAsync<BusinessException>()
-            .WithMessage("*ASSIGNED*");
+            .Where(e => e.Code == "ORDEN_TRANSICION_INVALIDA");
         _ordenRepoMock.Verify(r => r.AsignarShipmentAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<string>(), It.IsAny<Guid>()), Times.Never);
     }
 

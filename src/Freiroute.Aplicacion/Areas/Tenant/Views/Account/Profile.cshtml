@@ -1,0 +1,376 @@
+@model Freiroute.Aplicacion.Areas.Tenant.Models.ProfileViewModel
+@{
+    ViewData["Title"] = "Mi Perfil";
+    ViewData["ActiveMenu"] = "account";
+}
+
+<div class="fr-container-centered">
+    <nav class="fr-breadcrumb" aria-label="breadcrumb">
+        <a href="/">Inicio</a>
+        <span class="fr-breadcrumb-sep">/</span>
+        <span>Mi Perfil</span>
+    </nav>
+
+    <div class="fr-page-header">
+        <div>
+            <h1 class="fr-page-title">Mi Perfil</h1>
+            <p class="fr-page-subtitle">Gestiona tu información personal y opciones de seguridad</p>
+        </div>
+    </div>
+
+    <!-- Datos Generales -->
+    <div class="fr-card mb-4">
+        <div class="fr-card-header">
+            <span class="fr-card-title">Datos Personales</span>
+        </div>
+        <div class="fr-card-body">
+            <div class="row align-items-center mb-4 pb-4 border-bottom">
+                <div class="col-auto">
+                    @if (!string.IsNullOrEmpty(Model.FotoUrl))
+                    {
+                        <img src="@Model.FotoUrl" alt="Foto de perfil" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;" />
+                    }
+                    else
+                    {
+                        <div style="width: 80px; height: 80px; border-radius: 50%; background-color: var(--fr-blue-tint); color: var(--fr-navy-mid); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold;">
+                            @(Model.NombreCompleto.Length > 0 ? Model.NombreCompleto.Substring(0, 1).ToUpper() : "U")
+                        </div>
+                    }
+                </div>
+                <div class="col">
+                    <h5 class="mb-1">@Model.NombreCompleto</h5>
+                    <span class="fr-badge fr-badge-info">@Model.PerfilNombre</span>
+                </div>
+                <div class="col-auto">
+                    <input type="file" id="fotoUpload" class="d-none" accept="image/jpeg, image/png, image/webp" onchange="subirFotoPerfil(event)" />
+                    @if (!string.IsNullOrEmpty(Model.FotoUrl))
+                    {
+                        <button class="fr-btn fr-btn-danger fr-btn-sm me-2" id="btnQuitarFoto" onclick="quitarFotoPerfil()">Quitar foto</button>
+                    }
+                    <button class="fr-btn fr-btn-ghost fr-btn-sm" id="btnCambiarFoto" onclick="document.getElementById('fotoUpload').click()">Cambiar foto</button>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="fr-form-label">Nombre Completo</label>
+                    <input type="text" class="fr-form-control" value="@Model.NombreCompleto" readonly />
+                </div>
+                <div class="col-md-6">
+                    <label class="fr-form-label">Correo Electrónico</label>
+                    <input type="email" class="fr-form-control" value="@Model.Email" readonly />
+                </div>
+                <div class="col-md-6">
+                    <label class="fr-form-label">Teléfono</label>
+                    <input type="text" class="fr-form-control" value="@(Model.Telefono ?? "-")" readonly />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seguridad (2FA) -->
+    <div class="fr-card">
+        <div class="fr-card-header">
+            <span class="fr-card-title">Seguridad</span>
+        </div>
+        <div class="fr-card-body">
+            <div class="d-flex align-items-start justify-content-between">
+                <div>
+                    <h6 class="mb-1">Autenticación de Dos Factores (2FA)</h6>
+                    <p class="text-muted mb-0" style="font-size: 13px;">
+                        Protege tu cuenta con una capa adicional de seguridad. Cuando inicies sesión, deberás introducir un código generado por tu aplicación autenticadora.
+                    </p>
+                </div>
+                <div class="ms-3 text-end">
+                    @if (Model.TotpHabilitado)
+                    {
+                        <span class="fr-badge fr-badge-success mb-2 d-inline-block">
+                            <i class="ti ti-shield-check me-1"></i> Activado
+                        </span><br />
+                        <button class="fr-btn fr-btn-ghost fr-btn-sm" onclick="abrirModalDesactivar2Fa()">Desactivar 2FA</button>
+                    }
+                    else
+                    {
+                        <span class="fr-badge fr-badge-neutral mb-2 d-inline-block">
+                            <i class="ti ti-shield-x me-1"></i> Desactivado
+                        </span><br />
+                        <button class="fr-btn fr-btn-primary fr-btn-sm" onclick="iniciarSetup2Fa()">Activar 2FA</button>
+                    }
+                </div>
+            </div>
+            
+            @if (Model.TotpHabilitado)
+            {
+                <hr />
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="mb-1">Códigos de Recuperación</h6>
+                        <p class="text-muted mb-0" style="font-size: 13px;">
+                            Si pierdes el acceso a tu dispositivo, puedes usar estos códigos para entrar.
+                        </p>
+                    </div>
+                    <div>
+                        <button class="fr-btn fr-btn-ghost fr-btn-sm" onclick="regenerarCodigos()">Regenerar códigos</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal Configurar 2FA -->
+<div class="modal fade" id="modalSetup2Fa" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Configurar Autenticación en Dos Pasos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Paso 1: QR -->
+                    <div class="col-md-6 border-end text-center pe-4">
+                        <h6>1. Escanea el código QR</h6>
+                        <p class="text-muted small">Abre Google Authenticator o Authy y escanea este código.</p>
+                        <div id="qrCodeContainer" class="p-3 mb-2" style="background:#fff; border-radius:8px; border:1px solid var(--fr-border); min-height:200px;">
+                            <i class="ti ti-loader-2 fr-spin text-muted" style="font-size:24px;"></i>
+                        </div>
+                        <p class="small text-muted mb-1">O introduce este código manualmente:</p>
+                        <code id="secretCode" class="user-select-all" style="font-size:14px; background:var(--fr-surface-bg); padding:4px 8px; border-radius:4px;">...</code>
+                    </div>
+                    
+                    <!-- Paso 2: Activar -->
+                    <div class="col-md-6 ps-4">
+                        <h6>2. Códigos de recuperación</h6>
+                        <p class="text-muted small">Guarda estos códigos en un lugar seguro. Solo se mostrarán esta vez.</p>
+                        <div id="recoveryCodesContainer" class="bg-light p-3 rounded mb-4 text-center user-select-all" style="font-family: monospace; font-size:14px; letter-spacing: 2px;">
+                            ...
+                        </div>
+                        
+                        <h6>3. Verifica el código</h6>
+                        <p class="text-muted small">Introduce el código de 6 dígitos que muestra tu aplicación.</p>
+                        <form id="formActivar2Fa">
+                            <input type="text" id="totpCode" class="fr-form-control text-center mb-3" placeholder="000000" maxlength="6" autocomplete="off" required style="font-size: 24px; letter-spacing: 4px;" />
+                            <button type="submit" class="fr-btn fr-btn-primary w-100" id="btnConfirmar2Fa">Confirmar y Activar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Desactivar 2FA -->
+<div class="modal fade" id="modalDesactivar2Fa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Desactivar 2FA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-muted small mb-3">Introduce tu código TOTP actual para confirmar la desactivación.</p>
+                <form id="formDesactivar2Fa">
+                    <input type="text" id="desactivarTotpCode" class="fr-form-control text-center mb-3" placeholder="000000" maxlength="6" autocomplete="off" required style="font-size: 24px; letter-spacing: 4px;" />
+                    <button type="submit" class="fr-btn fr-btn-primary w-100" id="btnConfirmarDesactivar">Desactivar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Regenerar Códigos -->
+<div class="modal fade" id="modalRegenerarCodigos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Nuevos Códigos de Recuperación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar" onclick="window.location.reload()"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-warning small mb-3"><i class="ti ti-alert-triangle"></i> Los códigos anteriores ya no funcionarán. Guarda estos nuevos códigos.</p>
+                <div id="newRecoveryCodesContainer" class="bg-light p-3 rounded mb-3 user-select-all" style="font-family: monospace; font-size:14px; letter-spacing: 2px;">
+                    ...
+                </div>
+                <button type="button" class="fr-btn fr-btn-primary w-100" data-bs-dismiss="modal" onclick="window.location.reload()">Entendido, los he guardado</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script>
+    async function subirFotoPerfil(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const btn = document.getElementById('btnCambiarFoto');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Subiendo...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const resp = await fetch('/Tenant/Account/UpdateFoto', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (resp.ok) {
+                FrToast.success('Foto de perfil actualizada correctamente');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                FrToast.error('Error al subir la foto');
+            }
+        } catch (error) {
+            FrToast.error('Error al actualizar la foto: ' + (error.message || ''));
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            event.target.value = ''; // Reset input
+        }
+    }
+
+    async function quitarFotoPerfil() {
+        if (!confirm('¿Estás seguro de que deseas quitar tu foto de perfil?')) return;
+        
+        const btn = document.getElementById('btnQuitarFoto');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Quitando...';
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch('/Tenant/Account/DeleteFoto', {
+                method: 'POST'
+            });
+            
+            if (resp.ok) {
+                FrToast.success('Foto de perfil eliminada correctamente');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                FrToast.error('Error al quitar la foto');
+            }
+        } catch (error) {
+            FrToast.error('Error al quitar la foto: ' + (error.message || ''));
+        } finally {
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    }
+
+    let setupData = null;
+
+    async function iniciarSetup2Fa() {
+        FrModal.show('modalSetup2Fa');
+        document.getElementById('qrCodeContainer').innerHTML = '<i class="ti ti-loader-2 fr-spin text-muted" style="font-size:24px;"></i>';
+        document.getElementById('secretCode').innerText = '...';
+        document.getElementById('recoveryCodesContainer').innerText = '...';
+        document.getElementById('totpCode').value = '';
+
+        try {
+            const resp = await FrApi.post('/api/auth/2fa/setup');
+            if (resp && resp.data) {
+                setupData = resp.data;
+                const qrContainer = document.getElementById('qrCodeContainer');
+                qrContainer.innerHTML = '<canvas id="qrCanvas"></canvas>';
+                new QRious({
+                    element: document.getElementById('qrCanvas'),
+                    value: setupData.qrCodeUrl,
+                    size: 180,
+                    level: 'M'
+                });
+                
+                document.getElementById('secretCode').innerText = setupData.secret;
+                
+                // Formatear códigos en 2 columnas
+                const codesHtml = setupData.codigosRecuperacion.map(c => 
+                    `<div class="col-6 mb-2"><code>${c}</code></div>`
+                ).join('');
+                document.getElementById('recoveryCodesContainer').innerHTML = `<div class="row text-start">${codesHtml}</div>`;
+            }
+        } catch (error) {
+            console.error('Error setup 2fa:', error);
+            FrToast.error('No se pudo inicializar la configuración 2FA: ' + (error.message || 'Error desconocido'));
+            FrModal.hide('modalSetup2Fa');
+        }
+    }
+
+    document.getElementById('formActivar2Fa').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('totpCode').value;
+        if (code.length !== 6) return;
+
+        const btn = document.getElementById('btnConfirmar2Fa');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i> Verificando...';
+
+        try {
+            const resp = await FrApi.post('/api/auth/2fa/activar', { codigo: code });
+            FrApi.handleResponse(resp, () => {
+                FrModal.hide('modalSetup2Fa');
+                FrToast.success('2FA activado correctamente');
+                setTimeout(() => window.location.reload(), 1500);
+            });
+        } catch (error) {
+            FrToast.error(error.message || 'El código es inválido');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Confirmar y Activar';
+        }
+    });
+
+    function abrirModalDesactivar2Fa() {
+        document.getElementById('desactivarTotpCode').value = '';
+        FrModal.show('modalDesactivar2Fa');
+    }
+
+    document.getElementById('formDesactivar2Fa').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('desactivarTotpCode').value;
+        if (code.length !== 6) return;
+
+        const btn = document.getElementById('btnConfirmarDesactivar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ti ti-loader-2 fr-spin"></i>';
+
+        try {
+            const resp = await FrApi.post('/api/auth/2fa/deactivate', { codigo: code });
+            FrApi.handleResponse(resp, () => {
+                FrModal.hide('modalDesactivar2Fa');
+                FrToast.success('2FA desactivado');
+                setTimeout(() => window.location.reload(), 1500);
+            });
+        } catch (error) {
+            FrToast.error(error.message || 'Código incorrecto');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Desactivar';
+        }
+    });
+
+    async function regenerarCodigos() {
+        if (!confirm('¿Estás seguro? Los códigos de recuperación actuales dejarán de funcionar inmediatamente.')) return;
+        
+        try {
+            const resp = await FrApi.post('/api/auth/2fa/recovery-codes/regenerate');
+            if (resp && resp.data) {
+                const codes = resp.data;
+                let html = '<div class="row text-start ps-3">';
+                for(let i=0; i<codes.length; i++){
+                    html += `<div class="col-6 mb-1">${codes[i]}</div>`;
+                }
+                html += '</div>';
+                document.getElementById('newRecoveryCodesContainer').innerHTML = html;
+                FrModal.show('modalRegenerarCodigos');
+            }
+        } catch (error) {
+            FrToast.error('Error al regenerar códigos: ' + (error.message || ''));
+        }
+    }
+</script>
+}
