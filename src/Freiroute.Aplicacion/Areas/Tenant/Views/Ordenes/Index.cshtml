@@ -229,7 +229,7 @@
             <div class="modal-body">
                 <p class="text-muted">Descargue la plantilla, complétela y suba el archivo para crear múltiples órdenes masivamente (Fail-soft).</p>
                 <div class="mb-4">
-                    <a href="/api/importaciones-orden/plantilla" class="fr-btn fr-btn-ghost fr-btn-sm" download>
+                    <a href="/api/ordenes/importar/plantilla" class="fr-btn fr-btn-ghost fr-btn-sm" download>
                         <i class="ti ti-download"></i> Descargar plantilla CSV
                     </a>
                 </div>
@@ -303,7 +303,7 @@
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
 
-            const resp = await fetch('/api/importaciones-orden', {
+            const resp = await fetch('/api/ordenes/importar', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + FrAuth.getToken() },
                 body: formData

@@ -715,7 +715,7 @@ $(document).ready(function() {
                     const id = e.currentTarget.getAttribute('data-id');
                     e.currentTarget.disabled = true;
                     try {
-                        const r = await FrApi.delete(`/api/configuracion/api-keys/${id}`);
+                        const r = await FrApi.delete(`/api/configuracion/api-keys/${id}/deactivate`);
                         FrApi.handleResponse(r, () => {
                             FrToast.success('Clave revocada');
                             cargarApiKeys();
