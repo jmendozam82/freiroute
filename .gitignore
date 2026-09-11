@@ -3,8 +3,12 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# dotenv files
+# dotenv files — NEVER commit secrets to git
 .env
+.env.local
+.env.*.local
+.env.development
+.env.production
 
 # User-specific appsettings (secrets locales — AGENTS.md #33)
 **/appsettings.Development.json
